@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Conflux — NVIDIA Inception Pitch Deck</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #06060f;
+    color: #e0e0e0;
+    line-height: 1.6;
+  }
+
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    position: relative;
+    page-break-after: always;
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 30% 20%, rgba(0, 212, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .content { max-width: 900px; width: 100%; position: relative; z-index: 1; }
+
+  /* Cover */
+  .cover { text-align: center; }
+  .cover .logo {
+    font-size: 72px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff, #7c3aed, #00d4ff);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -2px;
+    margin-bottom: 20px;
+  }
+  .cover .tagline {
+    font-size: 28px;
+    font-weight: 300;
+    color: #a0a0b0;
+    margin-bottom: 40px;
+  }
+  .cover .meta {
+    font-size: 14px;
+    color: #606070;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Section headers */
+  .section-num {
+    font-size: 12px;
+    color: #00d4ff;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  h2 {
+    font-size: 42px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 30px;
+    letter-spacing: -1px;
+    line-height: 1.2;
+  }
+  h2 span { color: #00d4ff; }
+
+  /* Glass cards */
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(10px);
+  }
+  .card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #00d4ff;
+    margin-bottom: 10px;
+  }
+  .card p, .card li {
+    font-size: 15px;
+    color: #b0b0c0;
+    line-height: 1.7;
+  }
+  .card ul { list-style: none; padding: 0; }
+  .card ul li { padding: 6px 0; padding-left: 20px; position: relative; }
+  .card ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: #7c3aed;
+    font-weight: 600;
+  }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Stats */
+  .stat-box {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 48px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+  }
+  .stat-label {
+    font-size: 13px;
+    color: #707080;
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Pricing */
+  .tier {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+  }
+  .tier.featured {
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.05);
+  }
+  .tier-name { font-size: 14px; color: #707080; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+  .tier-price { font-size: 36px; font-weight: 800; color: #fff; }
+  .tier-price span { font-size: 14px; color: #707080; font-weight: 400; }
+  .tier-desc { font-size: 13px; color: #808090; margin-top: 12px; line-height: 1.6; }
+
+  /* Timeline */
+  .timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #00d4ff;
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+  }
+  .timeline-dot.future { background: #7c3aed; box-shadow: 0 0 12px rgba(124, 58, 237, 0.4); }
+  .timeline-phase { font-size: 13px; color: #00d4ff; font-weight: 600; }
+  .timeline-text { font-size: 15px; color: #b0b0c0; }
+
+  /* Team */
+  .team-member {
+    text-align: center;
+    padding: 20px;
+  }
+  .team-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff, #7c3aed);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .team-name { font-size: 18px; font-weight: 700; color: #fff; }
+  .team-role { font-size: 13px; color: #00d4ff; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .team-bio { font-size: 14px; color: #808090; margin-top: 10px; line-height: 1.6; }
+
+  /* Asks */
+  .ask-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .ask-icon {
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .ask-text { font-size: 16px; color: #e0e0e0; }
+  .ask-sub { font-size: 13px; color: #707080; }
+
+  /* Footer */
+  .slide-footer {
+    position: absolute;
+    bottom: 30px;
+    font-size: 11px;
+    color: #303040;
+    letter-spacing: 1px;
+  }
+
+  @media print {
+    .slide { min-height: 0; height: 100vh; padding: 40px 60px; }
+    body { background: #06060f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: COVER -->
+<div class="slide cover">
+  <div class="content">
+    <div class="logo">THE CONFLUX</div>
+    <div class="tagline">Where AI Agents Live, Work &amp; Grow</div>
+    <div class="meta">Colorado LLC &nbsp;•&nbsp; theconflux.com &nbsp;•&nbsp; NVIDIA Inception Application</div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 2: PROBLEM -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">01 — The Problem</div>
+    <h2>AI Agents Are <span>Disposable</span></h2>
+    <div class="card">
+      <h3>No Persistent Identity</h3>
+      <p>Every AI interaction starts from zero. Agents have no memory, no growth, no identity. They're chat sessions — not companions.</p>
+    </div>
+    <div class="card">
+      <h3>Cloud-Only = No Control</h3>
+      <p>Users are locked into cloud platforms. Their data, conversations, and agent configurations live on someone else's servers. Zero sovereignty.</p>
+    </div>
+    <div class="card">
+      <h3>No Orchestration Standard</h3>
+      <p>Running multiple agents together requires custom code, API wrangling, and duct-tape infrastructure. There's no "operating system" for agent teams.</p>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 3: SOLUTION -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">02 — The Solution</div>
+    <h2>Conflux Home: <span>The Desktop OS for AI Agents</span></h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>🏠 Persistent Agent Memory</h3>
+        <p>Agents accumulate knowledge, develop specializations, and grow over time. They're not disposable — they're family.</p>
+      </div>
+      <div class="card">
+        <h3>🔀 Multi-Model Routing</h3>
+        <p>Seamlessly switch between Claude, GPT, Gemini, Mistral, and local models. The right brain for the right task.</p>
+      </div>
+      <div class="card">
+        <h3>🛡️ Desktop-First</h3>
+        <p>Agents run on your machine by default. Your data stays yours. Cloud augmentation available when you need always-on execution.</p>
+      </div>
+      <div class="card">
+        <h3>🧩 Agent Marketplace</h3>
+        <p>Pre-built agent teams for every workflow. One-click install. Research, coding, writing, business ops — ready out of the box.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 4: ARCHITECTURE -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">03 — Architecture</div>
+    <h2>Built for <span>Performance</span></h2>
+    <div class="card">
+      <h3>Tech Stack</h3>
+      <ul>
+        <li><strong>Runtime:</strong> Tauri (Rust + WebView) — native performance, tiny binaries</li>
+        <li><strong>Frontend:</strong> React + TypeScript — responsive, real-time agent visualization</li>
+        <li><strong>Backend:</strong> Rust — 255+ commands, 91+ database tables, local-first SQLite</li>
+        <li><strong>Agent Engine:</strong> OpenClaw — open-source multi-agent orchestration framework</li>
+        <li><strong>AI Layer:</strong> OpenRouter multi-model routing — Claude, GPT, Gemini, Mistral, Ollama</li>
+        <li><strong>Voice:</strong> Local Whisper STT via cpal audio capture — push-to-talk on all inputs</li>
+      </ul>
+    </div>
+    <div class="grid-3">
+      <div class="stat-box">
+        <div class="stat-num">255+</div>
+        <div class="stat-label">Rust Commands</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">91+</div>
+        <div class="stat-label">DB Tables</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">16</div>
+        <div class="stat-label">Built-in Apps</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 5: MARKET -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">04 — Market Opportunity</div>
+    <h2>The Agent Economy Is <span>Exploding</span></h2>
+    <div class="grid-3">
+      <div class="stat-box">
+        <div class="stat-num">$47B</div>
+        <div class="stat-label">AI Agent Market by 2030</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">1.8B</div>
+        <div class="stat-label">Developer Market Size</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">0</div>
+        <div class="stat-label">Desktop-First Agent Platforms</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 24px;">
+      <h3>The White Space</h3>
+      <p>Every major AI product is cloud-hosted. Nobody is building the desktop operating system for AI agents. Conflux Home owns this category — local-first, user-controlled, agent-native infrastructure.</p>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 6: BUSINESS MODEL -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">05 — Business Model</div>
+    <h2>Capital-Efficient by <span>Design</span></h2>
+    <div class="grid-3">
+      <div class="tier">
+        <div class="tier-name">Free</div>
+        <div class="tier-price">$0</div>
+        <div class="tier-desc">Core agent hosting, limited agents, local execution. Get users in the door.</div>
+      </div>
+      <div class="tier featured">
+        <div class="tier-name">Pro</div>
+        <div class="tier-price">$24.99<span>/mo</span></div>
+        <div class="tier-desc">Unlimited agents, cloud execution, advanced orchestration, priority support.</div>
+      </div>
+      <div class="tier">
+        <div class="tier-name">Enterprise</div>
+        <div class="tier-price">Custom</div>
+        <div class="tier-desc">Team deployments, compliance, custom agent templates, dedicated support.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 24px;">
+      <h3>Why It Works</h3>
+      <p>Desktop-first = users provide their own compute by default. Cloud costs are opt-in, not baked in. This makes every subscription dollar high-margin from day one.</p>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 7: TRACTION -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">06 — Traction</div>
+    <h2>Built, Not <span>Boasted</span></h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Platform Features</h3>
+        <ul>
+          <li>255+ Rust backend commands</li>
+          <li>16 fully-built applications</li>
+          <li>Multi-agent orchestration engine</li>
+          <li>Local Whisper voice input</li>
+          <li>Image generation (Replicate Flux)</li>
+          <li>Stripe billing integration</li>
+          <li>Supabase auth + real-time sync</li>
+          <li>Agent marketplace & discovery</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Built-in Applications</h3>
+        <ul>
+          <li>Budget (Pulse) — NL expense tracking</li>
+          <li>Kitchen (Hearth) — AI meal planning</li>
+          <li>Life Autopilot (Orbit) — focus engine</li>
+          <li>Dreams (Horizon) — goal decomposition</li>
+          <li>Feed (Current) — daily briefing AI</li>
+          <li>Vault — file browser & project manager</li>
+          <li>Studio — creator workspace with AI</li>
+          <li>Games (Minesweeper, Snake, Pac-Man, Solitaire)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top: 16px;">
+      <div class="stat-box">
+        <div class="stat-num">91+</div>
+        <div class="stat-label">Database Tables</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">255+</div>
+        <div class="stat-label">Commands Built</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">16</div>
+        <div class="stat-label">Apps Shipped</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 8: WHY NVIDIA -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">07 — Why NVIDIA</div>
+    <h2>Perfect <span>Technical Alignment</span></h2>
+    <div class="card">
+      <h3>Integration Roadmap</h3>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-phase">Phase 1 — Immediate</div>
+          <div class="timeline-text">DLI training: GPU-accelerated computing, deep learning fundamentals, CUDA programming</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot future"></div>
+        <div>
+          <div class="timeline-phase">Phase 2 — Q2 2026</div>
+          <div class="timeline-text">NIM integration: optimized local model inference for agent workloads on consumer GPUs</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot future"></div>
+        <div>
+          <div class="timeline-phase">Phase 3 — Q3 2026</div>
+          <div class="timeline-text">TensorRT optimization: faster agent response times, model quantization for desktop deployment</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot future"></div>
+        <div>
+          <div class="timeline-phase">Phase 4 — Q4 2026</div>
+          <div class="timeline-text">CUDA acceleration: parallel multi-agent workloads, GPU-accelerated orchestration</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot future"></div>
+        <div>
+          <div class="timeline-phase">Phase 5 — 2027</div>
+          <div class="timeline-text">Triton Inference Server: production multi-model serving architecture for cloud-augmented agents</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 9: TEAM -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">08 — Team</div>
+    <h2>Built by <span>Practitioners</span></h2>
+    <div class="grid-2">
+      <div class="team-member">
+        <div class="team-avatar">FA</div>
+        <div class="team-name">Frank Azzaro</div>
+        <div class="team-role">CEO</div>
+        <div class="team-bio">Strategic vision and business operations. Drives company direction, partnerships, and growth.</div>
+      </div>
+      <div class="team-member">
+        <div class="team-avatar">DZ</div>
+        <div class="team-name">Don Ziglioni</div>
+        <div class="team-role">CTO</div>
+        <div class="team-bio">Full-time builder. Solo founder running real businesses on the platform daily — proving the product through lived experience.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 24px;">
+      <h3>What Makes Us Different</h3>
+      <p>We don't just build AI tools — we live in them. The Conflux Venture Studio runs entirely on Conflux Home. Every agent, every workflow, every business decision flows through the platform we're building. Dogfoading at its finest.</p>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+<!-- SLIDE 10: THE ASK -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">09 — The Ask</div>
+    <h2>Join <span>NVIDIA Inception</span></h2>
+    <div class="card">
+      <div class="ask-item">
+        <div class="ask-icon">🎓</div>
+        <div>
+          <div class="ask-text">Deep Learning Institute Training</div>
+          <div class="ask-sub">GPU computing, CUDA, deep learning — upskill the founder and future team</div>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-icon">🔧</div>
+        <div>
+          <div class="ask-text">SDK & Developer Tools Access</div>
+          <div class="ask-sub">NIM, TensorRT, Triton — integrate NVIDIA stack into Conflux Home</div>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-icon">💰</div>
+        <div>
+          <div class="ask-text">Preferred Hardware Pricing</div>
+          <div class="ask-sub">Discounted GPUs for development and local inference optimization</div>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-icon">🤝</div>
+        <div>
+          <div class="ask-text">Inception Capital Connect</div>
+          <div class="ask-sub">VC network access for our upcoming funding round</div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 40px;">
+      <div style="font-size: 24px; font-weight: 700; color: #fff;">theconflux.com</div>
+      <div style="font-size: 14px; color: #606070; margin-top: 8px;">don@theconflux.com &nbsp;•&nbsp; frank.azzaro@theconflux.com</div>
+    </div>
+  </div>
+  <div class="slide-footer">Confidential — The Conflux, LLC</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1753 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-03-29T23:26:53Z",
+  "total_providers": 10,
+  "total_models": 73,
+  "purpose_tags": [
+    "coding",
+    "reasoning",
+    "creative",
+    "fast-cheap",
+    "vision",
+    "embedding",
+    "long-context",
+    "instruction-following",
+    "multimodal"
+  ],
+  "tiers": {
+    "core": "Fast, cheap, good for simple tasks. Free tier models.",
+    "pro": "Balanced quality/cost. Workhorse models.",
+    "ultra": "Best quality, highest cost. Use sparingly."
+  },
+  "providers": {
+    "anthropic": {
+      "model_count": 11,
+      "models": [
+        {
+          "provider": "anthropic",
+          "model_id": "claude-opus-4-6",
+          "api_alias": "claude-opus-4-6",
+          "display_name": "Claude Opus 4.6",
+          "status": "active",
+          "context_window_tokens": 1000000,
+          "max_output_tokens": 128000,
+          "input_price_per_mtok": 5.0,
+          "output_price_per_mtok": 25.0,
+          "cache_write_5m_per_mtok": 6.25,
+          "cache_write_1h_per_mtok": 10.0,
+          "cache_read_per_mtok": 0.5,
+          "batch_input_per_mtok": 2.5,
+          "batch_output_per_mtok": 12.5,
+          "extended_thinking": true,
+          "adaptive_thinking": true,
+          "vision": true,
+          "comparative_latency": "moderate",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "agents",
+            "multilingual",
+            "extended_thinking",
+            "adaptive_thinking"
+          ],
+          "best_use_case": "Most complex tasks, agentic coding, deep reasoning, multi-step orchestration",
+          "reliable_knowledge_cutoff": "May 2025",
+          "training_data_cutoff": "Aug 2025",
+          "notes": "Most intelligent model. 1M context at standard pricing. Fast mode available at 6x premium ($30/$150). US-only inference at 1.1x premium."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-sonnet-4-6",
+          "api_alias": "claude-sonnet-4-6",
+          "display_name": "Claude Sonnet 4.6",
+          "status": "active",
+          "context_window_tokens": 1000000,
+          "max_output_tokens": 64000,
+          "input_price_per_mtok": 3.0,
+          "output_price_per_mtok": 15.0,
+          "cache_write_5m_per_mtok": 3.75,
+          "cache_write_1h_per_mtok": 6.0,
+          "cache_read_per_mtok": 0.3,
+          "batch_input_per_mtok": 1.5,
+          "batch_output_per_mtok": 7.5,
+          "extended_thinking": true,
+          "adaptive_thinking": true,
+          "vision": true,
+          "comparative_latency": "fast",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking",
+            "adaptive_thinking"
+          ],
+          "best_use_case": "Production workloads balancing intelligence, speed, and cost. General-purpose default.",
+          "reliable_knowledge_cutoff": "Aug 2025",
+          "training_data_cutoff": "Jan 2026",
+          "notes": "1M context at standard pricing. Best cost-to-intelligence ratio. US-only inference at 1.1x premium."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-haiku-4-5-20251001",
+          "api_alias": "claude-haiku-4-5",
+          "display_name": "Claude Haiku 4.5",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 64000,
+          "input_price_per_mtok": 1.0,
+          "output_price_per_mtok": 5.0,
+          "cache_write_5m_per_mtok": 1.25,
+          "cache_write_1h_per_mtok": 2.0,
+          "cache_read_per_mtok": 0.1,
+          "batch_input_per_mtok": 0.5,
+          "batch_output_per_mtok": 2.5,
+          "extended_thinking": true,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "fastest",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking"
+          ],
+          "best_use_case": "High-throughput, low-latency tasks. Classification, data extraction, real-time chat.",
+          "reliable_knowledge_cutoff": "Feb 2025",
+          "training_data_cutoff": "Jul 2025",
+          "notes": "Fastest model with near-frontier intelligence. No adaptive thinking."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-sonnet-4-5-20250929",
+          "api_alias": "claude-sonnet-4-5",
+          "display_name": "Claude Sonnet 4.5",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 64000,
+          "input_price_per_mtok": 3.0,
+          "output_price_per_mtok": 15.0,
+          "cache_write_5m_per_mtok": 3.75,
+          "cache_write_1h_per_mtok": 6.0,
+          "cache_read_per_mtok": 0.3,
+          "batch_input_per_mtok": 1.5,
+          "batch_output_per_mtok": 7.5,
+          "extended_thinking": true,
+          "adaptive_thinking": true,
+          "vision": true,
+          "comparative_latency": "fast",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking",
+            "adaptive_thinking"
+          ],
+          "best_use_case": "Previous-gen balanced model. Upgrade to Sonnet 4.6 when ready.",
+          "reliable_knowledge_cutoff": "Jan 2025",
+          "training_data_cutoff": "Jul 2025",
+          "notes": "1M context available via context-1m-2025-08-07 beta header (premium pricing above 200k: $6/$22.50). Retires not sooner than Sep 29, 2026."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-opus-4-5-20251101",
+          "api_alias": "claude-opus-4-5",
+          "display_name": "Claude Opus 4.5",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 64000,
+          "input_price_per_mtok": 5.0,
+          "output_price_per_mtok": 25.0,
+          "cache_write_5m_per_mtok": 6.25,
+          "cache_write_1h_per_mtok": 10.0,
+          "cache_read_per_mtok": 0.5,
+          "batch_input_per_mtok": 2.5,
+          "batch_output_per_mtok": 12.5,
+          "extended_thinking": true,
+          "adaptive_thinking": true,
+          "vision": true,
+          "comparative_latency": "moderate",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking",
+            "adaptive_thinking"
+          ],
+          "best_use_case": "High-intelligence tasks. Upgrade to Opus 4.6 when ready.",
+          "reliable_knowledge_cutoff": "May 2025",
+          "training_data_cutoff": "Aug 2025",
+          "notes": "Retires not sooner than Nov 24, 2026."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-opus-4-1-20250805",
+          "api_alias": "claude-opus-4-1",
+          "display_name": "Claude Opus 4.1",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 32000,
+          "input_price_per_mtok": 15.0,
+          "output_price_per_mtok": 75.0,
+          "cache_write_5m_per_mtok": 18.75,
+          "cache_write_1h_per_mtok": 30.0,
+          "cache_read_per_mtok": 1.5,
+          "batch_input_per_mtok": 7.5,
+          "batch_output_per_mtok": 37.5,
+          "extended_thinking": true,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "moderate",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking"
+          ],
+          "best_use_case": "Legacy high-intelligence model. Migrate to Opus 4.6 for 3x cost reduction.",
+          "reliable_knowledge_cutoff": "Jan 2025",
+          "training_data_cutoff": "Mar 2025",
+          "notes": "Retires not sooner than Aug 5, 2026. Significantly more expensive than Opus 4.5/4.6."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-sonnet-4-20250514",
+          "api_alias": "claude-sonnet-4-0",
+          "display_name": "Claude Sonnet 4",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 64000,
+          "input_price_per_mtok": 3.0,
+          "output_price_per_mtok": 15.0,
+          "cache_write_5m_per_mtok": 3.75,
+          "cache_write_1h_per_mtok": 6.0,
+          "cache_read_per_mtok": 0.3,
+          "batch_input_per_mtok": 1.5,
+          "batch_output_per_mtok": 7.5,
+          "extended_thinking": true,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "fast",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking"
+          ],
+          "best_use_case": "Legacy balanced model. Upgrade to Sonnet 4.6.",
+          "reliable_knowledge_cutoff": "Jan 2025",
+          "training_data_cutoff": "Mar 2025",
+          "notes": "1M context available via beta header. Retires not sooner than May 14, 2026."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-opus-4-20250514",
+          "api_alias": "claude-opus-4-0",
+          "display_name": "Claude Opus 4",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 32000,
+          "input_price_per_mtok": 15.0,
+          "output_price_per_mtok": 75.0,
+          "cache_write_5m_per_mtok": 18.75,
+          "cache_write_1h_per_mtok": 30.0,
+          "cache_read_per_mtok": 1.5,
+          "batch_input_per_mtok": 7.5,
+          "batch_output_per_mtok": 37.5,
+          "extended_thinking": true,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "moderate",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking"
+          ],
+          "best_use_case": "Legacy high-intelligence model. Migrate to Opus 4.6 for 3x cost reduction.",
+          "reliable_knowledge_cutoff": "Jan 2025",
+          "training_data_cutoff": "Mar 2025",
+          "notes": "Retires not sooner than May 14, 2026. Same pricing as Opus 4.1."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-3-7-sonnet-20250219",
+          "api_alias": "claude-3-7-sonnet",
+          "display_name": "Claude Sonnet 3.7",
+          "status": "deprecated",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 64000,
+          "input_price_per_mtok": 3.0,
+          "output_price_per_mtok": 15.0,
+          "cache_write_5m_per_mtok": 3.75,
+          "cache_write_1h_per_mtok": 6.0,
+          "cache_read_per_mtok": 0.3,
+          "batch_input_per_mtok": 1.5,
+          "batch_output_per_mtok": 7.5,
+          "extended_thinking": true,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "fast",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "reasoning",
+            "multilingual",
+            "extended_thinking"
+          ],
+          "best_use_case": "Deprecated. Migrate to Sonnet 4.6.",
+          "reliable_knowledge_cutoff": null,
+          "training_data_cutoff": "Nov 2024",
+          "notes": "Deprecated model. Still functional but not recommended."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-3-5-haiku-20241022",
+          "api_alias": "claude-3-5-haiku",
+          "display_name": "Claude Haiku 3.5",
+          "status": "active",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 8192,
+          "input_price_per_mtok": 0.8,
+          "output_price_per_mtok": 4.0,
+          "cache_write_5m_per_mtok": 1.0,
+          "cache_write_1h_per_mtok": 1.6,
+          "cache_read_per_mtok": 0.08,
+          "batch_input_per_mtok": 0.4,
+          "batch_output_per_mtok": 2.0,
+          "extended_thinking": false,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "fast",
+          "capabilities": [
+            "text",
+            "vision",
+            "coding",
+            "multilingual"
+          ],
+          "best_use_case": "Budget-friendly high-throughput tasks. Data labeling, content moderation, simple extraction.",
+          "reliable_knowledge_cutoff": null,
+          "training_data_cutoff": "Jul 2024",
+          "notes": "Cheapest non-Haiku-3 model still active. Consider migrating to Haiku 4.5 for 20% more cost but significantly better performance and extended thinking."
+        },
+        {
+          "provider": "anthropic",
+          "model_id": "claude-3-haiku-20240307",
+          "api_alias": null,
+          "display_name": "Claude Haiku 3",
+          "status": "deprecated",
+          "context_window_tokens": 200000,
+          "max_output_tokens": 4096,
+          "input_price_per_mtok": 0.25,
+          "output_price_per_mtok": 1.25,
+          "cache_write_5m_per_mtok": 0.3,
+          "cache_write_1h_per_mtok": 0.5,
+          "cache_read_per_mtok": 0.03,
+          "batch_input_per_mtok": 0.125,
+          "batch_output_per_mtok": 0.625,
+          "extended_thinking": false,
+          "adaptive_thinking": false,
+          "vision": true,
+          "comparative_latency": "fast",
+          "capabilities": [
+            "text",
+            "vision",
+            "multilingual"
+          ],
+          "best_use_case": "Deprecated. Cheapest model available but being retired. Migrate to Haiku 4.5.",
+          "reliable_knowledge_cutoff": null,
+          "training_data_cutoff": "Aug 2023",
+          "notes": "Deprecated. Retires April 19, 2026. No API alias \u2014 must use full model ID."
+        }
+      ]
+    },
+    "cerebras": {
+      "model_count": 4,
+      "models": [
+        {
+          "model_id": "llama3.1-8b",
+          "display_name": "Llama 3.1 8B",
+          "parameters": "8B",
+          "context_window": 8192,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 2200,
+          "blended_price_per_1m": 0.1,
+          "input_price_per_1m": 0.06,
+          "output_price_per_1m": 0.14,
+          "capabilities": [
+            "text",
+            "chat"
+          ],
+          "tier": "production",
+          "best_use_case": "Ultra-fast, ultra-cheap inference; simple tasks, classification, high-throughput pipelines"
+        },
+        {
+          "model_id": "gpt-oss-120b",
+          "display_name": "OpenAI GPT-OSS 120B",
+          "parameters": "120B",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 3000,
+          "blended_price_per_1m": 0.45,
+          "input_price_per_1m": 0.22,
+          "output_price_per_1m": 0.68,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning"
+          ],
+          "tier": "production",
+          "best_use_case": "High-quality reasoning and general-purpose tasks at blazing speed"
+        },
+        {
+          "model_id": "qwen-3-235b-a22b-instruct-2507",
+          "display_name": "Qwen 3 235B Instruct",
+          "parameters": "235B",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 1400,
+          "blended_price_per_1m": null,
+          "input_price_per_1m": null,
+          "output_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions"
+          ],
+          "tier": "preview",
+          "best_use_case": "Large MoE model for complex reasoning; free tier available with rate limits"
+        },
+        {
+          "model_id": "zai-glm-4.7",
+          "display_name": "Z.ai GLM 4.7",
+          "parameters": "355B",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 1000,
+          "blended_price_per_1m": 2.38,
+          "input_price_per_1m": 1.19,
+          "output_price_per_1m": 3.57,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning"
+          ],
+          "tier": "preview",
+          "best_use_case": "Highest-intelligence model on Cerebras; complex reasoning, multilingual"
+        }
+      ]
+    },
+    "cloudflare": {
+      "model_count": 13,
+      "models": [
+        {
+          "model_id": "@cf/meta/llama-4-scout-17b-16e-instruct",
+          "display_name": "Llama 4 Scout (17Bx16E)",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.1,
+          "output_price_per_1m": 0.44,
+          "input_neurons_per_1m": 8900,
+          "output_neurons_per_1m": 40000,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "vision",
+            "multimodal",
+            "batch"
+          ],
+          "best_use_case": "Multimodal MoE model with vision and function calling; strong general-purpose"
+        },
+        {
+          "model_id": "@cf/openai/gpt-oss-120b",
+          "display_name": "GPT-OSS 120B",
+          "context_window": 128000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.35,
+          "output_price_per_1m": 0.75,
+          "input_neurons_per_1m": 31818,
+          "output_neurons_per_1m": 68182,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning"
+          ],
+          "best_use_case": "OpenAI open-weight model for high-reasoning tasks; production-grade"
+        },
+        {
+          "model_id": "@cf/moonshotai/kimi-k2.5",
+          "display_name": "Kimi K2.5",
+          "context_window": 256000,
+          "max_output_tokens": null,
+          "input_price_per_1m": null,
+          "output_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning",
+            "vision",
+            "batch"
+          ],
+          "best_use_case": "Frontier MoE model with 256K context, vision, and tool calling"
+        },
+        {
+          "model_id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+          "display_name": "Llama 3.3 70B Instruct (FP8)",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.293,
+          "output_price_per_1m": 2.253,
+          "input_neurons_per_1m": 26668,
+          "output_neurons_per_1m": 204805,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions"
+          ],
+          "best_use_case": "High-quality 70B model for complex tasks; FP8 quantized for efficiency"
+        },
+        {
+          "model_id": "@cf/meta/llama-3.1-70b-instruct-fp8-fast",
+          "display_name": "Llama 3.1 70B Instruct (FP8)",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.293,
+          "output_price_per_1m": 2.253,
+          "input_neurons_per_1m": 26668,
+          "output_neurons_per_1m": 204805,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions"
+          ],
+          "best_use_case": "Same pricing as 3.3; consider 3.3 for newer training data"
+        },
+        {
+          "model_id": "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+          "display_name": "Llama 3.1 8B Instruct (FP8 Fast)",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.045,
+          "output_price_per_1m": 0.384,
+          "input_neurons_per_1m": 4119,
+          "output_neurons_per_1m": 34868,
+          "capabilities": [
+            "text",
+            "chat"
+          ],
+          "best_use_case": "Cheapest 8B model for high-throughput simple tasks"
+        },
+        {
+          "model_id": "@cf/meta/llama-3.2-1b-instruct",
+          "display_name": "Llama 3.2 1B Instruct",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.027,
+          "output_price_per_1m": 0.201,
+          "input_neurons_per_1m": 2457,
+          "output_neurons_per_1m": 18252,
+          "capabilities": [
+            "text",
+            "chat"
+          ],
+          "best_use_case": "Smallest model; edge deployment, classification, ultra-low cost"
+        },
+        {
+          "model_id": "@cf/meta/llama-3.2-3b-instruct",
+          "display_name": "Llama 3.2 3B Instruct",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.051,
+          "output_price_per_1m": 0.335,
+          "input_neurons_per_1m": 4625,
+          "output_neurons_per_1m": 30475,
+          "capabilities": [
+            "text",
+            "chat"
+          ],
+          "best_use_case": "Small model for simple text tasks at low cost"
+        },
+        {
+          "model_id": "@cf/meta/llama-3.2-11b-vision-instruct",
+          "display_name": "Llama 3.2 11B Vision Instruct",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.049,
+          "output_price_per_1m": 0.676,
+          "input_neurons_per_1m": 4410,
+          "output_neurons_per_1m": 61493,
+          "capabilities": [
+            "text",
+            "chat",
+            "vision",
+            "image_understanding"
+          ],
+          "best_use_case": "Lightweight vision model for image understanding tasks"
+        },
+        {
+          "model_id": "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
+          "display_name": "DeepSeek R1 Distill Qwen 32B",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.497,
+          "output_price_per_1m": 4.881,
+          "input_neurons_per_1m": 45170,
+          "output_neurons_per_1m": 443756,
+          "capabilities": [
+            "text",
+            "chat",
+            "reasoning"
+          ],
+          "best_use_case": "Reasoning-optimized distilled model for complex logic and math"
+        },
+        {
+          "model_id": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+          "display_name": "Mistral Small 3.1 24B",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.351,
+          "output_price_per_1m": 0.555,
+          "input_neurons_per_1m": 31876,
+          "output_neurons_per_1m": 50488,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions"
+          ],
+          "best_use_case": "Balanced mid-range model with function calling"
+        },
+        {
+          "model_id": "@cf/qwen/qwen2.5-coder-32b-instruct",
+          "display_name": "Qwen2.5 Coder 32B Instruct",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.3,
+          "output_price_per_1m": 0.55,
+          "input_neurons_per_1m": 27273,
+          "output_neurons_per_1m": 50000,
+          "capabilities": [
+            "text",
+            "chat",
+            "coding"
+          ],
+          "best_use_case": "Dedicated coding model for code generation and analysis"
+        },
+        {
+          "model_id": "@cf/google/gemma-3-12b-it",
+          "display_name": "Gemma 3 12B Instruct",
+          "context_window": 131000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.15,
+          "output_price_per_1m": 0.75,
+          "input_neurons_per_1m": 13636,
+          "output_neurons_per_1m": 68182,
+          "capabilities": [
+            "text",
+            "chat"
+          ],
+          "best_use_case": "Google's efficient open model; good for general-purpose chat"
+        }
+      ]
+    },
+    "deepseek": {
+      "model_count": 2,
+      "models": [
+        {
+          "model_id": "deepseek-chat",
+          "context_window": 65536,
+          "max_output_tokens": 8192,
+          "input_price_per_1m": 0.27,
+          "cached_input_price_per_1m": 0.07,
+          "output_price_per_1m": 1.1,
+          "capabilities": [
+            "text",
+            "functions",
+            "structured_output",
+            "coding"
+          ],
+          "best_use_case": "General-purpose chat and coding; extremely cost-effective at $0.27/M input. Great for high-volume production use."
+        },
+        {
+          "model_id": "deepseek-reasoner",
+          "context_window": 65536,
+          "max_cot_tokens": 32768,
+          "max_output_tokens": 8192,
+          "input_price_per_1m": 0.55,
+          "cached_input_price_per_1m": 0.14,
+          "output_price_per_1m": 2.19,
+          "capabilities": [
+            "text",
+            "reasoning",
+            "chain_of_thought",
+            "coding",
+            "math"
+          ],
+          "best_use_case": "Complex reasoning, math, and logic problems. Chain-of-thought reasoning with 32K CoT budget."
+        }
+      ]
+    },
+    "google": {
+      "model_count": 8,
+      "models": [
+        {
+          "id": "gemini-2.5-pro",
+          "provider": "google",
+          "displayName": "Gemini 2.5 Pro",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 65536,
+          "pricing": {
+            "input": {
+              "perMillion": 1.25,
+              "note": "Prompts \u2264200K tokens"
+            },
+            "inputOver200K": {
+              "perMillion": 2.5,
+              "note": "Prompts >200K tokens"
+            },
+            "output": {
+              "perMillion": 10.0,
+              "note": "Prompts \u2264200K tokens"
+            },
+            "outputOver200K": {
+              "perMillion": 15.0,
+              "note": "Prompts >200K tokens"
+            },
+            "cachedInput": {
+              "perMillion": 0.125,
+              "note": "Prompts \u2264200K tokens"
+            },
+            "cachedInputOver200K": {
+              "perMillion": 0.25,
+              "note": "Prompts >200K tokens"
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-generation",
+            "code-generation",
+            "reasoning",
+            "multimodal-vision",
+            "audio-understanding",
+            "video-understanding",
+            "function-calling",
+            "context-caching",
+            "grounding-with-search",
+            "thinking-mode",
+            "structured-output"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "status": "GA",
+          "deprecationDate": null,
+          "bestUseCase": "Complex reasoning, deep code analysis, architectural reviews, long-context research tasks. Use when quality matters more than cost.",
+          "notes": "Default maxOutputTokens is 8192; must explicitly set to 65536. Context-window-tiered pricing kicks in at 200K tokens. Google's most capable general reasoning model in the 2.x line."
+        },
+        {
+          "id": "gemini-2.5-flash",
+          "provider": "google",
+          "displayName": "Gemini 2.5 Flash",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 65536,
+          "pricing": {
+            "input": {
+              "perMillion": 0.3,
+              "note": "Text, image, video input"
+            },
+            "inputAudio": {
+              "perMillion": 1.0,
+              "note": "Audio input"
+            },
+            "output": {
+              "perMillion": 2.5
+            },
+            "cachedInput": {
+              "perMillion": 0.03,
+              "note": "Text, image, video"
+            },
+            "cachedInputAudio": {
+              "perMillion": 0.1,
+              "note": "Audio"
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-generation",
+            "code-generation",
+            "reasoning",
+            "multimodal-vision",
+            "audio-understanding",
+            "video-understanding",
+            "function-calling",
+            "context-caching",
+            "grounding-with-search",
+            "thinking-mode",
+            "structured-output"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "status": "GA",
+          "deprecationDate": null,
+          "bestUseCase": "High-volume processing with good reasoning quality. Sweet spot between cost and capability. Great for agentic coding, document analysis, and batch workloads.",
+          "notes": "Best value-for-quality ratio in the 2.x lineup. 85% cheaper than Pro for most tasks. Default maxOutputTokens is 8192; must explicitly set higher."
+        },
+        {
+          "id": "gemini-2.5-flash-lite",
+          "provider": "google",
+          "displayName": "Gemini 2.5 Flash-Lite",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 65536,
+          "pricing": {
+            "input": {
+              "perMillion": 0.1,
+              "note": "Text, image, video input"
+            },
+            "inputAudio": {
+              "perMillion": 0.3,
+              "note": "Audio input"
+            },
+            "output": {
+              "perMillion": 0.4
+            },
+            "cachedInput": {
+              "perMillion": 0.01,
+              "note": "Text, image, video"
+            },
+            "cachedInputAudio": {
+              "perMillion": 0.03,
+              "note": "Audio"
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-generation",
+            "code-generation",
+            "multimodal-vision",
+            "audio-understanding",
+            "video-understanding",
+            "function-calling",
+            "context-caching",
+            "structured-output"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "status": "GA",
+          "deprecationDate": null,
+          "bestUseCase": "Ultra-low-cost tasks: classification, tagging, extraction, simple Q&A, high-throughput batch processing. Optimized for speed and cost over reasoning depth.",
+          "notes": "Cheapest Gemini 2.x model. Free tier available. Not recommended for complex reasoning tasks."
+        },
+        {
+          "id": "gemini-2.0-flash",
+          "provider": "google",
+          "displayName": "Gemini 2.0 Flash",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 8192,
+          "pricing": {
+            "input": {
+              "perMillion": 0.1,
+              "note": "Text, image, video input"
+            },
+            "inputAudio": {
+              "perMillion": 0.7,
+              "note": "Audio input"
+            },
+            "output": {
+              "perMillion": 0.4
+            },
+            "cachedInput": {
+              "perMillion": 0.025,
+              "note": "Text, image, video"
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-generation",
+            "code-generation",
+            "multimodal-vision",
+            "audio-understanding",
+            "video-understanding",
+            "function-calling",
+            "context-caching",
+            "structured-output"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "status": "deprecated",
+          "deprecationDate": "2026-06-01",
+          "bestUseCase": "Legacy workloads. Migrate to gemini-2.5-flash-lite or gemini-3-flash-preview.",
+          "notes": "DEPRECATED \u2014 shutting down June 1, 2026. Use gemini-2.5-flash-lite for comparable pricing. Free tier available with 60 RPM / 1000 RPD."
+        },
+        {
+          "id": "gemini-2.0-flash-lite",
+          "provider": "google",
+          "displayName": "Gemini 2.0 Flash-Lite",
+          "contextWindow": 1048576,
+          "maxOutputTokens": 8192,
+          "pricing": {
+            "input": {
+              "perMillion": 0.075
+            },
+            "output": {
+              "perMillion": 0.3
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-generation",
+            "multimodal-vision",
+            "function-calling",
+            "structured-output"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "status": "deprecated",
+          "deprecationDate": "2026-06-01",
+          "bestUseCase": "Cheapest possible Gemini model. Migrate to gemini-2.5-flash-lite.",
+          "notes": "DEPRECATED \u2014 shutting down June 1, 2026. Absolute cheapest Gemini at $0.075/$0.30. No audio/video input support."
+        },
+        {
+          "id": "gemini-embedding-exp",
+          "provider": "google",
+          "displayName": "Gemini Embedding (001)",
+          "contextWindow": 2048,
+          "maxOutputTokens": null,
+          "pricing": {
+            "input": {
+              "perMillion": 0.15
+            },
+            "batchInput": {
+              "perMillion": 0.075,
+              "note": "Batch processing discount"
+            },
+            "output": {
+              "perMillion": null,
+              "note": "Embedding model \u2014 no text output"
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-embedding"
+          ],
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "embedding"
+            ]
+          },
+          "status": "GA",
+          "deprecationDate": null,
+          "bestUseCase": "Text embeddings for RAG, semantic search, and clustering. Older model being superseded by Gemini Embedding 2.",
+          "notes": "768-dimensional embeddings. Single modality (text only). Being replaced by Gemini Embedding 2 Preview."
+        },
+        {
+          "id": "gemini-embedding-exp-03-07",
+          "provider": "google",
+          "displayName": "Gemini Embedding 2 Preview",
+          "contextWindow": 8192,
+          "maxOutputTokens": null,
+          "pricing": {
+            "input": {
+              "perMillion": 0.2,
+              "note": "Text input"
+            },
+            "inputImage": {
+              "perMillion": 0.45,
+              "note": "Image input"
+            },
+            "inputAudio": {
+              "perMillion": 6.5,
+              "note": "Audio input"
+            },
+            "output": {
+              "perMillion": null,
+              "note": "Embedding model \u2014 no text output"
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-embedding",
+            "image-embedding",
+            "audio-embedding",
+            "multimodal-embedding"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video",
+              "document"
+            ],
+            "output": [
+              "embedding"
+            ]
+          },
+          "status": "preview",
+          "deprecationDate": null,
+          "bestUseCase": "Multimodal semantic search, cross-modal RAG, unified embedding across text/image/audio/video.",
+          "notes": "Google's first natively multimodal embedding model. Maps text, images, audio, video, and documents into a single embedding space. 3072-dimensional embeddings."
+        },
+        {
+          "id": "gemini-2.0-flash-exp-image-generation",
+          "provider": "google",
+          "displayName": "Gemini 2.0 Flash (Image Generation)",
+          "contextWindow": 32768,
+          "maxOutputTokens": 8192,
+          "pricing": {
+            "input": {
+              "perMillion": 0.1
+            },
+            "output": {
+              "perMillion": 0.4
+            },
+            "currency": "USD",
+            "billingUnit": "per 1M tokens"
+          },
+          "capabilities": [
+            "text-generation",
+            "image-generation",
+            "image-editing",
+            "multimodal-vision"
+          ],
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text",
+              "image"
+            ]
+          },
+          "status": "experimental",
+          "deprecationDate": null,
+          "bestUseCase": "Native image generation and editing within conversations. Inline image creation without external tools.",
+          "notes": "Experimental native image generation. Same pricing as base 2.0 Flash. Output images consume additional tokens."
+        }
+      ]
+    },
+    "groq": {
+      "model_count": 7,
+      "models": [
+        {
+          "model_id": "llama-3.3-70b-versatile",
+          "api_id": "llama-3.3-70b-versatile",
+          "display_name": "Llama 3.3 70B Versatile",
+          "context_window": 131072,
+          "max_output_tokens": 32768,
+          "speed_tokens_per_sec": 394,
+          "input_price_per_1m": 0.59,
+          "output_price_per_1m": 0.79,
+          "cached_input_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "tool_use"
+          ],
+          "best_use_case": "High-quality open-source model with tool use support; good balance of quality and speed"
+        },
+        {
+          "model_id": "meta-llama/llama-4-scout-17b-16e-instruct",
+          "api_id": "meta-llama/llama-4-scout-17b-16e-instruct",
+          "display_name": "Llama 4 Scout (17Bx16E)",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 594,
+          "input_price_per_1m": 0.11,
+          "output_price_per_1m": 0.34,
+          "cached_input_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "vision",
+            "multimodal"
+          ],
+          "best_use_case": "Multimodal MoE model \u2014 fast, cheap, handles images; great for vision+text tasks"
+        },
+        {
+          "model_id": "llama-3.1-8b-instant",
+          "api_id": "llama-3.1-8b-instant",
+          "display_name": "Llama 3.1 8B Instant",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 840,
+          "input_price_per_1m": 0.05,
+          "output_price_per_1m": 0.08,
+          "cached_input_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "chat"
+          ],
+          "best_use_case": "Cheapest Groq option; instant responses for simple tasks, classification, and high-volume workloads"
+        },
+        {
+          "model_id": "qwen/qwen3-32b",
+          "api_id": "qwen/qwen3-32b",
+          "display_name": "Qwen3 32B",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 662,
+          "input_price_per_1m": 0.29,
+          "output_price_per_1m": 0.59,
+          "cached_input_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning"
+          ],
+          "best_use_case": "Strong multilingual model with reasoning; good mid-range option"
+        },
+        {
+          "model_id": "openai/gpt-oss-120b",
+          "api_id": "openai/gpt-oss-120b",
+          "display_name": "GPT-OSS 120B",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 500,
+          "input_price_per_1m": 0.15,
+          "output_price_per_1m": 0.6,
+          "cached_input_price_per_1m": 0.075,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning"
+          ],
+          "best_use_case": "OpenAI's open-weight model for high-reasoning tasks at low cost"
+        },
+        {
+          "model_id": "openai/gpt-oss-20b",
+          "api_id": "openai/gpt-oss-20b",
+          "display_name": "GPT-OSS 20B",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 1000,
+          "input_price_per_1m": 0.075,
+          "output_price_per_1m": 0.3,
+          "cached_input_price_per_1m": 0.0375,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning"
+          ],
+          "best_use_case": "Lightweight GPT-OSS for fast reasoning at near-free pricing"
+        },
+        {
+          "model_id": "moonshotai/kimi-k2-instruct-0905",
+          "api_id": "moonshotai/kimi-k2-instruct",
+          "display_name": "Kimi K2 1T",
+          "context_window": 262144,
+          "max_output_tokens": null,
+          "speed_tokens_per_sec": 200,
+          "input_price_per_1m": 1.0,
+          "output_price_per_1m": 3.0,
+          "cached_input_price_per_1m": 0.5,
+          "capabilities": [
+            "text",
+            "chat",
+            "functions",
+            "reasoning",
+            "tool_use"
+          ],
+          "best_use_case": "Massive 1T MoE model for complex agentic tasks and tool calling"
+        }
+      ]
+    },
+    "mimo": {
+      "model_count": 3,
+      "models": [
+        {
+          "model_id": "xiaomi/mimo-v2-flash",
+          "display_name": "MiMo-V2-Flash",
+          "total_parameters": "309B MoE (30B active)",
+          "context_window": 262144,
+          "max_output_tokens": 65536,
+          "input_price_per_1m": 0.09,
+          "output_price_per_1m": 0.29,
+          "capabilities": [
+            "text",
+            "chat",
+            "reasoning",
+            "coding",
+            "agentic"
+          ],
+          "best_use_case": "Ultra-efficient open-source MoE model; strong on SWE-Bench and coding; best cost/performance ratio"
+        },
+        {
+          "model_id": "xiaomi/mimo-v2-pro",
+          "display_name": "MiMo-V2-Pro",
+          "total_parameters": "1T+",
+          "context_window": 1048576,
+          "max_output_tokens": 65536,
+          "input_price_per_1m": 1.0,
+          "output_price_per_1m": 3.0,
+          "capabilities": [
+            "text",
+            "chat",
+            "reasoning",
+            "coding",
+            "agentic",
+            "tool_calling"
+          ],
+          "best_use_case": "Xiaomi's flagship model with 1M context; deeply optimized for agentic scenarios and complex reasoning"
+        },
+        {
+          "model_id": "xiaomi/mimo-v2-omni",
+          "display_name": "MiMo-V2-Omni",
+          "context_window": 262144,
+          "max_output_tokens": 65536,
+          "input_price_per_1m": 0.4,
+          "output_price_per_1m": 2.0,
+          "capabilities": [
+            "text",
+            "chat",
+            "reasoning",
+            "vision",
+            "audio",
+            "video",
+            "multimodal"
+          ],
+          "best_use_case": "Omni-modal model natively processing image, video, and audio inputs in a unified architecture"
+        }
+      ]
+    },
+    "mistral": {
+      "model_count": 8,
+      "models": [
+        {
+          "model_id": "mistral-large-2512",
+          "api_id": "mistral-large-latest",
+          "context_window": 262144,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.5,
+          "output_price_per_1m": 1.5,
+          "cached_input_price_per_1m": 0.05,
+          "capabilities": [
+            "text",
+            "functions",
+            "structured_output",
+            "multilingual"
+          ],
+          "best_use_case": "Top-tier Mistral model for complex reasoning, long-context analysis, and enterprise workloads"
+        },
+        {
+          "model_id": "mistral-medium-3.1",
+          "api_id": "mistral-medium-latest",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.4,
+          "output_price_per_1m": 2.0,
+          "cached_input_price_per_1m": 0.04,
+          "capabilities": [
+            "text",
+            "functions",
+            "structured_output"
+          ],
+          "best_use_case": "Balanced quality/cost for general-purpose tasks; strong coding and reasoning"
+        },
+        {
+          "model_id": "mistral-small-3.2-24b",
+          "api_id": "mistral-small-latest",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.075,
+          "output_price_per_1m": 0.2,
+          "cached_input_price_per_1m": 0.01,
+          "capabilities": [
+            "text",
+            "functions",
+            "structured_output"
+          ],
+          "best_use_case": "Ultra-cheap high-throughput model for classification, extraction, simple Q&A"
+        },
+        {
+          "model_id": "codestral-2508",
+          "api_id": "codestral-latest",
+          "context_window": 262144,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.3,
+          "output_price_per_1m": 0.9,
+          "cached_input_price_per_1m": 0.03,
+          "capabilities": [
+            "text",
+            "coding",
+            "code_completion",
+            "fill_in_middle"
+          ],
+          "best_use_case": "Dedicated coding model \u2014 code generation, completion, and FIM with 256K context"
+        },
+        {
+          "model_id": "pixtral-12b",
+          "api_id": "pixtral-12b",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.1,
+          "output_price_per_1m": 0.1,
+          "cached_input_price_per_1m": null,
+          "capabilities": [
+            "text",
+            "vision",
+            "image_understanding"
+          ],
+          "best_use_case": "Multimodal vision model for image understanding, document parsing, and visual Q&A"
+        },
+        {
+          "model_id": "ministral-3b-2512",
+          "api_id": "ministral-3b-2512",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.1,
+          "output_price_per_1m": 0.1,
+          "cached_input_price_per_1m": 0.01,
+          "capabilities": [
+            "text",
+            "functions"
+          ],
+          "best_use_case": "Edge/mobile deployment, ultra-low-cost classification, and on-device inference"
+        },
+        {
+          "model_id": "ministral-8b-2512",
+          "api_id": "ministral-8b-2512",
+          "context_window": 262144,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.15,
+          "output_price_per_1m": 0.15,
+          "cached_input_price_per_1m": 0.015,
+          "capabilities": [
+            "text",
+            "functions"
+          ],
+          "best_use_case": "Small but capable model for cost-sensitive production workloads with long context"
+        },
+        {
+          "model_id": "ministral-14b-2512",
+          "api_id": "ministral-14b-2512",
+          "context_window": 262144,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.2,
+          "output_price_per_1m": 0.2,
+          "cached_input_price_per_1m": 0.02,
+          "capabilities": [
+            "text",
+            "functions"
+          ],
+          "best_use_case": "Mid-range small model balancing cost and capability for production use"
+        }
+      ]
+    },
+    "openai": {
+      "model_count": 12,
+      "models": [
+        {
+          "model_id": "gpt-4o",
+          "provider": "openai",
+          "context_window": 128000,
+          "max_output_tokens": 16384,
+          "input_price_per_1m_usd": 2.5,
+          "output_price_per_1m_usd": 10.0,
+          "cached_input_price_per_1m_usd": 1.25,
+          "capabilities": [
+            "text",
+            "vision",
+            "function_calling",
+            "structured_outputs",
+            "fine_tuning",
+            "distillation",
+            "predicted_outputs"
+          ],
+          "best_use_case": "Versatile high-intelligence flagship for text+vision tasks, code generation, and general-purpose use. Best all-rounder for production apps.",
+          "training_data_cutoff": "2023-10-01",
+          "status": "active",
+          "notes": "Flagship model. 128K context, 16.4K max output."
+        },
+        {
+          "model_id": "gpt-4o-mini",
+          "provider": "openai",
+          "context_window": 128000,
+          "max_output_tokens": 16384,
+          "input_price_per_1m_usd": 0.15,
+          "output_price_per_1m_usd": 0.6,
+          "cached_input_price_per_1m_usd": 0.075,
+          "capabilities": [
+            "text",
+            "vision",
+            "function_calling",
+            "structured_outputs",
+            "fine_tuning",
+            "predicted_outputs"
+          ],
+          "best_use_case": "Budget-friendly high-volume processing, classification, extraction, quick chats, fine-tuning distillation from GPT-4o.",
+          "training_data_cutoff": "2023-10-01",
+          "status": "active",
+          "notes": "Previous-gen budget option. 128K context, 16.4K max output."
+        },
+        {
+          "model_id": "gpt-4.1",
+          "provider": "openai",
+          "context_window": 1047576,
+          "max_output_tokens": 32768,
+          "input_price_per_1m_usd": 2.0,
+          "output_price_per_1m_usd": 8.0,
+          "cached_input_price_per_1m_usd": 0.5,
+          "capabilities": [
+            "text",
+            "vision",
+            "function_calling",
+            "structured_outputs",
+            "fine_tuning",
+            "distillation",
+            "web_search",
+            "file_search",
+            "code_interpreter",
+            "mcp"
+          ],
+          "best_use_case": "Long-context champion\u2014process entire codebases, legal docs, book-length content. Strong instruction following and tool calling.",
+          "training_data_cutoff": "2024-06-01",
+          "status": "active",
+          "notes": "1M token context window. 32.8K max output."
+        },
+        {
+          "model_id": "gpt-4.1-mini",
+          "provider": "openai",
+          "context_window": 1047576,
+          "max_output_tokens": 32768,
+          "input_price_per_1m_usd": 0.4,
+          "output_price_per_1m_usd": 1.6,
+          "cached_input_price_per_1m_usd": 0.1,
+          "capabilities": [
+            "text",
+            "vision",
+            "function_calling",
+            "structured_outputs",
+            "fine_tuning",
+            "predicted_outputs"
+          ],
+          "best_use_case": "Budget long-context processing\u2014summarize large documents, extract data from long inputs, budget-friendly RAG with large context.",
+          "training_data_cutoff": "2024-06-01",
+          "status": "active",
+          "notes": "1M token context window. 32.8K max output. Smaller, faster GPT-4.1."
+        },
+        {
+          "model_id": "gpt-4.1-nano",
+          "provider": "openai",
+          "context_window": 1047576,
+          "max_output_tokens": 32768,
+          "input_price_per_1m_usd": 0.1,
+          "output_price_per_1m_usd": 0.4,
+          "cached_input_price_per_1m_usd": 0.025,
+          "capabilities": [
+            "text",
+            "vision",
+            "function_calling",
+            "structured_outputs",
+            "fine_tuning",
+            "predicted_outputs"
+          ],
+          "best_use_case": "Ultra-low-cost classification, routing, entity extraction, sentiment analysis, data labeling at massive scale.",
+          "training_data_cutoff": "2024-06-01",
+          "status": "active",
+          "notes": "1M token context window. 32.8K max output. Cheapest GPT-4.1-class model."
+        },
+        {
+          "model_id": "o1",
+          "provider": "openai",
+          "context_window": 200000,
+          "max_output_tokens": 100000,
+          "input_price_per_1m_usd": 15.0,
+          "output_price_per_1m_usd": 60.0,
+          "cached_input_price_per_1m_usd": 7.5,
+          "capabilities": [
+            "text",
+            "vision",
+            "reasoning",
+            "function_calling",
+            "structured_outputs"
+          ],
+          "best_use_case": "Research-grade deep reasoning, complex math, scientific analysis, multi-step problem solving. Original flagship reasoning model.",
+          "training_data_cutoff": "2023-10-01",
+          "status": "active",
+          "notes": "Previous full o-series reasoning model. Chain-of-thought reasoning. Expensive\u2014o3 is 7.5x cheaper."
+        },
+        {
+          "model_id": "o1-mini",
+          "provider": "openai",
+          "context_window": 128000,
+          "max_output_tokens": 65536,
+          "input_price_per_1m_usd": 1.1,
+          "output_price_per_1m_usd": 4.4,
+          "cached_input_price_per_1m_usd": 0.55,
+          "capabilities": [
+            "text",
+            "reasoning"
+          ],
+          "best_use_case": "Budget reasoning for math and coding puzzles. Superseded by o3-mini which has higher intelligence at same price.",
+          "training_data_cutoff": "2023-10-01",
+          "status": "deprecated",
+          "notes": "Deprecated\u2014use o3-mini instead. Text-only, no vision, no function calling, no structured outputs."
+        },
+        {
+          "model_id": "o3",
+          "provider": "openai",
+          "context_window": 200000,
+          "max_output_tokens": 100000,
+          "input_price_per_1m_usd": 2.0,
+          "output_price_per_1m_usd": 8.0,
+          "cached_input_price_per_1m_usd": 0.5,
+          "capabilities": [
+            "text",
+            "vision",
+            "reasoning",
+            "function_calling",
+            "structured_outputs"
+          ],
+          "best_use_case": "Advanced reasoning for math, science, coding, visual reasoning, and technical writing. Think through multi-step problems.",
+          "training_data_cutoff": "2024-06-01",
+          "status": "active",
+          "notes": "Reasoning model. Succeeded by GPT-5. 200K context, 100K max output."
+        },
+        {
+          "model_id": "o3-mini",
+          "provider": "openai",
+          "context_window": 200000,
+          "max_output_tokens": 100000,
+          "input_price_per_1m_usd": 1.1,
+          "output_price_per_1m_usd": 4.4,
+          "cached_input_price_per_1m_usd": 0.55,
+          "capabilities": [
+            "text",
+            "reasoning",
+            "function_calling",
+            "structured_outputs"
+          ],
+          "best_use_case": "Budget reasoning\u2014moderate math, code review, logic puzzles where cost matters. Same price as o1-mini but higher intelligence.",
+          "training_data_cutoff": "2023-10-01",
+          "status": "active",
+          "notes": "Small reasoning model. Text-only. Supports function calling and structured outputs (unlike o1-mini)."
+        },
+        {
+          "model_id": "o4-mini",
+          "provider": "openai",
+          "context_window": 200000,
+          "max_output_tokens": 100000,
+          "input_price_per_1m_usd": 1.1,
+          "output_price_per_1m_usd": 4.4,
+          "cached_input_price_per_1m_usd": 0.275,
+          "capabilities": [
+            "text",
+            "vision",
+            "reasoning",
+            "function_calling",
+            "structured_outputs",
+            "fine_tuning"
+          ],
+          "best_use_case": "Fast, cost-efficient reasoning for coding and visual tasks. Optimized for speed with vision support (unlike o3-mini).",
+          "training_data_cutoff": "2024-06-01",
+          "status": "active",
+          "notes": "Latest small o-series model. Succeeded by GPT-5 mini. Supports fine-tuning."
+        },
+        {
+          "model_id": "codex-mini-latest",
+          "provider": "openai",
+          "context_window": 200000,
+          "max_output_tokens": 100000,
+          "input_price_per_1m_usd": 1.5,
+          "output_price_per_1m_usd": 6.0,
+          "cached_input_price_per_1m_usd": 0.375,
+          "capabilities": [
+            "text",
+            "vision",
+            "reasoning",
+            "function_calling",
+            "structured_outputs"
+          ],
+          "best_use_case": "Fine-tuned o4-mini for Codex CLI\u2014agentic coding workflows, code generation, code review in CLI environments.",
+          "training_data_cutoff": "2024-06-01",
+          "status": "active",
+          "notes": "Fine-tuned o4-mini for Codex CLI. For direct API use, OpenAI recommends gpt-4.1."
+        },
+        {
+          "model_id": "gpt-4-turbo",
+          "provider": "openai",
+          "context_window": 128000,
+          "max_output_tokens": 4096,
+          "input_price_per_1m_usd": 10.0,
+          "output_price_per_1m_usd": 30.0,
+          "cached_input_price_per_1m_usd": null,
+          "capabilities": [
+            "text",
+            "vision",
+            "function_calling"
+          ],
+          "best_use_case": "Legacy high-intelligence model. Superseded by GPT-4o (cheaper, better). Use only for existing integrations.",
+          "training_data_cutoff": "2023-12-01",
+          "status": "deprecated",
+          "notes": "Legacy model. 128K context but only 4K max output. No structured outputs, no fine-tuning. Very expensive\u2014migrate away."
+        }
+      ]
+    },
+    "xai": {
+      "model_count": 5,
+      "models": [
+        {
+          "model_id": "grok-3",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "input_price_per_1m": 3.0,
+          "output_price_per_1m": 15.0,
+          "cached_input_price_per_1m": 0.75,
+          "capabilities": [
+            "text",
+            "image",
+            "functions",
+            "structured_output"
+          ],
+          "best_use_case": "Complex reasoning, analysis, and high-quality generation tasks where cost is secondary to quality"
+        },
+        {
+          "model_id": "grok-3-mini",
+          "context_window": 131072,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.25,
+          "output_price_per_1m": 0.5,
+          "cached_input_price_per_1m": 0.075,
+          "capabilities": [
+            "text",
+            "image",
+            "functions",
+            "structured_output",
+            "reasoning"
+          ],
+          "best_use_case": "Cost-effective reasoning tasks, quick Q&A, and high-throughput applications"
+        },
+        {
+          "model_id": "grok-4.1-fast",
+          "context_window": 2000000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.2,
+          "output_price_per_1m": 0.5,
+          "cached_input_price_per_1m": 0.05,
+          "capabilities": [
+            "text",
+            "image",
+            "functions",
+            "structured_output",
+            "reasoning"
+          ],
+          "best_use_case": "Fast, cheap inference with massive 2M context; great for long-doc analysis and high-volume workloads"
+        },
+        {
+          "model_id": "grok-4.20",
+          "context_window": 2000000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 2.0,
+          "output_price_per_1m": 6.0,
+          "cached_input_price_per_1m": 0.2,
+          "capabilities": [
+            "text",
+            "image",
+            "functions",
+            "structured_output",
+            "reasoning",
+            "agentic_tool_calling"
+          ],
+          "best_use_case": "Latest flagship model \u2014 lowest hallucination rate, strict prompt adherence, complex agentic workflows"
+        },
+        {
+          "model_id": "grok-code-fast-1",
+          "context_window": 256000,
+          "max_output_tokens": null,
+          "input_price_per_1m": 0.2,
+          "output_price_per_1m": 1.5,
+          "cached_input_price_per_1m": 0.02,
+          "capabilities": [
+            "text",
+            "functions",
+            "structured_output",
+            "coding"
+          ],
+          "best_use_case": "Optimized for code generation and coding tasks at low cost"
+        }
+      ]
+    }
+  }
+}

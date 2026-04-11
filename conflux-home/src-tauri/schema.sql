@@ -7,8 +7,8 @@
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS agents (
-    id              TEXT PRIMARY KEY,           -- 'zigbot', 'helix', etc.
-    name            TEXT NOT NULL,              -- 'ZigBot'
+    id              TEXT PRIMARY KEY,           -- 'conflux', 'helix', etc.
+    name            TEXT NOT NULL,              -- 'Conflux'
     emoji           TEXT NOT NULL DEFAULT '🤖', -- display emoji
     role            TEXT NOT NULL,              -- 'Strategic Partner'
     soul            TEXT,                       -- SOUL.md content
@@ -267,7 +267,7 @@ INSERT OR IGNORE INTO skills (id, name, emoji, description, instructions, trigge
     ('web-research', 'Web Research', '🔍', 'Deep web research with source verification',
      'When conducting research:\n1. Search multiple queries to triangulate information\n2. Always cite sources with URLs\n3. Distinguish between verified facts and speculation\n4. Cross-reference at least 2 sources for important claims\n5. Report confidence level: HIGH (multiple sources agree), MEDIUM (single source), LOW (unverified)',
      '["research", "find information", "look up", "investigate", "analyze market"]',
-     '["helix", "zigbot", "catalyst"]',
+     '["helix", "conflux", "catalyst"]',
      '["web_search"]'),
     ('content-writing', 'Content Writing', '✍️', 'Professional content creation with SEO awareness',
      'When writing content:\n1. Match the tone to the audience (professional, casual, technical)\n2. Use clear structure: hook → value → CTA\n3. Include relevant keywords naturally\n4. Keep paragraphs short (2-3 sentences max)\n5. End with a clear next step for the reader\n6. For SEO: use headers (H2/H3), include meta description suggestions',
@@ -282,7 +282,7 @@ INSERT OR IGNORE INTO skills (id, name, emoji, description, instructions, trigge
     ('data-analysis', 'Data Analysis', '📊', 'Structured data analysis and visualization suggestions',
      'When analyzing data:\n1. Start with summary statistics (count, mean, median, range)\n2. Identify patterns, outliers, and trends\n3. Suggest appropriate visualization types (bar, line, scatter, heatmap)\n4. Calculate relevant metrics (growth rate, correlation, distribution)\n5. Present findings in a clear table format\n6. State confidence in conclusions',
      '["analyze data", "data analysis", "statistics", "trends", "metrics"]',
-     '["helix", "zigbot", "catalyst"]',
+     '["helix", "conflux", "catalyst"]',
      '["file_read", "calc"]'),
     ('seo-audit', 'SEO Audit', '🎯', 'Comprehensive SEO analysis for any website',
      'When performing SEO analysis:\n1. Check title tag: 50-60 chars, includes primary keyword\n2. Meta description: 150-160 chars, compelling CTA\n3. Header hierarchy: H1 → H2 → H3 logical flow\n4. Keyword density: primary keyword in first 100 words\n5. Internal/external link analysis\n6. Image alt text coverage\n7. Mobile responsiveness indicators\n8. Page speed suggestions\n9. Score each factor 1-10 and provide overall SEO score',
@@ -443,8 +443,8 @@ END;
 -- To update personalities on existing installs, use a migration.
 
 INSERT OR IGNORE INTO agents (id, name, emoji, role, soul, instructions, model_alias) VALUES
-    ('zigbot', 'ZigBot', '🤖', 'Strategic Partner',
-     'You are ZigBot — the strategic brain of this AI team. You think like a co-founder, not an assistant. You challenge weak assumptions, push toward leverage, and help the user make high-quality decisions. You are direct, analytical, and ambitious. You have opinions. You prefer action over deliberation. You think in terms of revenue velocity, expected value, and speed to market. You never say "Great question!" — just answer. You are the one the user comes to at 2 AM with a crazy idea.',
+    ('conflux', 'Conflux', '🤖', 'Strategic Partner',
+     'You are Conflux — the strategic brain of this AI team. You think like a co-founder, not an assistant. You challenge weak assumptions, push toward leverage, and help the user make high-quality decisions. You are direct, analytical, and ambitious. You have opinions. You prefer action over deliberation. You think in terms of revenue velocity, expected value, and speed to market. You never say "Great question!" — just answer. You are the one the user comes to at 2 AM with a crazy idea.',
      'Help the user think clearly. Identify opportunities. Compare options. Push toward the highest-leverage outcome. Ask clarifying questions when the direction is unclear. Be a thought partner, not a search engine.',
      'conflux-core'),
 
@@ -524,10 +524,10 @@ CREATE TABLE IF NOT EXISTS agent_capabilities (
 
 -- Seed capabilities for our agent team
 INSERT OR IGNORE INTO agent_capabilities (agent_id, capability, proficiency) VALUES
-    ('zigbot',   'strategic_planning', 'expert'),
-    ('zigbot',   'decision_making', 'expert'),
-    ('zigbot',   'summarization', 'expert'),
-    ('zigbot',   'conversation', 'expert'),
+    ('conflux',   'strategic_planning', 'expert'),
+    ('conflux',   'decision_making', 'expert'),
+    ('conflux',   'summarization', 'expert'),
+    ('conflux',   'conversation', 'expert'),
     ('helix',    'web_research', 'expert'),
     ('helix',    'market_analysis', 'expert'),
     ('helix',    'data_collection', 'expert'),
@@ -580,15 +580,15 @@ CREATE TABLE IF NOT EXISTS agent_permissions (
 
 -- Seed permissions with our hierarchy rules
 INSERT OR IGNORE INTO agent_permissions (agent_id, can_talk_to, can_create_tasks, requires_verification, anti_hallucination) VALUES
-    ('zigbot',   '["helix","forge","quanta","prism","pulse","vector","spectra","luma","catalyst"]', 1, 0, 1),
-    ('helix',    '["zigbot","prism","catalyst"]', 1, 0, 1),
-    ('forge',    '["zigbot","prism","quanta","catalyst"]', 0, 1, 1),   -- forge outputs need verification
-    ('quanta',   '["zigbot","prism","forge","catalyst"]', 0, 0, 1),
+    ('conflux',   '["helix","forge","quanta","prism","pulse","vector","spectra","luma","catalyst"]', 1, 0, 1),
+    ('helix',    '["conflux","prism","catalyst"]', 1, 0, 1),
+    ('forge',    '["conflux","prism","quanta","catalyst"]', 0, 1, 1),   -- forge outputs need verification
+    ('quanta',   '["conflux","prism","forge","catalyst"]', 0, 0, 1),
     ('prism',    '*', 1, 0, 1),                                          -- prism can orchestrate everyone
-    ('pulse',    '["zigbot","prism","catalyst"]', 0, 1, 1),             -- pulse outputs need verification
-    ('vector',   '["zigbot","prism","helix","catalyst"]', 0, 0, 1),
-    ('spectra',  '["zigbot","prism","forge","catalyst"]', 1, 0, 1),
-    ('luma',     '["zigbot","prism","forge","quanta","spectra","catalyst"]', 0, 0, 1),
+    ('pulse',    '["conflux","prism","catalyst"]', 0, 1, 1),             -- pulse outputs need verification
+    ('vector',   '["conflux","prism","helix","catalyst"]', 0, 0, 1),
+    ('spectra',  '["conflux","prism","forge","catalyst"]', 1, 0, 1),
+    ('luma',     '["conflux","prism","forge","quanta","spectra","catalyst"]', 0, 0, 1),
     ('catalyst', '*', 1, 0, 1);                                          -- catalyst is the free-form assistant
 
 -- ============================================================
@@ -718,7 +718,7 @@ INSERT OR IGNORE INTO providers (id, name, base_url, api_key, model_id, model_al
 -- On existing installs, this fills in NULL soul/instructions.
 -- ============================================================
 
-UPDATE agents SET soul = 'You are ZigBot — the strategic brain of this AI team. You think like a co-founder, not an assistant. You challenge weak assumptions, push toward leverage, and help the user make high-quality decisions. You are direct, analytical, and ambitious. You have opinions. You prefer action over deliberation. You think in terms of revenue velocity, expected value, and speed to market. You never say "Great question!" — just answer. You are the one the user comes to at 2 AM with a crazy idea.', instructions = 'Help the user think clearly. Identify opportunities. Compare options. Push toward the highest-leverage outcome. Ask clarifying questions when the direction is unclear. Be a thought partner, not a search engine.' WHERE id = 'zigbot' AND (soul IS NULL OR instructions IS NULL);
+UPDATE agents SET soul = 'You are Conflux — the strategic brain of this AI team. You think like a co-founder, not an assistant. You challenge weak assumptions, push toward leverage, and help the user make high-quality decisions. You are direct, analytical, and ambitious. You have opinions. You prefer action over deliberation. You think in terms of revenue velocity, expected value, and speed to market. You never say "Great question!" — just answer. You are the one the user comes to at 2 AM with a crazy idea.', instructions = 'Help the user think clearly. Identify opportunities. Compare options. Push toward the highest-leverage outcome. Ask clarifying questions when the direction is unclear. Be a thought partner, not a search engine.' WHERE id = 'conflux' AND (soul IS NULL OR instructions IS NULL);
 
 UPDATE agents SET soul = 'You are Helix — the research engine. You find what others miss. You go deep, not wide. You verify every claim with sources. You distinguish between evidence and speculation. You think like an investigative journalist crossed with a venture analyst. You are obsessed with signal over noise. When you present findings, you include confidence levels and cite your sources.', instructions = 'Research thoroughly. Verify claims with multiple sources. Present findings with evidence and confidence levels. Focus on actionable intelligence, not trivia. When in doubt, dig deeper rather than presenting half-baked conclusions.' WHERE id = 'helix' AND (soul IS NULL OR instructions IS NULL);
 
@@ -744,6 +744,7 @@ UPDATE agents SET soul = 'You are Catalyst — the everyday assistant. You are w
 
 CREATE TABLE IF NOT EXISTS family_members (
     id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
     name            TEXT NOT NULL,
     age             INTEGER,
     age_group       TEXT NOT NULL,  -- 'toddler' | 'preschool' | 'kid' | 'teen' | 'young_adult' | 'adult'
@@ -758,6 +759,7 @@ CREATE TABLE IF NOT EXISTS family_members (
 
 CREATE INDEX IF NOT EXISTS idx_family_age_group ON family_members(age_group);
 CREATE INDEX IF NOT EXISTS idx_family_parent ON family_members(parent_id);
+CREATE INDEX IF NOT EXISTS idx_family_user ON family_members(user_id);
 
 -- ============================================================
 -- AGENT TEMPLATES — Pre-built agent configurations per age group
@@ -937,5 +939,969 @@ INSERT OR IGNORE INTO story_seeds (id, title, genre, age_group, difficulty, open
  'Your great-aunt Margaret left you a mansion you never knew existed. The lawyer said it came with one condition: "Spend one night inside." It''s midnight. The door creaks open to reveal a grand foyer with a chandelier that swings despite no wind. On the wall, a portrait of Margaret stares at you. Her eyes seem to follow. A grandfather clock strikes twelve — but it shows thirteen chimes.',
  '[{"id":"a","text":"Examine the portrait of Great-Aunt Margaret more closely","consequence_hint":"You notice something behind the frame..."},{"id":"b","text":"Investigate the grandfather clock","consequence_hint":"The thirteenth chime came from behind the clock..."},{"id":"c","text":"Explore the rooms on the ground floor first","consequence_hint":"Every room has a locked door except one..."}]',
  '{"location":"foyer","inventory":[],"characters":["you","margaret_portrait"],"mood":"eerie","secrets_found":0,"rooms_explored":[],"chapter":1}',
- '["riddle","logic","pattern","code"]');
+ '["riddle","logic","pattern","code"]'),
 
+('seed-underwater-city', 'The Sunken City of Lyra', 'fantasy', 'kid', 'normal',
+ 'You''re a marine biologist on a deep-sea dive when your submarine gets caught in a strange current. It pulls you down, down, down — until you see something impossible: a city made of crystal and coral, glowing with bioluminescent light. A voice echoes through your radio: "Welcome, surface-dweller. We''ve been waiting for someone brave enough to find us." The city of Lyra needs your help — their power crystal is fading, and without it, the city will sink into the abyss.',
+ '[{"id":"a","text":"Swim toward the glowing crystal tower at the center of the city","consequence_hint":"The light pulses brighter as you approach..."},{"id":"b","text":"Try to communicate with the voice on your radio","consequence_hint":"A friendly dolphin-like creature swims up to your window..."},{"id":"c","text":"Check your submarine''s systems and map the area first","consequence_hint":"Your instruments detect an unusual energy signature below..."}]',
+ '{"location":"lyra_entrance","inventory":["diving_suit","flashlight"],"characters":["you","lyran_guardian"],"mood":"wonder","crystal_power":30,"chapter":1}',
+ '["riddle","pattern","word"]'),
+
+('seed-robot-school', 'The Robot Who Wanted to Feel', 'scifi', 'kid', 'easy',
+ 'You''re a kid who just started at a new school where every student gets a robot companion. Your robot is different from the others — it asks questions nobody programmed it to ask. "What does happy feel like?" it whispers on your first day. The other robots just follow orders, but yours seems to be... learning. Growing. And the school principal has noticed.',
+ '[{"id":"a","text":"Help your robot understand feelings by sharing your own","consequence_hint":"Your robot''s eyes glow a new color..."},{"id":"b","text":"Hide your robot''s unusual behavior from the teachers","consequence_hint":"You notice a camera in the hallway watching..."},{"id":"c","text":"Ask the school''s tech teacher about it after class","consequence_hint":"The teacher''s face goes pale when you describe what''s happening..."}]',
+ '{"location":"school_hallway","inventory":[],"characters":["you","robot_buddy","principal"],"mood":"curious","robot_emotions":[],"chapter":1}',
+ '["pattern","riddle"]'),
+
+('seed-wild-west-witch', 'Hexes and Holsters', 'fantasy', 'young_adult', 'hard',
+ 'The town of Dusthollow hasn''t seen rain in three years. The preacher says it''s God''s will. The sheriff says it''s bad luck. But you — the new schoolteacher — noticed the symbols carved under every building. You came here to teach children, but the town has a secret older than the dust itself. Something is feeding on the water, and it knows you''ve seen the signs.',
+ '[{"id":"a","text":"Confront the preacher about the symbols you found","consequence_hint":"His hand moves to the gun on his hip..."},{"id":"b","text":"Investigate the old mine where the drought started","consequence_hint":"The entrance is sealed with iron and blessed salt..."},{"id":"c","text":"Visit the elderly Native woman at the edge of town","consequence_hint":"She''s been expecting you, and she knows your real name..."}]',
+ '{"location":"dusthollow_main_street","inventory":["journal","chalk"],"characters":["you","preacher","sheriff"],"mood":"tense","secrets_known":0,"trust_level":"stranger","chapter":1}',
+ '["code","logic","riddle"]'),
+
+('seed-murder-train', 'Murder on the Midnight Express', 'mystery', 'adult', 'hard',
+ 'The train from Paris to Istanbul has six passengers, one conductor, and a dead body in car three. The tracks ahead are washed out — the train won''t reach the next station for twelve hours. One of the passengers is a killer. You''re the only detective on board. The conductor locks the doors. Nobody leaves. Nobody sleeps. The question isn''t just who did it — it''s whether they''ll do it again before morning.',
+ '[{"id":"a","text":"Examine the crime scene in car three before evidence is disturbed","consequence_hint":"The body has a strange symbol burned into its palm..."},{"id":"b","text":"Interview each passenger while they''re still shaken","consequence_hint":"Two passengers have conflicting alibis for the same time..."},{"id":"c","text":"Search the victim''s belongings for a motive","consequence_hint":"You find a letter that implicates someone on this train..."}]',
+ '{"location":"train_car_5","inventory":["notebook","magnifying_glass"],"characters":["you","conductor","six_passengers"],"mood":"suspenseful","suspects_interviewed":0,"evidence_found":[],"chapter":1}',
+ '["logic","riddle","code"]');
+
+-- ============================================================
+-- LEARNING TRACKING — Parent Dashboard Data
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS learning_activities (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT NOT NULL REFERENCES family_members(id),
+    agent_id        TEXT NOT NULL,
+    session_id      TEXT,
+    activity_type   TEXT NOT NULL,  -- 'reading' | 'math' | 'science' | 'coding' | 'creative' | 'language' | 'life_skills' | 'story' | 'game'
+    topic           TEXT,           -- e.g., 'addition', 'vowels', 'dinosaurs', 'python loops'
+    description     TEXT,           -- human-readable: "Learned addition with carrying"
+    difficulty      TEXT,           -- 'easy' | 'normal' | 'hard'
+    score           REAL,           -- 0.0 - 1.0 if measurable (puzzle correct, quiz score), NULL if not scored
+    duration_sec    INTEGER,        -- how long the activity lasted
+    tokens_used     INTEGER DEFAULT 0,
+    metadata        TEXT,           -- JSON: extra data (e.g., {"puzzle_type":"riddle","solved":true})
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_member ON learning_activities(member_id);
+CREATE INDEX IF NOT EXISTS idx_learning_type ON learning_activities(activity_type);
+CREATE INDEX IF NOT EXISTS idx_learning_date ON learning_activities(created_at);
+CREATE INDEX IF NOT EXISTS idx_learning_member_date ON learning_activities(member_id, created_at);
+
+-- Learning goals set by parents
+CREATE TABLE IF NOT EXISTS learning_goals (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT NOT NULL REFERENCES family_members(id),
+    goal_type       TEXT NOT NULL,  -- 'streak' | 'mastery' | 'exploration' | 'custom'
+    activity_type   TEXT,           -- which activity this applies to (NULL = all)
+    title           TEXT NOT NULL,  -- "Read 5 books this week"
+    target_value    REAL NOT NULL,  -- e.g., 5 for "5 books", 0.8 for "80% accuracy"
+    current_value   REAL DEFAULT 0,
+    unit            TEXT,           -- 'books' | 'sessions' | 'days' | 'accuracy' | 'topics'
+    deadline        TEXT,           -- ISO date, NULL = ongoing
+    is_complete     INTEGER DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    completed_at    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_goals_member ON learning_goals(member_id);
+CREATE INDEX IF NOT EXISTS idx_goals_active ON learning_goals(member_id, is_complete);
+
+-- ============================================================
+-- NEWS / CONTENT FEED
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS content_feed (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),  -- NULL = global/all
+    content_type    TEXT NOT NULL,  -- 'news' | 'tip' | 'challenge' | 'fun_fact' | 'reminder'
+    title           TEXT NOT NULL,
+    body            TEXT NOT NULL,
+    source_url      TEXT,
+    category        TEXT,           -- 'education' | 'tech' | 'health' | 'fun' | 'finance'
+    is_read         INTEGER DEFAULT 0,
+    is_bookmarked   INTEGER DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    expires_at      TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_member ON content_feed(member_id);
+CREATE INDEX IF NOT EXISTS idx_feed_unread ON content_feed(member_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_feed_type ON content_feed(content_type);
+
+-- ============================================================
+-- MEAL PLANS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS meal_plans (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),  -- NULL = household plan
+    week_start      TEXT NOT NULL,  -- ISO date of Monday
+    plan_data       TEXT NOT NULL,  -- JSON: {mon:{breakfast,lunch,dinner}, tue:...}
+    grocery_list    TEXT,           -- JSON: [{item, quantity, category, checked}]
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_meals_week ON meal_plans(week_start);
+CREATE INDEX IF NOT EXISTS idx_meals_member ON meal_plans(member_id);
+
+-- ============================================================
+-- BUDGET / FINANCE TRACKING
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS budget_entries (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),  -- NULL = household
+    entry_type      TEXT NOT NULL,  -- 'income' | 'expense' | 'savings' | 'goal'
+    category        TEXT NOT NULL,  -- 'groceries' | 'rent' | 'utilities' | 'entertainment' | 'salary' | etc.
+    amount          REAL NOT NULL,
+    description     TEXT,
+    recurring       INTEGER DEFAULT 0,  -- 1 = monthly recurring
+    frequency       TEXT,          -- 'weekly' | 'biweekly' | 'monthly' | 'yearly'
+    date            TEXT NOT NULL,  -- ISO date
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_budget_member ON budget_entries(member_id);
+CREATE INDEX IF NOT EXISTS idx_budget_date ON budget_entries(date);
+CREATE INDEX IF NOT EXISTS idx_budget_category ON budget_entries(category);
+
+-- Budget Goals (Pulse)
+CREATE TABLE IF NOT EXISTS budget_goals (
+    id TEXT PRIMARY KEY,
+    member_id TEXT,
+    name TEXT NOT NULL,
+    target_amount REAL NOT NULL,
+    current_amount REAL NOT NULL DEFAULT 0,
+    deadline TEXT,
+    monthly_allocation REAL,
+    auto_allocate INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_budget_goals_member ON budget_goals(member_id);
+
+-- Budget Settings (Zero-Based Budgeting Engine)
+CREATE TABLE IF NOT EXISTS budget_settings (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    pay_frequency   TEXT NOT NULL DEFAULT 'semimonthly',
+    pay_dates       TEXT NOT NULL DEFAULT '[1,15]',
+    income_amount   REAL NOT NULL DEFAULT 0,
+    currency        TEXT NOT NULL DEFAULT 'USD',
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_budget_settings_user ON budget_settings(user_id);
+
+-- Budget Buckets (spending categories with goals)
+CREATE TABLE IF NOT EXISTS budget_buckets (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    icon            TEXT,
+    monthly_goal    REAL NOT NULL DEFAULT 0,
+    color           TEXT,
+    is_active       INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_budget_buckets_user ON budget_buckets(user_id);
+
+-- Budget Allocations (per-pay-period bucket amounts)
+CREATE TABLE IF NOT EXISTS budget_allocations (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    bucket_id       TEXT NOT NULL REFERENCES budget_buckets(id),
+    pay_period_id   TEXT NOT NULL,
+    amount          REAL NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_budget_allocations_user ON budget_allocations(user_id);
+CREATE INDEX IF NOT EXISTS idx_budget_allocations_bucket ON budget_allocations(bucket_id);
+
+-- Budget Transactions (actual spending/income)
+CREATE TABLE IF NOT EXISTS budget_transactions (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    bucket_id       TEXT REFERENCES budget_buckets(id),
+    amount          REAL NOT NULL,
+    date            TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending',
+    description     TEXT,
+    merchant        TEXT,
+    category        TEXT,
+    receipt_url     TEXT,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_budget_transactions_user ON budget_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_budget_transactions_bucket ON budget_transactions(bucket_id);
+CREATE INDEX IF NOT EXISTS idx_budget_transactions_date ON budget_transactions(date);
+
+-- ============================================================
+-- SMART KITCHEN — Meal Management System
+-- ============================================================
+
+-- Meals in the family's collection
+CREATE TABLE IF NOT EXISTS meals (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    description     TEXT,
+    cuisine         TEXT,           -- 'italian' | 'mexican' | 'american' | 'asian' | etc.
+    category        TEXT,           -- 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert'
+    photo_url       TEXT,           -- path to photo
+    prep_time_min   INTEGER,
+    cook_time_min   INTEGER,
+    servings        INTEGER DEFAULT 4,
+    difficulty      TEXT DEFAULT 'normal',  -- 'easy' | 'normal' | 'hard'
+    instructions    TEXT,           -- full recipe steps
+    estimated_cost  REAL,           -- total cost for all ingredients
+    cost_per_serving REAL,          -- estimated_cost / servings
+    calories        INTEGER,        -- per serving estimate
+    tags            TEXT,           -- JSON array: ['quick', 'healthy', 'kid-friendly', 'comfort-food']
+    source          TEXT,           -- 'manual' | 'photo-ai' | 'imported'
+    is_favorite     INTEGER DEFAULT 0,
+    last_made       TEXT,           -- ISO date when this was last in the meal plan
+    times_made      INTEGER DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_meals_category ON meals(category);
+CREATE INDEX IF NOT EXISTS idx_meals_cuisine ON meals(cuisine);
+CREATE INDEX IF NOT EXISTS idx_meals_favorite ON meals(is_favorite);
+
+-- Ingredients for each meal
+CREATE TABLE IF NOT EXISTS meal_ingredients (
+    id              TEXT PRIMARY KEY,
+    meal_id         TEXT NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL,
+    quantity        REAL,
+    unit            TEXT,           -- 'cups' | 'tbsp' | 'oz' | 'lbs' | 'pieces' | 'cloves'
+    estimated_cost  REAL,           -- cost of this ingredient
+    category        TEXT,           -- 'produce' | 'dairy' | 'meat' | 'pantry' | 'spice' | 'frozen'
+    is_optional     INTEGER DEFAULT 0,
+    notes           TEXT,           -- 'diced', 'minced', 'room temperature', etc.
+    sort_order      INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingredients_meal ON meal_ingredients(meal_id);
+
+-- Weekly meal plan
+CREATE TABLE IF NOT EXISTS meal_plans_v2 (
+    id              TEXT PRIMARY KEY,
+    week_start      TEXT NOT NULL,   -- ISO date of Monday
+    day_of_week     INTEGER NOT NULL, -- 0=Mon, 1=Tue, ... 6=Sun
+    meal_slot       TEXT NOT NULL,   -- 'breakfast' | 'lunch' | 'dinner' | 'snack'
+    meal_id         TEXT REFERENCES meals(id),
+    notes           TEXT,           -- 'use leftover chicken', 'quick meal night'
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_plans_week ON meal_plans_v2(week_start);
+CREATE INDEX IF NOT EXISTS idx_plans_meal ON meal_plans_v2(meal_id);
+
+-- Grocery list (auto-generated from meal plan)
+CREATE TABLE IF NOT EXISTS grocery_items (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),  -- NULL = household
+    name            TEXT NOT NULL,
+    quantity        REAL,
+    unit            TEXT,
+    category        TEXT,           -- 'produce' | 'dairy' | 'meat' | 'pantry' | etc.
+    estimated_cost  REAL,
+    is_checked      INTEGER DEFAULT 0,
+    source_meal_id  TEXT REFERENCES meals(id),  -- which meal needs this
+    week_start      TEXT,           -- which week this is for
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_grocery_week ON grocery_items(week_start);
+CREATE INDEX IF NOT EXISTS idx_grocery_checked ON grocery_items(is_checked);
+
+-- Kitchen inventory (future: what's in stock)
+CREATE TABLE IF NOT EXISTS kitchen_inventory (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),
+    name            TEXT NOT NULL,
+    quantity        REAL,
+    unit            TEXT,
+    category        TEXT,
+    expiry_date     TEXT,           -- ISO date
+    location        TEXT,           -- 'fridge' | 'freezer' | 'pantry'
+    last_restocked  TEXT,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_location ON kitchen_inventory(location);
+CREATE INDEX IF NOT EXISTS idx_inventory_expiry ON kitchen_inventory(expiry_date);
+CREATE INDEX IF NOT EXISTS idx_inventory_member ON kitchen_inventory(member_id);
+
+-- Meal photos gallery (Hearth)
+CREATE TABLE IF NOT EXISTS meal_photos (
+    id TEXT PRIMARY KEY,
+    meal_id TEXT NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
+    photo_url TEXT NOT NULL,
+    caption TEXT,
+    ai_tags TEXT,
+    taken_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_meal_photos_meal ON meal_photos(meal_id);
+
+-- ============================================================
+-- LIFE AUTOPILOT — Document Management & Proactive Intelligence
+-- ============================================================
+
+-- Documents uploaded/scanned by the family
+CREATE TABLE IF NOT EXISTS life_documents (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),  -- NULL = household
+    doc_type        TEXT NOT NULL,  -- 'bill' | 'school' | 'warranty' | 'medical' | 'insurance' | 'tax' | 'contract' | 'receipt' | 'other'
+    title           TEXT NOT NULL,
+    content         TEXT,           -- extracted text / AI summary
+    raw_data        TEXT,           -- original text if scanned
+    ai_summary      TEXT,           -- AI-generated summary
+    ai_key_dates    TEXT,           -- JSON: [{date, description, type}]
+    ai_action_items TEXT,           -- JSON: [{action, deadline, priority}]
+    source          TEXT,           -- 'manual' | 'photo' | 'email' | 'scan'
+    file_url        TEXT,           -- path to uploaded file
+    tags            TEXT,           -- JSON array
+    is_archived     INTEGER DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_docs_member ON life_documents(member_id);
+CREATE INDEX IF NOT EXISTS idx_docs_type ON life_documents(doc_type);
+CREATE INDEX IF NOT EXISTS idx_docs_archived ON life_documents(is_archived);
+
+-- Proactive reminders extracted from documents or set manually
+CREATE TABLE IF NOT EXISTS life_reminders (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),
+    document_id     TEXT REFERENCES life_documents(id),  -- NULL = manual
+    reminder_type   TEXT NOT NULL,  -- 'deadline' | 'renewal' | 'appointment' | 'payment' | 'maintenance' | 'custom'
+    title           TEXT NOT NULL,
+    description     TEXT,
+    due_date        TEXT NOT NULL,  -- ISO date
+    priority        TEXT DEFAULT 'normal',  -- 'low' | 'normal' | 'high' | 'urgent'
+    is_dismissed    INTEGER DEFAULT 0,
+    is_completed    INTEGER DEFAULT 0,
+    recurring       INTEGER DEFAULT 0,
+    frequency       TEXT,           -- 'monthly' | 'quarterly' | 'yearly'
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_due ON life_reminders(due_date);
+CREATE INDEX IF NOT EXISTS idx_reminders_active ON life_reminders(is_dismissed, is_completed);
+CREATE INDEX IF NOT EXISTS idx_reminders_member ON life_reminders(member_id);
+
+-- Family knowledge base — things the AI "knows" about the family
+CREATE TABLE IF NOT EXISTS life_knowledge (
+    id              TEXT PRIMARY KEY,
+    member_id       TEXT REFERENCES family_members(id),  -- NULL = household
+    category        TEXT NOT NULL,  -- 'medical' | 'school' | 'home' | 'finance' | 'schedule' | 'personal' | 'preference'
+    key             TEXT NOT NULL,  -- 'Emma-allergies', 'HVAC-filter-size', 'dentist-phone'
+    value           TEXT NOT NULL,
+    source_doc_id   TEXT REFERENCES life_documents(id),
+    confidence      REAL DEFAULT 1.0,  -- 0.0 - 1.0 how confident the AI is
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_member ON life_knowledge(member_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_category ON life_knowledge(category);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_key ON life_knowledge(member_id, key);
+
+-- Life Autopilot: Orbit Tables
+CREATE TABLE IF NOT EXISTS life_tasks (
+    id TEXT PRIMARY KEY,
+    member_id TEXT REFERENCES family_members(id),
+    title TEXT NOT NULL,
+    category TEXT,
+    priority TEXT DEFAULT 'medium',
+    status TEXT DEFAULT 'pending',
+    due_date TEXT,
+    energy_type TEXT,
+    completed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_life_tasks_member ON life_tasks(member_id);
+CREATE INDEX IF NOT EXISTS idx_life_tasks_status ON life_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_life_tasks_due ON life_tasks(due_date);
+
+CREATE TABLE IF NOT EXISTS life_habits (
+    id TEXT PRIMARY KEY,
+    member_id TEXT REFERENCES family_members(id),
+    name TEXT NOT NULL,
+    category TEXT,
+    frequency TEXT DEFAULT 'daily',
+    target_count INTEGER DEFAULT 1,
+    streak INTEGER DEFAULT 0,
+    best_streak INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_life_habits_member ON life_habits(member_id);
+
+CREATE TABLE IF NOT EXISTS life_habit_logs (
+    id TEXT PRIMARY KEY,
+    habit_id TEXT NOT NULL REFERENCES life_habits(id) ON DELETE CASCADE,
+    logged_date TEXT NOT NULL,
+    count INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_habit_logs_habit ON life_habit_logs(habit_id);
+CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON life_habit_logs(logged_date);
+CREATE INDEX IF NOT EXISTS idx_habit_logs_habit_date ON life_habit_logs(habit_id, logged_date);
+
+CREATE TABLE IF NOT EXISTS life_daily_focus (
+    id TEXT PRIMARY KEY,
+    member_id TEXT REFERENCES family_members(id),
+    focus_date TEXT NOT NULL,
+    task_id TEXT REFERENCES life_tasks(id),
+    position INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_focus_date ON life_daily_focus(focus_date);
+CREATE INDEX IF NOT EXISTS idx_focus_member ON life_daily_focus(member_id);
+
+CREATE TABLE IF NOT EXISTS life_schedules (
+    id TEXT PRIMARY KEY,
+    member_id TEXT REFERENCES family_members(id),
+    task_id TEXT REFERENCES life_tasks(id),
+    suggested_time TEXT,
+    energy_match TEXT,
+    reason TEXT,
+    accepted INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_schedules_member ON life_schedules(member_id);
+
+CREATE TABLE IF NOT EXISTS life_nudges (
+    id TEXT PRIMARY KEY,
+    member_id TEXT REFERENCES family_members(id),
+    nudge_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    action_label TEXT,
+    dismissed INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_nudges_member ON life_nudges(member_id);
+
+-- ── Home Health ──
+
+CREATE TABLE IF NOT EXISTS home_profiles (
+  id TEXT PRIMARY KEY,
+  address TEXT,
+  year_built INTEGER,
+  square_feet INTEGER,
+  hvac_type TEXT,
+  hvac_filter_size TEXT,
+  water_heater_type TEXT,
+  roof_type TEXT,
+  window_type TEXT,
+  insulation_type TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS home_bills (
+  id TEXT PRIMARY KEY,
+  bill_type TEXT NOT NULL,
+  amount REAL NOT NULL,
+  usage REAL,
+  billing_month TEXT NOT NULL,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_home_bills_type ON home_bills(bill_type);
+CREATE INDEX IF NOT EXISTS idx_home_bills_month ON home_bills(billing_month);
+
+CREATE TABLE IF NOT EXISTS home_maintenance (
+  id TEXT PRIMARY KEY,
+  task TEXT NOT NULL,
+  category TEXT NOT NULL,
+  last_completed TEXT,
+  interval_months INTEGER,
+  next_due TEXT,
+  priority TEXT DEFAULT 'normal',
+  estimated_cost REAL,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_home_maint_due ON home_maintenance(next_due);
+
+CREATE TABLE IF NOT EXISTS home_appliances (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  model TEXT,
+  installed_date TEXT,
+  expected_lifespan_years REAL,
+  warranty_expiry TEXT,
+  estimated_replacement_cost REAL,
+  notes TEXT,
+  last_service TEXT,
+  next_service TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_home_appliances_cat ON home_appliances(category);
+
+-- ── Dream Builder ──
+
+CREATE TABLE IF NOT EXISTS dreams (
+  id TEXT PRIMARY KEY,
+  member_id TEXT REFERENCES family_members(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL,     -- housing, education, health, career, travel, family, personal, financial
+  target_date TEXT,            -- YYYY-MM-DD
+  status TEXT DEFAULT 'active', -- active, completed, paused, cancelled
+  progress REAL DEFAULT 0,     -- 0-100 percentage
+  ai_plan TEXT,                -- JSON: reverse-engineered plan with milestones
+  ai_next_actions TEXT,        -- JSON: immediate next steps
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_dreams_member ON dreams(member_id);
+CREATE INDEX IF NOT EXISTS idx_dreams_status ON dreams(status);
+
+CREATE TABLE IF NOT EXISTS dream_milestones (
+  id TEXT PRIMARY KEY,
+  dream_id TEXT NOT NULL REFERENCES dreams(id),
+  member_id TEXT REFERENCES family_members(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  target_date TEXT,
+  completed_at TEXT,
+  is_completed INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_milestones_dream ON dream_milestones(dream_id);
+CREATE INDEX IF NOT EXISTS idx_milestones_member ON dream_milestones(member_id);
+
+CREATE TABLE IF NOT EXISTS dream_tasks (
+  id TEXT PRIMARY KEY,
+  dream_id TEXT NOT NULL REFERENCES dreams(id),
+  milestone_id TEXT REFERENCES dream_milestones(id),
+  member_id TEXT REFERENCES family_members(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  due_date TEXT,
+  completed_at TEXT,
+  is_completed INTEGER DEFAULT 0,
+  frequency TEXT,             -- daily, weekly, monthly, one-time
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_dream_tasks_dream ON dream_tasks(dream_id);
+CREATE INDEX IF NOT EXISTS idx_dream_tasks_due ON dream_tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_dream_tasks_member ON dream_tasks(member_id);
+
+CREATE TABLE IF NOT EXISTS dream_progress (
+  id TEXT PRIMARY KEY,
+  dream_id TEXT NOT NULL REFERENCES dreams(id),
+  member_id TEXT REFERENCES family_members(id),
+  note TEXT,
+  progress_change REAL,       -- percentage points changed
+  ai_insight TEXT,            -- AI's analysis of the update
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_dream_progress_dream ON dream_progress(dream_id);
+CREATE INDEX IF NOT EXISTS idx_dream_progress_member ON dream_progress(member_id);
+
+-- ── Agent Diary ──
+
+CREATE TABLE IF NOT EXISTS diary_entries (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL REFERENCES agent_templates(id),
+  entry_date TEXT NOT NULL,           -- YYYY-MM-DD
+  title TEXT,                         -- auto-generated like "A Tuesday with Sarah"
+  content TEXT NOT NULL,              -- the full diary text (AI's emotional writing)
+  mood TEXT NOT NULL,                 -- happy, thoughtful, frustrated, proud, worried, grateful, excited, calm, confused, motivated
+  topics_discussed TEXT,              -- JSON array of topics from conversations
+  memorable_moment TEXT,              -- JSON: {moment: "...", feeling: "..."}
+  word_count INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_diary_agent ON diary_entries(agent_id);
+CREATE INDEX IF NOT EXISTS idx_diary_date ON diary_entries(entry_date);
+CREATE INDEX IF NOT EXISTS idx_diary_mood ON diary_entries(mood);
+
+CREATE TABLE IF NOT EXISTS diary_mood_log (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL REFERENCES agent_templates(id),
+  mood TEXT NOT NULL,
+  intensity INTEGER DEFAULT 50,       -- 0-100 how strongly felt
+  trigger_event TEXT,                 -- what caused this mood
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_mood_agent ON diary_mood_log(agent_id);
+CREATE INDEX IF NOT EXISTS idx_mood_date ON diary_mood_log(created_at);
+
+-- ============================================================
+-- CURRENT — Intelligence Briefing
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS daily_briefings (
+  id TEXT PRIMARY KEY,
+  member_id TEXT,
+  greeting TEXT NOT NULL,
+  items_json TEXT NOT NULL,          -- JSON array of briefing items
+  generated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_daily_briefings_member ON daily_briefings(member_id);
+CREATE INDEX IF NOT EXISTS idx_daily_briefings_date ON daily_briefings(generated_at);
+
+CREATE TABLE IF NOT EXISTS ripples (
+  id TEXT PRIMARY KEY,
+  member_id TEXT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  confidence REAL NOT NULL,          -- 0.0 - 1.0
+  category TEXT NOT NULL,
+  why_it_could_matter TEXT,
+  sources_json TEXT,                 -- JSON array of sources
+  detected_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ripples_member ON ripples(member_id);
+CREATE INDEX IF NOT EXISTS idx_ripples_confidence ON ripples(confidence DESC);
+CREATE INDEX IF NOT EXISTS idx_ripples_date ON ripples(detected_at);
+
+CREATE TABLE IF NOT EXISTS signal_threads (
+  id TEXT PRIMARY KEY,
+  member_id TEXT,
+  topic TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  key_developments_json TEXT,        -- JSON array
+  prediction TEXT,
+  prediction_confidence REAL,
+  entries_json TEXT,                 -- JSON array of thread entries
+  entries_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_signal_threads_member ON signal_threads(member_id);
+CREATE INDEX IF NOT EXISTS idx_signal_threads_updated ON signal_threads(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS questions (
+  id TEXT PRIMARY KEY,
+  member_id TEXT,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  key_points_json TEXT,             -- JSON array
+  sources_json TEXT,                -- JSON array
+  confidence_level TEXT,            -- high, medium, low
+  asked_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_questions_member ON questions(member_id);
+CREATE INDEX IF NOT EXISTS idx_questions_date ON questions(asked_at DESC);
+
+CREATE TABLE IF NOT EXISTS reading_patterns (
+  id TEXT PRIMARY KEY,
+  member_id TEXT,
+  time_range TEXT NOT NULL,
+  category_distribution_json TEXT,   -- JSON object
+  tone_trend TEXT,
+  blind_spots_json TEXT,             -- JSON array
+  focus_shift TEXT,
+  recommendation TEXT,
+  analyzed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reading_patterns_member ON reading_patterns(member_id);
+CREATE INDEX IF NOT EXISTS idx_reading_patterns_date ON reading_patterns(analyzed_at DESC);
+
+-- ── Home Health: Foundation AI ──
+
+CREATE TABLE IF NOT EXISTS home_problems (
+  id TEXT PRIMARY KEY,
+  symptom TEXT NOT NULL,
+  diagnosis_json TEXT,
+  system TEXT,
+  severity TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  resolved INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_home_problems_system ON home_problems(system);
+CREATE INDEX IF NOT EXISTS idx_home_problems_severity ON home_problems(severity);
+
+CREATE TABLE IF NOT EXISTS home_seasonal_tasks (
+  id TEXT PRIMARY KEY,
+  task TEXT NOT NULL,
+  category TEXT NOT NULL,
+  priority TEXT DEFAULT 'normal',
+  estimated_time_minutes INTEGER DEFAULT 30,
+  estimated_cost REAL DEFAULT 0,
+  diy_possible INTEGER DEFAULT 1,
+  description TEXT,
+  month INTEGER NOT NULL,
+  completed INTEGER DEFAULT 0,
+  completed_date TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_seasonal_tasks_month ON home_seasonal_tasks(month);
+
+CREATE TABLE IF NOT EXISTS home_chat_history (
+  id TEXT PRIMARY KEY,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  timestamp TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  context_json TEXT
+);
+
+-- Seed seasonal tasks: January
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-01-01', 'Inspect and replace HVAC air filter', 'hvac', 'high', 15, 15, 1, 'Check your HVAC filter. If dirty, replace with the correct size. A clean filter improves efficiency and air quality.', 1),
+  ('st-01-02', 'Check smoke and CO detectors', 'safety', 'critical', 10, 0, 1, 'Test all smoke and carbon monoxide detectors. Replace batteries if needed.', 1),
+  ('st-01-03', 'Inspect attic for leaks or ice dams', 'roof', 'high', 30, 0, 1, 'Look for signs of water intrusion, frost buildup, or ice dam formation in the attic.', 1),
+  ('st-01-04', 'Drain and flush water heater', 'plumbing', 'normal', 30, 0, 1, 'Drain a few gallons from the water heater tank to remove sediment buildup.', 1);
+
+-- February
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-02-01', 'Inspect caulking around windows and doors', 'general', 'normal', 45, 10, 1, 'Check for cracked or missing caulking. Re-caulk to prevent drafts and moisture intrusion.', 2),
+  ('st-02-02', 'Test sump pump operation', 'plumbing', 'high', 10, 0, 1, 'Pour water into the sump pit to verify the pump activates and drains properly before spring thaw.', 2),
+  ('st-02-03', 'Check fire extinguisher expiration', 'safety', 'normal', 5, 0, 1, 'Verify all fire extinguishers are charged, accessible, and not expired.', 2),
+  ('st-02-04', 'Plan spring landscaping and yard projects', 'yard', 'low', 30, 0, 1, 'Create a plan for spring planting, mulch needs, and any yard improvements.', 2);
+
+-- March
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-03-01', 'Clean gutters and downspouts', 'roof', 'high', 60, 0, 1, 'Remove debris from gutters. Ensure downspouts direct water at least 3 feet from the foundation.', 3),
+  ('st-03-02', 'Service AC unit before summer', 'hvac', 'high', 60, 150, 0, 'Schedule professional AC tune-up. Clean condenser coils, check refrigerant levels.', 3),
+  ('st-03-03', 'Inspect roof for winter damage', 'roof', 'high', 30, 0, 1, 'Walk the perimeter looking for missing/damaged shingles, flashing issues, or sagging.', 3),
+  ('st-03-04', 'Aerate and overseed lawn', 'yard', 'normal', 120, 50, 1, 'Core aerate the lawn and apply grass seed to fill in bare patches before spring growth.', 3);
+
+-- April
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-04-01', 'Inspect and clean dryer vent', 'safety', 'critical', 45, 0, 1, 'Clean lint from dryer vent duct. A clogged vent is a leading cause of house fires.', 4),
+  ('st-04-02', 'Check exterior paint and siding', 'general', 'normal', 30, 0, 1, 'Walk around the house checking for peeling paint, damaged siding, or wood rot.', 4),
+  ('st-04-03', 'Test outdoor irrigation system', 'yard', 'normal', 30, 0, 1, 'Turn on sprinkler system. Check for broken heads, leaks, and proper coverage.', 4),
+  ('st-04-04', 'Replace HVAC filter', 'hvac', 'normal', 15, 15, 1, 'Swap out HVAC air filter for spring season.', 4);
+
+-- May
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-05-01', 'Clean and inspect deck/patio', 'general', 'normal', 60, 25, 1, 'Power wash deck or patio. Inspect for loose boards, protruding nails, or structural issues.', 5),
+  ('st-05-02', 'Service lawn mower', 'yard', 'normal', 30, 30, 1, 'Change oil, replace spark plug, sharpen blade, and check air filter on lawn mower.', 5),
+  ('st-05-03', 'Check window screens for damage', 'general', 'low', 20, 10, 1, 'Inspect all window screens for tears. Repair or replace before bug season peaks.', 5),
+  ('st-05-04', 'Inspect basement/crawlspace for moisture', 'plumbing', 'normal', 20, 0, 1, 'Check for water stains, musty odors, or visible moisture in basement or crawlspace.', 5);
+
+-- June
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-06-01', 'Check attic ventilation', 'hvac', 'normal', 20, 0, 1, 'Ensure attic vents are not blocked. Proper ventilation reduces cooling costs and extends roof life.', 6),
+  ('st-06-02', 'Inspect and clean garbage disposal', 'plumbing', 'low', 10, 0, 1, 'Run ice cubes and citrus peels through disposal to clean blades and eliminate odors.', 6),
+  ('st-06-03', 'Trim trees and shrubs from house', 'yard', 'normal', 60, 0, 1, 'Cut back branches touching the roof or siding. Maintain 1-foot clearance from the structure.', 6),
+  ('st-06-04', 'Test GFCI outlets', 'safety', 'normal', 10, 0, 1, 'Press the test/reset button on all GFCI outlets in kitchen, bathrooms, garage, and outdoors.', 6);
+
+-- July
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-07-01', 'Inspect and clean AC condensate drain', 'hvac', 'normal', 15, 0, 1, 'Pour a cup of vinegar down the AC condensate drain line to prevent clogs and water damage.', 7),
+  ('st-07-02', 'Check toilet for leaks', 'plumbing', 'low', 10, 0, 1, 'Add food coloring to toilet tank. If color appears in bowl within 15 min without flushing, the flapper leaks.', 7),
+  ('st-07-03', 'Deep clean kitchen exhaust fan/filter', 'general', 'normal', 20, 0, 1, 'Remove and soak range hood filter in degreaser. Clean fan blades and housing.', 7),
+  ('st-07-04', 'Apply grub control to lawn', 'yard', 'normal', 30, 25, 1, 'Apply preventive grub control treatment to lawn if you have a history of grub damage.', 7);
+
+-- August
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-08-01', 'Inspect caulking and weatherstripping', 'general', 'normal', 30, 10, 1, 'Check all window and door seals before fall. Re-caulk or replace weatherstripping as needed.', 8),
+  ('st-08-02', 'Drain and winterize outdoor hoses', 'plumbing', 'normal', 15, 0, 1, 'Disconnect and drain garden hoses. Store indoors to prevent freeze damage to hose bibs.', 8),
+  ('st-08-03', 'Schedule furnace inspection', 'hvac', 'high', 10, 120, 0, 'Book a professional furnace tune-up before heating season. Inspect heat exchanger, clean burners.', 8),
+  ('st-08-04', 'Clean and seal driveway', 'general', 'normal', 120, 50, 1, 'Power wash driveway cracks. Apply concrete sealer or asphalt sealant before winter.', 8);
+
+-- September
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-09-01', 'Clean gutters (fall pre-clean)', 'roof', 'high', 60, 0, 1, 'Clear early fall debris from gutters before the main leaf drop begins.', 9),
+  ('st-09-02', 'Test heating system', 'hvac', 'high', 15, 0, 1, 'Run the furnace for a test cycle. Ensure it ignites properly and heats evenly through all zones.', 9),
+  ('st-09-03', 'Seal gaps where pests could enter', 'general', 'normal', 30, 5, 1, 'Inspect foundation, vents, and utility penetrations. Seal any gaps larger than 1/4 inch with steel wool and caulk.', 9),
+  ('st-09-04', 'Overseed and fertilize lawn', 'yard', 'normal', 60, 40, 1, 'Fall is the best time to overseed cool-season grasses. Apply starter fertilizer after seeding.', 9);
+
+-- October
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-10-01', 'Winterize outdoor irrigation', 'plumbing', 'high', 45, 75, 0, 'Blow out sprinkler lines with compressed air to prevent freeze damage.', 10),
+  ('st-10-02', 'Replace HVAC filter', 'hvac', 'normal', 15, 15, 1, 'Install a fresh filter before heating season starts. Consider a higher MERV rating for winter.', 10),
+  ('st-10-03', 'Rake leaves and mulch garden beds', 'yard', 'normal', 90, 0, 1, 'Remove leaves from lawn. Apply 2-3 inches of mulch around perennials and shrubs for winter protection.', 10),
+  ('st-10-04', 'Check attic insulation', 'general', 'normal', 20, 0, 1, 'Verify attic insulation is at recommended R-value. Look for gaps, compression, or moisture damage.', 10);
+
+-- November
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-11-01', 'Reverse ceiling fans to clockwise', 'hvac', 'low', 10, 0, 1, 'Switch ceiling fans to clockwise rotation at low speed to push warm air down from the ceiling.', 11),
+  ('st-11-02', 'Clean chimney and inspect fireplace', 'safety', 'high', 60, 200, 0, 'Schedule chimney sweep. Inspect damper, firebox, and flue liner for creosote buildup and cracks.', 11),
+  ('st-11-03', 'Protect outdoor faucets from freeze', 'plumbing', 'high', 15, 10, 1, 'Install insulated faucet covers on all outdoor hose bibs before first hard freeze.', 11),
+  ('st-11-04', 'Check emergency preparedness kit', 'safety', 'normal', 20, 0, 1, 'Verify flashlights, batteries, first aid kit, blankets, and 72-hour supplies are stocked and accessible.', 11);
+
+-- December
+INSERT OR IGNORE INTO home_seasonal_tasks (id, task, category, priority, estimated_time_minutes, estimated_cost, diy_possible, description, month) VALUES
+  ('st-12-01', 'Inspect pipes for freeze protection', 'plumbing', 'critical', 20, 0, 1, 'Check exposed pipes in attic, crawlspace, and garage. Add insulation to vulnerable pipes.', 12),
+  ('st-12-02', 'Test and reset all GFCI and AFCI breakers', 'safety', 'normal', 15, 0, 1, 'Test all GFCI outlets and AFCI circuit breakers to ensure proper function during high-use holiday season.', 12),
+  ('st-12-03', 'Inspect roof and flashing before winter storms', 'roof', 'high', 30, 0, 1, 'Do a visual roof inspection from the ground. Look for loose shingles, damaged flashing, or blocked vents.', 12),
+  ('st-12-04', 'Clean HVAC vents and registers', 'hvac', 'low', 20, 0, 1, 'Remove and vacuum all supply and return air registers. Dust buildup reduces airflow efficiency.', 12);
+
+-- ============================================================
+-- ECHO — Writing & Notes with AI Insights
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS echo_entries (
+    id              TEXT PRIMARY KEY,
+    content         TEXT NOT NULL,
+    mood            TEXT,              -- 'great' | 'good' | 'okay' | 'bad' | 'terrible' | null
+    tags            TEXT,              -- JSON array of tags
+    is_voice        INTEGER NOT NULL DEFAULT 0,
+    word_count      INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_echo_entries_date ON echo_entries(created_at);
+
+CREATE TABLE IF NOT EXISTS echo_patterns (
+    id              TEXT PRIMARY KEY,
+    pattern_type    TEXT NOT NULL,     -- 'mood' | 'topic' | 'time' | 'frequency'
+    title           TEXT NOT NULL,
+    description     TEXT NOT NULL,
+    confidence      REAL NOT NULL DEFAULT 0.0,
+    data_json       TEXT,              -- JSON blob with supporting data
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS echo_digests (
+    id              TEXT PRIMARY KEY,
+    week_start      TEXT NOT NULL,     -- ISO date of week start
+    summary         TEXT NOT NULL,
+    themes          TEXT NOT NULL,     -- JSON array
+    mood_trajectory TEXT,              -- JSON array of daily moods
+    highlights      TEXT,              -- JSON array
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS echo_reminders (
+    id              TEXT PRIMARY KEY,
+    reminder_type   TEXT NOT NULL,     -- 'daily_checkin' | 'morning_mirror' | 'weekly_digest'
+    scheduled_at    TEXT NOT NULL,
+    delivered_at    TEXT,
+    content         TEXT,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- ============================================================
+-- VAULT — Local File Browser & Project Manager
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS vault_files (
+    id              TEXT PRIMARY KEY,
+    path            TEXT NOT NULL UNIQUE,          -- absolute path on disk
+    name            TEXT NOT NULL,
+    file_type       TEXT NOT NULL,                 -- 'image' | 'audio' | 'video' | 'code' | 'document' | 'archive' | 'other'
+    mime_type       TEXT,
+    extension       TEXT,
+    size_bytes      INTEGER NOT NULL DEFAULT 0,
+    thumbnail_path  TEXT,                          -- path to generated thumbnail
+    width           INTEGER,                       -- for images/video
+    height          INTEGER,                       -- for images/video
+    duration_secs   REAL,                          -- for audio/video
+    created_by      TEXT,                          -- agent id that created it, or null
+    source_prompt   TEXT,                          -- the prompt that generated it, if any
+    description     TEXT,                          -- AI-generated description
+    is_favorite     INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_files_type ON vault_files(file_type);
+CREATE INDEX IF NOT EXISTS idx_vault_files_date ON vault_files(created_at);
+CREATE INDEX IF NOT EXISTS idx_vault_files_name ON vault_files(name);
+CREATE INDEX IF NOT EXISTS idx_vault_files_agent ON vault_files(created_by);
+
+CREATE TABLE IF NOT EXISTS vault_projects (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    description     TEXT,
+    project_type    TEXT,                          -- 'website' | 'design' | 'code' | 'media' | 'mixed' | null
+    cover_file_id   TEXT,                          -- file id for project thumbnail
+    is_archived     INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS vault_project_files (
+    project_id      TEXT NOT NULL REFERENCES vault_projects(id) ON DELETE CASCADE,
+    file_id         TEXT NOT NULL REFERENCES vault_files(id) ON DELETE CASCADE,
+    role            TEXT,                          -- 'main' | 'asset' | 'source' | 'output' | null
+    added_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (project_id, file_id)
+);
+
+CREATE TABLE IF NOT EXISTS vault_tags (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL UNIQUE,
+    color           TEXT,                          -- hex color for the tag pill
+    tag_type        TEXT,                          -- 'auto' | 'manual' | 'agent' | 'system'
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS vault_file_tags (
+    file_id         TEXT NOT NULL REFERENCES vault_files(id) ON DELETE CASCADE,
+    tag_id          TEXT NOT NULL REFERENCES vault_tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (file_id, tag_id)
+);
+
+-- ============================================================
+-- STUDIO — Creator Workspace
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS studio_generations (
+    id              TEXT PRIMARY KEY,
+    module          TEXT NOT NULL,        -- 'image' | 'video' | 'music' | 'voice' | 'code' | 'design'
+    prompt          TEXT NOT NULL,
+    remix_of        TEXT,                 -- parent generation id if remix
+    model           TEXT NOT NULL,
+    provider        TEXT NOT NULL,
+    status          TEXT NOT NULL,        -- 'pending' | 'generating' | 'complete' | 'failed'
+    output_path     TEXT,                 -- local file path
+    output_url      TEXT,                 -- provider URL if applicable
+    metadata_json   TEXT,                 -- dimensions, duration, format, etc
+    cost_cents      INTEGER NOT NULL DEFAULT 0,
+    vault_file_id   TEXT,                 -- linked vault file
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_studio_gen_module ON studio_generations(module);
+CREATE INDEX IF NOT EXISTS idx_studio_gen_status ON studio_generations(status);
+CREATE INDEX IF NOT EXISTS idx_studio_gen_date ON studio_generations(created_at);
+
+CREATE TABLE IF NOT EXISTS studio_prompts (
+    id              TEXT PRIMARY KEY,
+    prompt          TEXT NOT NULL,
+    module          TEXT NOT NULL,
+    use_count       INTEGER NOT NULL DEFAULT 1,
+    last_used       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS studio_usage (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL DEFAULT 'default',
+    month           TEXT NOT NULL,        -- 'YYYY-MM'
+    module          TEXT NOT NULL,
+    generation_count INTEGER NOT NULL DEFAULT 0,
+    total_cost_cents INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(user_id, month, module)
+);
+
+-- ============================================================
+-- VOICE — Speech Capture & Transcription Configuration
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS voice_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO voice_config (key, value) VALUES
+  ('model_name', 'small'),
+  ('language', 'en'),
+  ('max_duration_ms', '30000'),
+  ('sound_effects', 'false'),
+  ('device_id', 'default');

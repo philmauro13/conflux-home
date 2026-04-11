@@ -3,4 +3,7 @@ dist/
 .vite/
 .env.local
 .env
+.env.router
 src-tauri/target/
+src-tauri/models/*.bin
+icons-generated/

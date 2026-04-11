@@ -1,52 +1,88 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicehash/tauri-schema/v2/schema.json",
-  "productName": "Conflux Home",
-  "version": "0.1.0",
-  "identifier": "com.conflux.home",
-  "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "Conflux Home — Your AI Family",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 1024,
-        "minHeight": 700,
-        "center": true,
-        "resizable": true,
-        "fullscreen": false,
-        "decorations": true,
-        "transparent": false
-      }
-    ],
-    "security": {
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:18789 ws://localhost:18789; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'",
-      "dangerousDisableAssetCspModification": true,
-      "freezePrototype": false
+    "$schema": "https://raw.githubusercontent.com/nicehash/tauri-schema/v2/schema.json",
+    "productName": "Conflux Home",
+    "version": "0.1.66",
+    "identifier": "com.conflux.home",
+    "build": {
+        "frontendDist": "../dist",
+        "devUrl": "http://localhost:5173",
+        "beforeDevCommand": "npm run dev",
+        "beforeBuildCommand": "npm run build"
+    },
+    "app": {
+        "windows": [
+            {
+                "title": "Conflux Home \u2014 Your AI Family",
+                "width": 1280,
+                "height": 800,
+                "minWidth": 1024,
+                "minHeight": 700,
+                "center": true,
+                "resizable": true,
+                "fullscreen": false,
+                "decorations": true,
+                "transparent": false
+            }
+        ],
+        "security": {
+            "csp": null,
+            "dangerousDisableAssetCspModification": true,
+            "freezePrototype": false
+        }
+    },
+    "plugins": {
+        "deep-link": {
+            "desktop": {
+                "schemes": ["conflux"]
+            },
+            "mobile": [
+                {
+                    "scheme": ["conflux"],
+                    "appLink": false
+                }
+            ]
+        },
+        "updater": {
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyMDIwRjFBMDZFMkU3MzcKUldRMzUrSUdHZzhDY2hWZS9qcVRUU0tqQ1pmYjVoMncyQ0dSRUdBWkpBcVI3OXJ5d3l6MmhlamwK",
+            "endpoints": [
+                "https://github.com/TheConflux-Core/conflux-home/releases/latest/download/updates.json"
+            ],
+            "windows": {
+                "installMode": "passive"
+            }
+        }
+    },
+    "bundle": {
+        "active": true,
+        "createUpdaterArtifacts": true,
+        "resources": [],
+        "targets": [
+            "deb",
+            "appimage",
+            "msi",
+            "nsis",
+            "app",
+            "dmg"
+        ],
+        "icon": [
+            "icons/32x32.png",
+            "icons/128x128.png",
+            "icons/128x128@2x.png",
+            "icons/icon.icns",
+            "icons/icon.ico"
+        ],
+        "linux": {
+            "deb": {
+                "depends": []
+            },
+            "appimage": {
+                "bundleMediaFramework": false
+            }
+        },
+        "windows": {
+            "nsis": {
+                "installMode": "currentUser"
+            }
+        }
     }
-  },
-  "bundle": {
-    "active": true,
-    "targets": ["deb", "appimage", "msi"],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "linux": {
-      "deb": {
-        "depends": []
-      },
-      "appimage": {
-        "bundleMediaFramework": false
-      }
-    }
-  }
 }

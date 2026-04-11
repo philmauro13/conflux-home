@@ -1,157 +1,108 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Avatar from './Avatar';
+import { motion, AnimatePresence } from 'framer-motion';
+import { invoke } from '@tauri-apps/api/core';
+import { playTourBlip, playWelcomeChime } from '../lib/sound';
+import { NeuralBrainScene } from './NeuralBrainScene';
+import { COMMANDS } from '../lib/neuralBrain';
+import { useAuth } from '../hooks/useAuth';
+
 import '../styles/animations.css';
 
 // ── Types ──
 
 interface OnboardingProps {
-  onComplete: (goals: string[], selectedAgents: string[]) => void;
+  onComplete: (goals: string[], selectedApps: string[]) => void;
 }
 
-// ── Constants ──
+// ── Key Players for the intro sequence ──
 
-interface GoalOption {
-  id: string;
-  slug: string;
-  emoji: string;
-  title: string;
-  description: string;
-}
-
-const GOALS: GoalOption[] = [
-  { id: 'business', slug: 'building-a-business', emoji: '🚀', title: 'Building a business', description: 'Strategy, research, content, and growth' },
-  { id: 'learn', slug: 'learning-research', emoji: '📚', title: 'Learning & research', description: 'Deep dives, analysis, and knowledge building' },
-  { id: 'work', slug: 'work-productivity', emoji: '💼', title: 'Work productivity', description: 'Task management, writing, and automation' },
-  { id: 'creative', slug: 'creative-projects', emoji: '🎨', title: 'Creative projects', description: 'Writing, design, and brainstorming' },
-  { id: 'life', slug: 'everyday-life', emoji: '🏠', title: 'Everyday life', description: 'Planning, organizing, and daily help' },
-];
-
-const GOAL_AGENT_MAP: Record<string, string[]> = {
-  'building-a-business': ['zigbot', 'helix', 'forge', 'vector', 'pulse'],
-  'learning-research': ['helix', 'quanta', 'zigbot'],
-  'work-productivity': ['prism', 'forge', 'spectra', 'quanta'],
-  'creative-projects': ['forge', 'pulse', 'helix'],
-  'everyday-life': ['zigbot', 'helix', 'catalyst'],
-};
-
-interface AgentInfo {
+interface KeyPlayer {
   id: string;
   name: string;
   emoji: string;
-  role: string;
-  why: string;
+  color: string;
+  tagline: string;
+  delay: number; // ms after step start
 }
 
-const ALL_AGENTS: Record<string, AgentInfo> = {
-  zigbot: { id: 'zigbot', name: 'ZigBot', emoji: '🤖', role: 'Strategic Partner', why: 'Guides your strategy and helps you think clearly about opportunities' },
-  helix: { id: 'helix', name: 'Helix', emoji: '🔬', role: 'Market Researcher', why: 'Finds market data, competitor intel, and validates ideas' },
-  forge: { id: 'forge', name: 'Forge', emoji: '🔨', role: 'Execution Builder', why: 'Builds products, writes code, and creates deliverables' },
-  vector: { id: 'vector', name: 'Vector', emoji: '🧭', role: 'Business Strategist', why: 'Evaluates opportunities and keeps your portfolio on track' },
-  pulse: { id: 'pulse', name: 'Pulse', emoji: '📣', role: 'Growth Engine', why: 'Handles marketing, launch strategy, and audience building' },
-  quanta: { id: 'quanta', name: 'Quanta', emoji: '✅', role: 'Quality Control', why: 'Verifies outputs, checks facts, and ensures quality' },
-  prism: { id: 'prism', name: 'Prism', emoji: '💎', role: 'System Orchestrator', why: 'Coordinates missions and manages the agent pipeline' },
-  spectra: { id: 'spectra', name: 'Spectra', emoji: '🧩', role: 'Task Decomposer', why: 'Breaks complex goals into clear, actionable tasks' },
-  luma: { id: 'luma', name: 'Luma', emoji: '🚀', role: 'Run Launcher', why: 'Launches and monitors agent runs across the system' },
-  catalyst: { id: 'catalyst', name: 'Catalyst', emoji: '⚡', role: 'Everyday Assistant', why: 'Helps with daily planning, organization, and quick tasks' },
-};
-
-const AGENT_EMOJIS = Object.values(ALL_AGENTS).map(a => a.emoji);
-
-const BACKGROUND_EMOJIS = AGENT_EMOJIS.map((emoji, i) => ({
-  emoji,
-  left: `${10 + (i * 8) % 80}%`,
-  top: `${15 + ((i * 13) % 60)}%`,
-  delay: i * 200,
-  size: 28 + (i % 3) * 8,
-}));
-
-// ── Keyword-based conversation responses ──
-
-const KEYWORD_RESPONSES = [
-  {
-    keywords: ['business', 'startup', 'company', 'agency', 'scale', 'revenue', 'growth', 'marketing', 'clients', 'sales', 'money', 'earn', 'income'],
-    agents: ['zigbot', 'helix', 'forge', 'vector', 'pulse'],
-    response: "Got it. You're building something and you want to grow.\n\nI'm thinking:\n• Helix 🔬 — she'll dig into your market and find what your competitors are missing\n• Pulse 📣 — he handles all the marketing and launch strategy\n• Forge 🔨 — he builds. Landing pages, content, automation. Fast.\n\nAnd obviously me. I'm not going anywhere.",
-  },
-  {
-    keywords: ['learn', 'research', 'study', 'understand', 'knowledge', 'analysis', 'curious', 'interesting', 'read', 'explore', 'figure out'],
-    agents: ['zigbot', 'helix', 'quanta'],
-    response: "Love the curiosity. You want to dig deep and actually understand things.\n\nFor that:\n• Helix 🔬 — deep research specialist. Give her a question, she'll find answers nobody else has.\n• Quanta ✅ — she verifies everything. No fake facts.\n\nI'll be here to help you think through what you find.",
-  },
-  {
-    keywords: ['code', 'build', 'develop', 'app', 'software', 'automate', 'technical', 'programming', 'website', 'tool'],
-    agents: ['forge', 'quanta', 'spectra', 'prism'],
-    response: "A builder. I like it.\n\nYour crew:\n• Forge 🔨 — writes code, builds products. Fast.\n• Spectra 🧩 — breaks big goals into small steps.\n• Quanta ✅ — reviews everything before it ships.\n\nLet's build something great.",
-  },
-  {
-    keywords: ['write', 'content', 'creative', 'design', 'blog', 'article', 'story', 'brand', 'art', 'photo', 'video', 'music'],
-    agents: ['forge', 'pulse', 'helix'],
-    response: "Creative energy — I can feel it.\n\nYour creative team:\n• Forge 🔨 — content, design, creation.\n• Pulse 📣 — gets your work in front of the right people.\n• Helix 🔬 — researches what your audience wants.\n\nLet's make something people remember.",
-  },
-  {
-    keywords: ['family', 'kids', 'schedule', 'meal', 'home', 'dinner', 'planning', 'calendar', 'grocery', 'chores', 'clean', 'organize'],
-    agents: ['zigbot', 'catalyst', 'spectra'],
-    response: "Life gets busy. Let me help you take some of it back.\n\nYour daily team:\n• Catalyst ⚡ — she catches things before they slip through the cracks.\n• Spectra 🧩 — breaks overwhelming days into manageable pieces.\n\nAnd me — I'm always here when you need to think something through.",
-  },
-  {
-    keywords: ['overwhelmed', 'stressed', 'too much', 'burned out', 'exhausted', 'anxious', 'busy', 'chaos', 'drowning'],
-    agents: ['catalyst', 'spectra', 'zigbot'],
-    response: "I hear you. When everything feels like too much, that's usually because there's no system holding it together.\n\nLet's fix that:\n• Spectra 🧩 — she'll break the chaos into clear, doable pieces.\n• Catalyst ⚡ — she's your early warning system. Things stop falling through.\n\nAnd me — sometimes you just need someone to think with.",
-  },
-  {
-    keywords: ['health', 'fitness', 'workout', 'diet', 'exercise', 'weight', 'sleep', 'wellness', 'cook', 'recipe'],
-    agents: ['catalyst', 'zigbot', 'helix'],
-    response: "Taking care of yourself is the foundation for everything else.\n\nYour wellness team:\n• Catalyst ⚡ — she'll help you build habits that stick.\n• Helix 🔬 — she can research the best approaches for your goals.\n\nSmall steps, big results. Let's go.",
-  },
-  {
-    keywords: ['nothing', 'just looking', 'idk', "don't know", 'not sure', 'browsing', 'checking', 'playing around'],
-    agents: ['zigbot', 'helix', 'catalyst'],
-    response: "No worries — you don't need a big plan to get started. Sometimes the best things come from just exploring.\n\nI'll give you a versatile team:\n• Helix 🔬 — she's great at finding interesting things to dig into.\n• Catalyst ⚡ — she'll help you stay on top of the little stuff.\n\nWe'll figure it out together.",
-  },
+const KEY_PLAYERS: KeyPlayer[] = [
+  { id: 'conflux', name: 'Conflux', emoji: '🤖', color: '#00d4ff', tagline: 'Your co-founder who never sleeps.', delay: 600 },
+  { id: 'helix', name: 'Helix', emoji: '🔬', color: '#00cc88', tagline: 'Research at the speed of thought.', delay: 1800 },
+  { id: 'pulse', name: 'pulse', emoji: '💚', color: '#10b981', tagline: 'Your financial heartbeat.', delay: 3000 },
 ];
 
-// Agent personality one-liners
-const AGENT_HELLOS: Record<string, string> = {
-  zigbot: "I'm the one you come to when you need to think. Or when it's 2 AM and you have a crazy idea.",
-  helix: "I find things other people miss. Market signals, competitor moves, hidden opportunities.",
-  forge: "You describe it, I build it. Landing pages, content, code. I don't do slow.",
-  vector: "I'm the reality check. I'll tell you if your idea is gold or garbage.",
-  pulse: "I get your stuff in front of the right people. Marketing, launches, growth.",
-  quanta: "I check everything twice. Nothing ships without my sign-off.",
-  prism: "I keep the team organized. When 10 things need to happen at once, I'm your person.",
-  spectra: "I break big scary goals into small doable steps.",
-  luma: "I press the buttons. Launches, deployments, going live. That's me.",
-  catalyst: "I'm the early warning system. If something's about to break, I'll let you know.",
-};
-
-// BYOK providers
-const BYOK_PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', emoji: '🧠', placeholder: 'sk-...' },
-  { id: 'anthropic', name: 'Anthropic', emoji: '🏛️', placeholder: 'sk-ant-...' },
-  { id: 'gemini', name: 'Gemini', emoji: '💎', placeholder: 'AI...' },
-  { id: 'ollama', name: 'Ollama', emoji: '🦙', placeholder: 'http://localhost:11434' },
+// Aegis + Viper appear together as "the protectors"
+const PROTECTORS: KeyPlayer[] = [
+  { id: 'aegis', name: 'Aegis', emoji: '🛡️', color: '#6366f1', tagline: 'I watch the walls.', delay: 4400 },
+  { id: 'viper', name: 'Viper', emoji: '🐍', color: '#22c55e', tagline: 'I find the cracks.', delay: 4400 },
 ];
 
-// Setup facts
-const SETUP_FACTS = [
-  "Each agent has a soul — a unique personality that shapes how they think",
-  "Your team's heartbeat checks in to make sure everyone's okay",
-  "Your agents remember everything. The longer you use them, the smarter they get",
-  "Your data stays on your machine. Always.",
-  "Agents can collaborate — like a real team, but they never sleep",
-  "This isn't just software. It's a home for your AI family.",
+// Conflux's narration script (synced with card appearances)
+function getNarrationScript(name: string): string {
+  return `Hey ${name || 'there'}. I'm Conflux. Let me introduce you to the team. ` +
+    `This is Helix — your research powerhouse. ` +
+    `And Pulse — your financial heartbeat. ` +
+    `Now these two? They protect everything. ` +
+    `Aegis watches the walls. Viper finds the cracks before anyone else does. ` +
+    `Brother and sister. ` +
+    `Together, they've got your back. ` +
+    `So — what brought you here?`;
+}
+
+// ── Apps for auto-selection ──
+
+interface AppOption {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+}
+
+const APPS: AppOption[] = [
+  { id: 'budget', name: 'Budget', emoji: '💰', description: 'Track expenses and savings' },
+  { id: 'kitchen', name: 'Kitchen', emoji: '🍳', description: 'Recipes and meal planning' },
+  { id: 'dreams', name: 'Dreams', emoji: '✨', description: 'Goals and aspirations' },
+  { id: 'life', name: 'Life', emoji: '🏠', description: 'Daily tasks and organization' },
 ];
 
-// Goal → gradient map
-const GOAL_GRADIENTS: Record<string, string> = {
-  business: 'rgba(99,102,241,0.06)',
-  learn: 'rgba(59,130,246,0.06)',
-  work: 'rgba(16,185,129,0.06)',
-  creative: 'rgba(236,72,153,0.06)',
-  life: 'rgba(245,158,11,0.06)',
-};
+// Auto-select apps based on ice breaker answer
+function suggestApps(answer: string): string[] {
+  const lower = answer.toLowerCase();
+  const picks: string[] = [];
 
-// ── Particles for Welcome ──
+  if (/money|budget|save|spend|financ|income|expense|invest|debt|bill|pay/.test(lower)) picks.push('budget');
+  if (/cook|food|meal|recipe|kitchen|diet|eat|grocer|pantry/.test(lower)) picks.push('kitchen');
+  if (/goal|dream|learn|want|aspir|plan|build|start|achieve/.test(lower)) picks.push('dreams');
+  if (/habit|routine|organiz|task|daily|schedul|time|focus/.test(lower)) picks.push('life');
+
+  // Default: if nothing matched, suggest budget + dreams (everyone needs those)
+  if (picks.length === 0) return ['budget', 'dreams'];
+  return picks.slice(0, 3); // max 3
+}
+
+// ── Heartbeat SVG Component ──
+
+function HeartbeatSVG({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 400 80" style={{ width: '100%', maxWidth: 400, height: 80 }}>
+      <path
+        d="M0,40 L60,40 L70,40 L80,20 L90,60 L100,10 L110,70 L120,40 L130,40 L200,40 L210,40 L220,20 L230,60 L240,10 L250,70 L260,40 L270,40 L340,40 L350,40 L360,20 L370,60 L380,10 L390,70 L400,40"
+        fill="none"
+        stroke="var(--accent-primary)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          strokeDasharray: 800,
+          filter: `drop-shadow(0 0 6px var(--accent-primary))`,
+          animation: active ? 'heartbeat-draw 2s linear infinite' : 'none',
+        }}
+      />
+    </svg>
+  );
+}
+
+// ── Particles Component ──
 
 function Particles({ count = 15 }: { count?: number }) {
   const particles = Array.from({ length: count }, (_, i) => ({
@@ -184,1089 +135,732 @@ function Particles({ count = 15 }: { count?: number }) {
   );
 }
 
-// ── Confetti for Alive Phase 2 ──
+// ── Progress Bar Component ──
 
-function Confetti({ count = 20 }: { count?: number }) {
-  const particles = Array.from({ length: count }, (_, i) => {
-    const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-    const distance = 80 + Math.random() * 120;
-    return {
-      dx: Math.cos(angle) * distance,
-      dy: Math.sin(angle) * distance - 60,
-      rotation: Math.random() * 720 - 360,
-      color: ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'][i % 6],
-      size: 4 + Math.random() * 4,
-      delay: Math.random() * 0.2,
-    };
-  });
-
+function ProgressBar({ step }: { step: number }) {
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {particles.map((p, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            width: p.size,
-            height: p.size,
-            borderRadius: i % 3 === 0 ? '50%' : '2px',
-            background: p.color,
-            '--dx': `${p.dx}px`,
-            '--dy': `${p.dy}px`,
-            '--rotation': `${p.rotation}deg`,
-            animation: `confetti-particle 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${p.delay}s forwards`,
-          } as React.CSSProperties}
-        />
-      ))}
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      padding: '20px 0 0',
+      flexShrink: 0,
+    }}>
+      {[0, 1, 2, 3].map(i => {
+        const isActive = i === step;
+        const isDone = i < step;
+        return (
+          <motion.div
+            key={i}
+            animate={{
+              width: isActive ? 32 : 10,
+              backgroundColor: isDone || isActive ? 'var(--accent-primary)' : 'var(--border)',
+              opacity: isDone || isActive ? 1 : 0.4,
+            }}
+            transition={{ duration: 0.3 }}
+            style={{
+              width: isActive ? 32 : 10,
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: isDone || isActive ? 'var(--accent-primary)' : 'var(--border)',
+              opacity: isDone || isActive ? 1 : 0.4,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
-// ── Typewriter placeholder ──
+// ── Agent Card (for key player intros) ──
 
-function useTypewriterPlaceholder(text: string, typing: boolean, speed = 100) {
-  const [displayed, setDisplayed] = useState('');
-
-  useEffect(() => {
-    if (typing) return; // Only animate when not typing
-    let i = 0;
-    setDisplayed('');
-    const interval = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) clearInterval(interval);
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text, typing, speed]);
-
-  return typing ? '' : displayed;
+function AgentIntroCard({ player, visible }: { player: KeyPlayer; visible: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24, scale: 0.85 }}
+      animate={visible ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 24, scale: 0.85 }}
+      transition={{ duration: 0.5, type: 'spring', stiffness: 200, damping: 20 }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        width: 120,
+      }}
+    >
+      <div style={{
+        width: 64,
+        height: 64,
+        borderRadius: 20,
+        background: `${player.color}15`,
+        border: `2px solid ${player.color}33`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 32,
+        filter: `drop-shadow(0 0 12px ${player.color}44)`,
+        transition: 'all 0.3s ease',
+      }}>
+        {player.emoji}
+      </div>
+      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: player.color }}>
+        {player.name}
+      </div>
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', lineHeight: 1.3, textAlign: 'center' }}>
+        {player.tagline}
+      </div>
+    </motion.div>
+  );
 }
 
-// ── Component ──
+// ── Main Component ──
 
+/**
+ * Onboarding Component — Narrative Flow
+ *
+ * Steps:
+ * 0. "Who Are You?" — Name input + heartbeat + neural brain
+ * 1. "Conflux Speaks" — Conflux introduces the team via TTS
+ * 2. "Meet the Key Players" — Agents appear sequentially (Conflux, Helix, Pulse, Aegis+Viper)
+ * 3. "What Do You Need?" — Ice breaker question, answer persists to profile
+ * 4. "Building Your World" — Auto-select apps, animate setup, done
+ *
+ * @param onComplete - Callback with selected apps when flow completes
+ */
 export default function Onboarding({ onComplete }: OnboardingProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [animating, setAnimating] = useState(false);
 
-  // Step 0 — Welcome
+  // Step 0: Name
   const [userName, setUserName] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const typewriterPlaceholder = useTypewriterPlaceholder("What's your name?", isTyping, 80);
+  const [heartbeatActive, setHeartbeatActive] = useState(false);
 
-  // Step 1 — Provider
-  const [setupPhase, setSetupPhase] = useState<'connecting' | 'alive' | 'done'>('connecting');
-  const [factIndex, setFactIndex] = useState(0);
-  const [heartbeatPulse, setHeartbeatPulse] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [byokKeys, setByokKeys] = useState<Record<string, string>>({});
-  const [activeModal, setActiveModal] = useState<string | null>(null);
+  // Step 1-2: Agent intro
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [visibleAgents, setVisibleAgents] = useState<Set<string>>(new Set());
+  const [showProtectors, setShowProtectors] = useState(false);
+  const narrationTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Step 2 — Conversation
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'zigbot' | 'user', text: string}>>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [conversationDone, setConversationDone] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState<string[]>([]);
+  // Step 3: Ice breaker
+  const [iceBreakerInput, setIceBreakerInput] = useState('');
 
-  // Step 3 — Team
-  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
-  const [shakingAgent, setShakingAgent] = useState<string | null>(null);
-  const [flashingAgent, setFlashingAgent] = useState<string | null>(null);
+  // Step 4: Building world
+  const [buildProgress, setBuildProgress] = useState(0);
+  const [buildPhase, setBuildPhase] = useState<'selecting' | 'building' | 'done'>('selecting');
+  const [suggestedApps, setSuggestedApps] = useState<string[]>([]);
 
-  // Step 4 — Alive
-  const [alivePhase, setAlivePhase] = useState<'loading' | 'ready'>('loading');
+  // Audio
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  // Play base64 MP3 audio via Web Audio API
+  const playBase64Audio = useCallback((base64: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+      ctx.decodeAudioData(bytes.buffer).then((buffer) => {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.onended = () => resolve();
+        source.start(0);
+      }).catch(reject);
+    });
+  }, []);
 
-  // ── Init chat on Step 2 ──
-  useEffect(() => {
-    if (step === 2 && chatMessages.length === 0) {
-      setChatMessages([{
-        role: 'zigbot',
-        text: "👋 Hey! I'm ZigBot.\n\nWhat do you wish you had more help with? Doesn't have to be big — even just day-to-day stuff counts.\n\nNo wrong answers here.",
-      }]);
+  // TTS narration
+  const speakNarration = useCallback(async () => {
+    const text = getNarrationScript(userName);
+    setIsSpeaking(true);
+    try {
+      const result = await invoke<{ audio_base64: string }>('tts_speak', { text, voice: 'Conflux' });
+      await playBase64Audio(result.audio_base64);
+    } catch (err) {
+      console.warn('[Onboarding] TTS failed (non-fatal):', err);
+    } finally {
+      setIsSpeaking(false);
     }
-  }, [step]);
+  }, [userName, playBase64Audio]);
 
-  // ── Navigation ──
+  // TTS for ice breaker question
+  const speakIceBreaker = useCallback(async () => {
+    const text = `So — what brought you here? What's the first thing you need help with?`;
+    try {
+      const result = await invoke<{ audio_base64: string }>('tts_speak', { text, voice: 'Conflux' });
+      await playBase64Audio(result.audio_base64);
+    } catch (err) {
+      console.warn('[Onboarding] Ice breaker TTS failed (non-fatal):', err);
+    }
+  }, [playBase64Audio]);
+
+  // Load persisted name
+  useEffect(() => {
+    const savedName = localStorage.getItem('conflux-name');
+    if (savedName) setUserName(savedName);
+  }, []);
+
+  // Play welcome chime on mount
+  useEffect(() => {
+    playWelcomeChime();
+  }, []);
+
+  // Always dark mode
+  useEffect(() => {
+    document.body.classList.add('dark');
+  }, []);
+
+  // Step 1: Start narration + staggered agent appearances
+  useEffect(() => {
+    if (step !== 1) return;
+
+    // Start TTS narration
+    speakNarration();
+
+    // Stagger agent card appearances
+    KEY_PLAYERS.forEach(player => {
+      const timer = setTimeout(() => {
+        setVisibleAgents(prev => new Set([...prev, player.id]));
+      }, player.delay);
+      narrationTimerRef.current.push(timer);
+    });
+
+    // Show protectors (Aegis + Viper) after the main three
+    const protectorTimer = setTimeout(() => {
+      setShowProtectors(true);
+      PROTECTORS.forEach(p => {
+        setVisibleAgents(prev => new Set([...prev, p.id]));
+      });
+    }, 4200);
+    narrationTimerRef.current.push(protectorTimer);
+
+    return () => {
+      narrationTimerRef.current.forEach(clearTimeout);
+      narrationTimerRef.current = [];
+    };
+  }, [step, speakNarration]);
+
+  // Step 3: Speak ice breaker prompt
+  useEffect(() => {
+    if (step === 3) {
+      speakIceBreaker();
+    }
+  }, [step, speakIceBreaker]);
+
+  // Navigation
   const goToStep = useCallback((nextStep: number) => {
+    playTourBlip();
     setAnimating(true);
     setTimeout(() => {
       setStep(nextStep);
-      setAnimating(false);
-    }, 50);
+      setTimeout(() => setAnimating(false), 400);
+    }, 300);
   }, []);
 
   const nextStep = () => {
-    // If still on 'connecting', skip to 'alive' immediately
-    if (step === 1 && setupPhase === 'connecting') {
-      setSetupPhase('alive');
-      setHeartbeatPulse(true);
-      localStorage.setItem('conflux-provider-setup', JSON.stringify({ type: 'free' }));
-      return;
+    if (step === 0 && userName.trim().length > 0) {
+      localStorage.setItem('conflux-name', userName.trim());
     }
     goToStep(step + 1);
   };
+
   const prevStep = () => goToStep(step - 1);
 
-  // ── Provider: Auto-advance through facts ──
-  useEffect(() => {
-    if (step !== 1 || setupPhase !== 'connecting') return;
-    const interval = setInterval(() => {
-      setFactIndex(prev => (prev + 1) % SETUP_FACTS.length);
-    }, 2200);
-    const timer = setTimeout(() => {
-      setSetupPhase('alive');
-      setHeartbeatPulse(true);
-      localStorage.setItem('conflux-provider-setup', JSON.stringify({ type: 'free' }));
-    }, 6000);
-    return () => { clearInterval(interval); clearTimeout(timer); };
-  }, [step, setupPhase]);
-
-  // ── Provider: BYOK ──
-  const handleByokConnect = (providerId: string) => {
-    const key = byokKeys[providerId]?.trim();
-    if (!key) return;
-    localStorage.setItem('conflux-provider-setup', JSON.stringify({ type: 'byok', providers: [providerId] }));
-    setActiveModal(null);
-    setSetupPhase('alive');
-    setHeartbeatPulse(true);
+  // Enter key on name input
+  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && userName.trim().length > 0) {
+      nextStep();
+    }
   };
 
-  // ── Goals ──
-  // ── Conversation ──
-  const handleChatSend = useCallback(() => {
-    const msg = chatInput.trim();
-    if (!msg) return;
+  // Finish onboarding — auto-select apps and build
+  const handleFinish = useCallback(async () => {
+    const apps = suggestApps(iceBreakerInput);
+    setSuggestedApps(apps);
+    setBuildPhase('building');
 
-    setChatMessages(prev => [...prev, { role: 'user', text: msg }]);
-    setChatInput('');
-
-    // Match keywords
-    const lower = msg.toLowerCase();
-    let matched = KEYWORD_RESPONSES.find(r =>
-      r.keywords.some(k => lower.includes(k))
-    );
-
-    if (!matched) {
-      matched = {
-        keywords: [],
-        agents: ['zigbot', 'helix', 'catalyst'],
-        response: "Interesting. I've got a good feeling about this.\n\nI'm starting you with a versatile team:\n• Helix 🔬 — she'll help you explore and figure things out.\n• Catalyst ⚡ — she keeps the day-to-day running smooth.\n\nAnd me, obviously. We'll figure out the rest as we go.",
-      };
+    // Animate progress
+    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+    for (let p = 0; p <= 100; p += 2) {
+      setBuildProgress(Math.min(p, 100));
+      await delay(20);
     }
 
-    setSelectedTeam(matched!.agents);
-    setSelectedAgents(new Set(matched!.agents));
+    setBuildPhase('done');
+    await delay(600);
 
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { role: 'zigbot', text: matched!.response }]);
-      setConversationDone(true);
-    }, 800);
-  }, [chatInput]);
+    // Save and complete
+    localStorage.setItem('conflux-onboarded', 'true');
+    localStorage.setItem('conflux-name', userName.trim() || 'there');
+    localStorage.setItem('conflux-setup-apps', JSON.stringify(apps));
 
-  const handleConversationContinue = useCallback(() => {
-    localStorage.setItem('conflux-user-profile', JSON.stringify({
-      name: userName,
-      messages: chatMessages,
-      recommendedAgents: selectedTeam,
-    }));
-    nextStep();
-  }, [userName, chatMessages, selectedTeam, nextStep]);
-
-  // ── Team ──
-  const toggleAgent = (id: string) => {
-    setSelectedAgents(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        if (next.size > 1) {
-          next.delete(id);
-        } else {
-          // Shake — can't deselect last
-          setShakingAgent(id);
-          setTimeout(() => setShakingAgent(null), 400);
-        }
-      } else {
-        next.add(id);
-        // Flash working then idle
-        setFlashingAgent(id);
-        setTimeout(() => setFlashingAgent(null), 600);
+    // Persist ice breaker answer to profile if user is logged in
+    if (user && iceBreakerInput.trim()) {
+      try {
+        await import('../lib/supabase').then(({ supabase }) => {
+          supabase.from('ch_profiles').upsert({
+            id: user.id,
+            onboarding_goals: [iceBreakerInput.trim()],
+          });
+        });
+      } catch (err) {
+        console.warn('[Onboarding] Failed to persist ice breaker answer:', err);
       }
-      return next;
-    });
-  };
-
-  // ── Enter home ──
-  const handleEnter = () => {
-    const agentsArr = Array.from(selectedAgents);
-    localStorage.setItem('conflux-onboarded', 'true');
-    localStorage.setItem('conflux-goals', JSON.stringify(selectedTeam));
-    localStorage.setItem('conflux-selected-agents', JSON.stringify(agentsArr));
-    localStorage.setItem('conflux-name', userName.trim() || 'there');
-    onComplete(selectedTeam, agentsArr);
-  };
-
-  // ── Alive animation ──
-  useEffect(() => {
-    if (step === 4) {
-      setAlivePhase('loading');
-      const timer = setTimeout(() => setAlivePhase('ready'), 2500);
-      return () => clearTimeout(timer);
     }
-  }, [step]);
 
-  // ── Skip ──
-  const handleSkip = () => {
-    const allAgentIds = Object.keys(ALL_AGENTS);
-    localStorage.setItem('conflux-onboarded', 'true');
-    localStorage.setItem('conflux-goals', JSON.stringify([]));
-    localStorage.setItem('conflux-selected-agents', JSON.stringify(allAgentIds));
-    localStorage.setItem('conflux-name', userName.trim() || 'there');
-    onComplete([], allAgentIds);
+    onComplete([], apps);
+  }, [iceBreakerInput, userName, user, onComplete]);
+
+  // ── Render Steps ──
+
+  // Step 0: "Who Are You?"
+  const renderNameStep = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+      style={{ textAlign: 'center', maxWidth: 420, width: '100%', margin: '0 auto', position: 'relative' }}
+    >
+      <Particles count={15} />
+
+      <div style={{ marginBottom: 24 }}>
+        <img src="/logo.png" alt="Conflux Home" style={{ width: 96, height: 96, objectFit: 'contain' }} />
+      </div>
+
+      <h1 style={{
+        fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px',
+        color: 'var(--text-primary)', marginBottom: 12,
+      }}>
+        Welcome to Conflux Home
+      </h1>
+
+      <p style={{ fontSize: 17, color: 'var(--text-secondary)', marginBottom: 32, lineHeight: 1.5 }}>
+        Your AI family is about to come alive.
+      </p>
+
+      <div style={{ marginBottom: 24 }}>
+        <NeuralBrainScene command={COMMANDS[0]} pulseImpulse={5} transparent={true} />
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <HeartbeatSVG active={heartbeatActive} />
+      </div>
+
+      <input
+        type="text"
+        placeholder="What's your name?"
+        value={userName}
+        onChange={e => setUserName(e.target.value)}
+        onKeyDown={handleNameKeyDown}
+        onFocus={() => { setIsTyping(true); setHeartbeatActive(true); }}
+        onBlur={() => { setIsTyping(false); setHeartbeatActive(false); }}
+        style={{
+          width: '100%', maxWidth: 280, padding: '12px 16px', borderRadius: 10,
+          border: '1px solid var(--border)', background: 'var(--bg-primary)',
+          color: 'var(--text-primary)', fontSize: 16, textAlign: 'center',
+          outline: 'none', boxSizing: 'border-box',
+        }}
+        autoFocus
+      />
+
+      {userName && (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={{ marginTop: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
+          Press <kbd style={{
+            padding: '2px 8px', borderRadius: 4, background: 'var(--bg-card)',
+            border: '1px solid var(--border)', fontSize: 12,
+          }}>Enter</kbd> to continue
+        </motion.p>
+      )}
+    </motion.div>
+  );
+
+  // Step 1: "Conflux Speaks" + Step 2: "Meet the Key Players" (combined into one screen)
+  const renderTeamIntroStep = () => (
+    <motion.div
+      key="step-team-intro"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -30 }}
+      transition={{ duration: 0.5 }}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        maxWidth: 800, width: '100%', textAlign: 'center', position: 'relative',
+      }}
+    >
+      {/* Neural brain pulsing during narration */}
+      <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)' }}>
+        <NeuralBrainScene
+          command={isSpeaking ? COMMANDS[3] : COMMANDS[1]}
+          pulseImpulse={isSpeaking ? 20 : 8}
+          transparent={true}
+        />
+      </div>
+
+      <motion.h1
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        style={{
+          fontSize: '2rem', fontWeight: 700,
+          background: 'linear-gradient(135deg, #00d4ff, #6366f1, #22c55e)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          marginBottom: 8, marginTop: 60,
+        }}
+      >
+        Meet Your Team
+      </motion.h1>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, maxWidth: 500 }}
+      >
+        {userName ? `${userName},` : ''} each one has a specialty. Together, they're unstoppable.
+      </motion.p>
+
+      {/* Main agents row */}
+      <div style={{
+        display: 'flex', justifyContent: 'center', gap: 28, marginBottom: 24, flexWrap: 'wrap',
+      }}>
+        {KEY_PLAYERS.map(player => (
+          <AgentIntroCard
+            key={player.id}
+            player={player}
+            visible={visibleAgents.has(player.id)}
+          />
+        ))}
+      </div>
+
+      {/* Divider + "the protectors" label */}
+      <AnimatePresence>
+        {showProtectors && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              color: 'var(--text-tertiary)', fontSize: '0.8rem',
+              textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 600,
+            }}>
+              <div style={{ width: 40, height: 1, background: 'var(--border)' }} />
+              And these two? They protect everything.
+              <div style={{ width: 40, height: 1, background: 'var(--border)' }} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 32 }}>
+              {PROTECTORS.map(player => (
+                <AgentIntroCard
+                  key={player.id}
+                  player={player}
+                  visible={visibleAgents.has(player.id)}
+                />
+              ))}
+            </div>
+
+            {/* Brother & sister label */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}
+            >
+              Brother and sister. They've got your back.
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Continue button — appears after narration */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isSpeaking ? 0 : 1 }}
+        transition={{ duration: 0.4 }}
+        style={{ marginTop: 40 }}
+      >
+        <button
+          onClick={nextStep}
+          style={{
+            padding: '12px 32px', borderRadius: 12,
+            background: 'var(--accent-primary)', color: 'white',
+            border: 'none', fontSize: 16, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          {isSpeaking ? '🎙️ Conflux is speaking...' : 'What do you need? →'}
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+
+  // Step 3: "What Do You Need?" — Ice Breaker
+  const renderIceBreakerStep = () => (
+    <motion.div
+      initial={{ opacity: 0, x: 30 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+      style={{ textAlign: 'center', maxWidth: 520, width: '100%', margin: '0 auto', position: 'relative' }}
+    >
+      {/* Conflux brain in background */}
+      <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)' }}>
+        <NeuralBrainScene command={COMMANDS[1]} pulseImpulse={6} transparent={true} />
+      </div>
+
+      <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 60 }}>
+        👋 Hey {userName || 'there'}!
+      </h1>
+
+      <div style={{
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: 16, padding: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+      }}>
+        <p style={{ fontSize: 16, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+          What's on your mind today? What do you need help with?
+        </p>
+
+        <textarea
+          value={iceBreakerInput}
+          onChange={e => setIceBreakerInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey && iceBreakerInput.trim()) {
+              e.preventDefault();
+              handleFinish();
+            }
+          }}
+          placeholder="e.g. I want to save money and learn to cook..."
+          rows={3}
+          style={{
+            width: '100%', padding: '16px', borderRadius: 12,
+            border: '1px solid var(--border)', background: 'var(--bg-primary)',
+            color: 'var(--text-primary)', fontSize: 16, outline: 'none',
+            resize: 'none', marginBottom: 16, boxSizing: 'border-box',
+          }}
+        />
+
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          This helps us personalize your experience
+        </p>
+      </div>
+
+      <div style={{ marginTop: 32 }}>
+        <button
+          onClick={handleFinish}
+          style={{
+            padding: '12px 32px', borderRadius: 12,
+            background: iceBreakerInput.trim() ? 'var(--accent-primary)' : 'var(--bg-card)',
+            color: iceBreakerInput.trim() ? 'white' : 'var(--text-secondary)',
+            border: iceBreakerInput.trim() ? 'none' : '1px solid var(--border)',
+            fontSize: 16, fontWeight: 600, cursor: 'pointer',
+            opacity: iceBreakerInput.trim() ? 1 : 0.6,
+            transition: 'all 0.2s ease',
+          }}
+        >
+          Let's Build →
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  // Step 4: "Building Your World"
+  const renderBuildStep = () => {
+    const buildLabels: Record<string, string> = {
+      budget: 'Setting up your Budget',
+      kitchen: 'Stocking your Kitchen',
+      dreams: 'Creating your Dreams board',
+      life: 'Organizing your Life',
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          maxWidth: 480, width: '100%', textAlign: 'center',
+        }}
+      >
+        {/* Neural brain active during build */}
+        <div style={{ marginBottom: 32 }}>
+          <NeuralBrainScene
+            command={buildPhase === 'done' ? COMMANDS[2] : COMMANDS[4]}
+            pulseImpulse={buildPhase === 'done' ? 5 : 12 + (buildProgress / 10) * 3}
+            transparent={true}
+          />
+        </div>
+
+        <AnimatePresence mode="wait">
+          {buildPhase === 'selecting' && (
+            <motion.div key="selecting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
+                Based on what you told us...
+              </h2>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
+                {suggestApps(iceBreakerInput).map(appId => {
+                  const app = APPS.find(a => a.id === appId);
+                  return app ? (
+                    <div key={appId} style={{
+                      padding: '10px 20px', borderRadius: 12,
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      fontSize: 15, fontWeight: 600, color: 'var(--text-primary)',
+                    }}>
+                      {app.emoji} {app.name}
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {buildPhase === 'building' && (
+            <motion.div key="building" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 32 }}>
+                Building your world...
+              </h2>
+
+              {/* App progress icons */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 32 }}>
+                {suggestedApps.map((appId, i) => {
+                  const app = APPS.find(a => a.id === appId);
+                  const threshold = ((i + 1) / suggestedApps.length) * 100;
+                  const isDone = buildProgress >= threshold;
+                  return (
+                    <motion.div
+                      key={appId}
+                      animate={{
+                        scale: isDone ? 1 : 0.85,
+                        opacity: isDone ? 1 : 0.4,
+                      }}
+                      transition={{ duration: 0.3 }}
+                      style={{
+                        width: 56, height: 56, borderRadius: 16,
+                        background: isDone ? '#10b981' : 'var(--bg-card)',
+                        border: `2px solid ${isDone ? '#10b981' : 'var(--border)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 28, transition: 'all 0.3s ease',
+                      }}
+                    >
+                      {app?.emoji}
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Progress bar */}
+              <div style={{
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 20, padding: 6, marginBottom: 16,
+              }}>
+                <motion.div
+                  animate={{ width: `${buildProgress}%` }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    height: 8, borderRadius: 16,
+                    background: 'linear-gradient(90deg, var(--accent-primary), #22c55e)',
+                    width: `${buildProgress}%`,
+                  }}
+                />
+              </div>
+
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                {buildProgress < 50 ? 'Setting things up...' : buildProgress < 90 ? 'Almost there...' : 'Done! ✨'}
+              </p>
+            </motion.div>
+          )}
+
+          {buildPhase === 'done' && (
+            <motion.div
+              key="done"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, type: 'spring' }}
+            >
+              <h2 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
+                ✨ Your team is ready.
+              </h2>
+              <p style={{ fontSize: 16, color: 'var(--text-secondary)' }}>
+                Welcome home, {userName || 'there'}.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
   };
 
-  // ── Derived ──
-  const canNext = step === 0
-    || step === 1  // always can proceed from provider (auto-connects)
-    || step === 4; // alive step always has continue
-
-  // ── Background gradient for goals ──
-  // ── Render ──
-
+  // Step router
   const renderStep = () => {
     switch (step) {
-      case 0: return renderWelcome();
-      case 1: return renderProvider();
-      case 2: return renderGoals();
-      case 3: return renderTeam();
-      case 4: return renderAlive();
+      case 0: return renderNameStep();
+      case 1: return renderTeamIntroStep();
+      case 2: return renderIceBreakerStep();
+      case 3: return renderBuildStep();
       default: return null;
     }
   };
 
-  const renderWelcome = () => (
-    <div style={{ textAlign: 'center', maxWidth: 420, position: 'relative' }}>
-      {/* Floating particles */}
-      <Particles count={15} />
-
-      {/* Background agent emojis — appear as user types */}
-      {userName.length > 0 && (
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-          {BACKGROUND_EMOJIS.map((b, i) => (
-            <span
-              key={i}
-              className="animate-fade-in"
-              style={{
-                position: 'absolute',
-                left: b.left,
-                top: b.top,
-                fontSize: b.size,
-                opacity: 0.08,
-                '--stagger-delay': `${b.delay}ms`,
-                userSelect: 'none',
-              } as React.CSSProperties}
-            >
-              {b.emoji}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="animate-scale-in" style={{ marginBottom: 24 }}>
-        <img
-          src="/logo.png"
-          alt="Conflux Home"
-          style={{ width: 96, height: 96, objectFit: 'contain' }}
-        />
-      </div>
-
-      <h1
-        className="animate-fade-in"
-        style={{
-          fontSize: 32,
-          fontWeight: 700,
-          letterSpacing: '-0.5px',
-          color: 'var(--text-primary)',
-          marginBottom: 12,
-          '--stagger-delay': '200ms',
-        } as React.CSSProperties}
-      >
-        Welcome to Conflux Home
-      </h1>
-
-      <p
-        className="animate-fade-in"
-        style={{
-          fontSize: 17,
-          color: 'var(--text-secondary)',
-          marginBottom: 32,
-          lineHeight: 1.5,
-          '--stagger-delay': '350ms',
-        } as React.CSSProperties}
-      >
-        Your AI family is about to come alive.
-      </p>
-
-      <input
-        ref={nameInputRef}
-        type="text"
-        placeholder={typewriterPlaceholder || "What's your name?"}
-        value={userName}
-        onChange={e => setUserName(e.target.value)}
-        onFocus={() => setIsTyping(true)}
-        onBlur={() => setIsTyping(false)}
-        className="animate-fade-in"
-        style={{
-          width: '100%',
-          maxWidth: 280,
-          padding: '12px 16px',
-          borderRadius: 10,
-          border: '1px solid var(--border)',
-          background: 'var(--bg-primary)',
-          color: 'var(--text-primary)',
-          fontSize: 16,
-          textAlign: 'center',
-          outline: 'none',
-          marginBottom: 24,
-          boxSizing: 'border-box',
-          '--stagger-delay': '500ms',
-        } as React.CSSProperties}
-        autoFocus
-      />
-
-      <div>
-        <button
-          className="next-btn animate-breathe"
-          onClick={nextStep}
-          style={{ maxWidth: 280, margin: '0 auto', display: 'block' }}
-        >
-          Get Started
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderProvider = () => (
-    <div style={{ textAlign: 'center', maxWidth: 480, width: '100%', position: 'relative' }}>
-      {setupPhase === 'connecting' && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', minHeight: 400, gap: 24,
-        }}>
-          {/* Heartbeat SVG — drawing animation */}
-          <svg viewBox="0 0 400 80" style={{ width: '100%', maxWidth: 400, height: 80 }}>
-            <path
-              d="M0,40 L60,40 L70,40 L80,20 L90,60 L100,10 L110,70 L120,40 L130,40 L200,40 L210,40 L220,20 L230,60 L240,10 L250,70 L260,40 L270,40 L340,40 L350,40 L360,20 L370,60 L380,10 L390,70 L400,40"
-              fill="none"
-              stroke="var(--accent-primary)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                strokeDasharray: 800,
-                filter: 'drop-shadow(0 0 6px currentColor)',
-                animation: 'heartbeat-draw 2s linear infinite',
-              }}
-            />
-          </svg>
-
-          {/* "Waking up" text */}
-          <h2
-            className="animate-fade-in"
-            style={{
-              fontSize: 24, fontWeight: 700, color: 'var(--text-primary)',
-              marginBottom: 0,
-            }}
-          >
-            Your team is waking up...
-          </h2>
-
-          {/* Cycling facts */}
-          <p
-            key={factIndex}
-            className="animate-fade-in"
-            style={{
-              fontSize: 15, color: 'var(--text-secondary)', maxWidth: 340,
-              lineHeight: 1.6, minHeight: 48,
-            }}
-          >
-            {SETUP_FACTS[factIndex]}
-          </p>
-        </div>
-      )}
-
-      {setupPhase === 'alive' && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', minHeight: 400, gap: 24,
-        }}>
-          {/* Heartbeat SVG — stable pulse, green */}
-          <svg viewBox="0 0 400 80" style={{ width: '100%', maxWidth: 400, height: 80 }}>
-            <path
-              d="M0,40 L60,40 L70,40 L80,20 L90,60 L100,10 L110,70 L120,40 L130,40 L200,40 L210,40 L220,20 L230,60 L240,10 L250,70 L260,40 L270,40 L340,40 L350,40 L360,20 L370,60 L380,10 L390,70 L400,40"
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{
-                strokeDasharray: 800,
-                filter: 'drop-shadow(0 0 6px #10b981)',
-                animation: 'heartbeat-pulse 1.5s ease-in-out infinite',
-              }}
-            />
-          </svg>
-
-          {/* Alive text */}
-          <h2
-            className="animate-scale-in"
-            style={{
-              fontSize: 24, fontWeight: 700, color: '#10b981',
-              marginBottom: 0,
-            }}
-          >
-            Your team's heart is beating. ✨
-          </h2>
-
-          {/* Continue button */}
-          <button
-            className="next-btn animate-fade-in"
-            onClick={nextStep}
-            style={{
-              maxWidth: 280, width: '100%', padding: '12px 24px',
-              '--stagger-delay': '500ms',
-            } as React.CSSProperties}
-          >
-            Continue →
-          </button>
-
-          {/* Advanced setup link */}
-          <button
-            className="animate-fade-in"
-            onClick={() => setShowAdvanced(true)}
-            style={{
-              background: 'none', border: 'none',
-              color: 'var(--text-muted)', fontSize: 13,
-              cursor: 'pointer', marginTop: 8,
-              '--stagger-delay': '700ms',
-            } as React.CSSProperties}
-          >
-            ⚙️ I have my own setup
-          </button>
-        </div>
-      )}
-
-      {/* Advanced BYOK modal */}
-      {showAdvanced && (
-        <div
-          onClick={() => setShowAdvanced(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 100,
-            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-          }}
-        >
-          <div
-            className="animate-scale-in"
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border)',
-              borderRadius: 20, padding: 28, maxWidth: 420, width: '100%',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-            }}
-          >
-            {/* Close button */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                Bring Your Own Setup
-              </h3>
-              <button
-                onClick={() => setShowAdvanced(false)}
-                style={{
-                  background: 'none', border: 'none',
-                  color: 'var(--text-muted)', fontSize: 20,
-                  cursor: 'pointer', padding: 4, lineHeight: 1,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Connect your own provider to use your own API keys.
-            </p>
-
-            {/* Provider cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {BYOK_PROVIDERS.map(p => {
-                const hasKey = byokKeys[p.id]?.trim();
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '12px 14px',
-                      background: 'var(--bg-primary)',
-                      border: `1px solid ${hasKey ? '#10b981' : 'var(--border)'}`,
-                      borderRadius: 14,
-                    }}
-                  >
-                    <span style={{ fontSize: 24 }}>{p.emoji}</span>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
-                      {p.name}
-                    </span>
-                    {hasKey ? (
-                      <span style={{ fontSize: 13, color: '#10b981', fontWeight: 600 }}>✓ Connected</span>
-                    ) : (
-                      <button
-                        onClick={() => setActiveModal(p.id)}
-                        style={{
-                          background: 'none', border: '1px solid var(--border)',
-                          borderRadius: 10, padding: '8px 18px',
-                          color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500,
-                          cursor: 'pointer', transition: 'all 0.15s ease',
-                        }}
-                      >
-                        Connect
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* BYOK key input modal */}
-      {activeModal && (() => {
-        const provider = BYOK_PROVIDERS.find(p => p.id === activeModal)!;
-        return (
-          <div
-            onClick={() => setActiveModal(null)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 110,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-            }}
-          >
-            <div
-              className="animate-scale-in"
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 16, padding: 28, maxWidth: 380, width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <span style={{ fontSize: 28 }}>{provider.emoji}</span>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Connect {provider.name}
-                </h3>
-              </div>
-              <input
-                type="password"
-                placeholder={provider.placeholder}
-                value={byokKeys[provider.id] || ''}
-                onChange={e => setByokKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && handleByokConnect(provider.id)}
-                autoFocus
-                style={{
-                  width: '100%', padding: '12px 14px', borderRadius: 10,
-                  border: '1px solid var(--border)', background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)', fontSize: 14, outline: 'none',
-                  boxSizing: 'border-box', marginBottom: 16,
-                }}
-              />
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setActiveModal(null)}
-                  style={{
-                    background: 'none', border: '1px solid var(--border)',
-                    borderRadius: 8, padding: '8px 18px', color: 'var(--text-secondary)',
-                    fontSize: 13, cursor: 'pointer',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="next-btn"
-                  onClick={() => handleByokConnect(provider.id)}
-                  style={{ width: 'auto', padding: '8px 20px' }}
-                >
-                  Connect
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-    </div>
-  );
-
-  const renderGoals = () => (
-    <div style={{ textAlign: 'center', maxWidth: 520, width: '100%' }}>
-      <h2
-        className="animate-fade-in"
-        style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}
-      >
-        Let's get to know you
-      </h2>
-      <p
-        className="animate-fade-in"
-        style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20, '--stagger-delay': '100ms' } as React.CSSProperties}
-      >
-        Chat with ZigBot and he'll put together your perfect team.
-      </p>
-
-      {/* Chat messages */}
-      <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: 16,
-        maxHeight: 320,
-        overflowY: 'auto',
-        marginBottom: 16,
-        textAlign: 'left',
-      }}>
-        {chatMessages.map((msg, i) => (
-          <div
-            key={i}
-            className="animate-fade-in"
-            style={{
-              display: 'flex',
-              justifyContent: msg.role === 'zigbot' ? 'flex-start' : 'flex-end',
-              marginBottom: 12,
-            }}
-          >
-            {msg.role === 'zigbot' && (
-              <span style={{ fontSize: 20, marginRight: 8, flexShrink: 0, marginTop: 2 }}>🤖</span>
-            )}
-            <div style={{
-              maxWidth: '80%',
-              padding: '10px 14px',
-              borderRadius: 14,
-              background: msg.role === 'zigbot' ? 'var(--bg-primary)' : 'var(--accent-primary)',
-              color: msg.role === 'zigbot' ? 'var(--text-primary)' : '#fff',
-              fontSize: 14,
-              lineHeight: 1.5,
-              whiteSpace: 'pre-wrap',
-            }}>
-              {msg.text}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Input or Continue */}
-      {!conversationDone ? (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            type="text"
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleChatSend()}
-            placeholder="What do you wish you had more help with?"
-            autoFocus
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              borderRadius: 10,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-primary)',
-              color: 'var(--text-primary)',
-              fontSize: 14,
-              outline: 'none',
-            }}
-          />
-          <button
-            onClick={handleChatSend}
-            style={{
-              padding: '12px 20px',
-              borderRadius: 10,
-              border: 'none',
-              background: 'var(--accent-primary)',
-              color: '#fff',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            Send
-          </button>
-        </div>
-      ) : (
-        <div>
-          <p style={{ fontSize: 13, color: '#10b981', marginBottom: 12 }}>
-            ✓ Your team has been selected based on our chat
-          </p>
-          <button
-            className="next-btn"
-            onClick={handleConversationContinue}
-            style={{ maxWidth: 280, margin: '0 auto' }}
-          >
-            Meet Your Team →
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTeam = () => {
-    const agentIds = Array.from(selectedAgents);
-    const agentList = agentIds.map(id => ALL_AGENTS[id]).filter(Boolean);
-
-    return (
-      <div style={{ textAlign: 'center', maxWidth: 520 }}>
-        <h2
-          className="animate-fade-in"
-          style={{ fontSize: 24, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}
-        >
-          Your personalized AI team
-        </h2>
-        <p
-          className="animate-fade-in"
-          style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 28, '--stagger-delay': '100ms' } as React.CSSProperties}
-        >
-          Based on your goals, we recommend these agents. Toggle any on or off.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left', marginBottom: 20 }}>
-          {agentList.map((agent, i) => {
-            const isOn = selectedAgents.has(agent.id);
-            const isShaking = shakingAgent === agent.id;
-            const isFlashing = flashingAgent === agent.id;
-            return (
-              <div
-                key={agent.id}
-                className={`animate-slide-up ${isShaking ? 'animate-shake' : ''}`}
-                onClick={() => toggleAgent(agent.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 16px',
-                  background: 'var(--bg-card)',
-                  border: `2px solid ${isOn ? 'var(--accent-primary)' : 'var(--border)'}`,
-                  borderRadius: 14,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isOn ? 1 : 0.5,
-                  '--stagger-delay': `${i * 150}ms`,
-                } as React.CSSProperties}
-              >
-                <Avatar
-                  agentId={agent.id}
-                  name={agent.name}
-                  emoji={agent.emoji}
-                  status={isFlashing ? 'working' : isOn ? 'idle' : 'offline'}
-                  size="md"
-                  showStatus={false}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {agent.name}
-                    <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
-                      {agent.role}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
-                    {AGENT_HELLOS[agent.id] || agent.why}
-                  </div>
-                </div>
-                {/* Toggle switch with bounce */}
-                <div style={{
-                  width: 44, height: 26, borderRadius: 13,
-                  background: isOn ? 'var(--accent-primary)' : 'var(--border)',
-                  position: 'relative', flexShrink: 0,
-                  transition: 'background 0.2s ease',
-                }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: '#fff',
-                    position: 'absolute', top: 2,
-                    left: isOn ? 20 : 2,
-                    transition: 'left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          You can add more agents anytime from the Marketplace.
-        </p>
-      </div>
-    );
-  };
-
-  const renderAlive = () => {
-    const agentIds = Array.from(selectedAgents);
-    const agentList = agentIds.map(id => ALL_AGENTS[id]).filter(Boolean);
-
-    return (
-      <div style={{
-        textAlign: 'center', maxWidth: 420, position: 'relative',
-        minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      }}>
-        {/* Confetti on ready */}
-        {alivePhase === 'ready' && <Confetti count={20} />}
-
-        {alivePhase === 'loading' ? (
-          <div>
-            <h2
-              className="animate-fade-in"
-              style={{ fontSize: 24, fontWeight: 700, marginBottom: 32, color: 'var(--text-primary)' }}
-            >
-              Your team is coming alive…
-            </h2>
-
-            {/* Scan-line agent outlines */}
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16,
-              marginBottom: 32,
-            }}>
-              {agentList.map((agent, i) => (
-                <div
-                  key={agent.id}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    animation: `scan-line 0.6s ease ${i * 0.2}s both`,
-                  }}
-                >
-                  <Avatar
-                    agentId={agent.id}
-                    name={agent.name}
-                    emoji={agent.emoji}
-                    status="working"
-                    size="md"
-                  />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {agent.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Central pulsing text */}
-            <div className="animate-breathe" style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-              fontSize: 14, color: 'var(--text-muted)',
-            }}>
-              <span>Syncing neural pathways</span>
-              <span style={{ display: 'inline-block', width: 24, textAlign: 'left' }}>
-                <DotPulse />
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <h2
-              className="animate-scale-in"
-              style={{ fontSize: 28, fontWeight: 700, marginBottom: 24, color: 'var(--text-primary)' }}
-            >
-              Your team is ready!
-            </h2>
-
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginBottom: 24,
-            }}>
-              {agentList.map((agent, i) => (
-                <div
-                  key={agent.id}
-                  className="animate-fade-in"
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    '--stagger-delay': `${i * 100}ms`,
-                  } as React.CSSProperties}
-                >
-                  <Avatar
-                    agentId={agent.id}
-                    name={agent.name}
-                    emoji={agent.emoji}
-                    status="idle"
-                    size="md"
-                  />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    {agent.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p
-              className="animate-fade-in"
-              style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 28, '--stagger-delay': '200ms' } as React.CSSProperties}
-            >
-              {agentList.length} agent{agentList.length !== 1 ? 's' : ''} ready to go.
-            </p>
-
-            <button
-              className="next-btn animate-slide-up"
-              onClick={handleEnter}
-              style={{ maxWidth: 280, margin: '0 auto', display: 'block', '--stagger-delay': '400ms' } as React.CSSProperties}
-            >
-              Enter Conflux Home
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // ── DotPulse helper ──
-  function DotPulse() {
-    const [dots, setDots] = useState('');
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setDots(prev => prev.length >= 3 ? '' : prev + '.');
-      }, 400);
-      return () => clearInterval(interval);
-    }, []);
-    return <>{dots}</>;
-  }
-
-  // ── Main Render ──
-
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100vh', width: '100%',
-      background: 'var(--bg-primary)',
+      height: '100vh', width: '100%', background: 'var(--bg-primary)',
     }}>
-      {/* Progress bar */}
-      {step < 4 && (
-        <div style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          gap: 10, padding: '20px 0 0', flexShrink: 0,
-        }}>
-          {[0, 1, 2, 3].map(i => {
-            const isActive = i === step;
-            const isDone = i < step;
-            return (
-              <div
-                key={i}
-                className={isActive ? 'animate-breathe' : ''}
-                style={{
-                  width: isActive ? 32 : 10,
-                  height: 10,
-                  borderRadius: 5,
-                  background: isDone || isActive
-                    ? 'var(--accent-primary)'
-                    : 'var(--border)',
-                  opacity: isDone || isActive ? 1 : 0.4,
-                  transition: 'all 0.3s ease',
-                }}
-              />
-            );
-          })}
-        </div>
-      )}
+      {/* Progress Bar — only show during name + team intro + ice breaker */}
+      {step < 3 && <ProgressBar step={step} />}
 
-      {/* Content area */}
+      {/* Content Area */}
       <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px',
-        overflow: 'auto',
+        flex: 1, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '24px', overflow: 'auto',
       }}>
-        <div className={animating ? '' : 'step-enter'} key={step} style={{ width: '100%' }}>
+        <AnimatePresence mode="wait">
           {renderStep()}
-        </div>
+        </AnimatePresence>
       </div>
 
-      {/* Bottom navigation */}
-      {step < 4 && (
+      {/* Bottom Navigation — only for steps 0 and 1 */}
+      {step < 2 && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '12px 24px 28px', flexShrink: 0,
         }}>
           <div>
             {step > 0 && (
-              <button
-                onClick={prevStep}
-                style={{
-                  background: 'none', border: '1px solid var(--border)',
-                  borderRadius: 10, padding: '10px 20px',
-                  color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500,
-                  cursor: 'pointer', transition: 'all 0.15s ease',
-                }}
-              >
+              <button onClick={prevStep} style={{
+                background: 'none', border: '1px solid var(--border)', borderRadius: 10,
+                padding: '10px 20px', color: 'var(--text-secondary)', fontSize: 14,
+                fontWeight: 500, cursor: 'pointer',
+              }}>
                 ← Back
               </button>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {step >= 2 && (
-              <button
-                onClick={handleSkip}
-                style={{
-                  background: 'none', border: 'none',
-                  color: 'var(--text-muted)', fontSize: 13,
-                  cursor: 'pointer', textDecoration: 'underline',
-                }}
-              >
-                Skip setup
-              </button>
-            )}
-            {step === 0 && (
-              <button
-                className="next-btn"
-                onClick={nextStep}
-                disabled={!canNext}
-                style={{
-                  width: 'auto', padding: '10px 28px',
-                  opacity: canNext ? 1 : 0.5,
-                  cursor: canNext ? 'pointer' : 'not-allowed',
-                }}
-              >
-                Next →
-              </button>
-            )}
-            {step === 1 && (
-              <button
-                className="next-btn"
-                onClick={nextStep}
-                disabled={!canNext}
-                style={{
-                  width: 'auto', padding: '10px 28px',
-                  opacity: canNext ? 1 : 0.5,
-                  cursor: canNext ? 'pointer' : 'not-allowed',
-                }}
-              >
-                Continue →
-              </button>
-            )}
-            {step === 2 && (
-              <button
-                className="next-btn"
-                onClick={nextStep}
-                disabled={!canNext}
-                style={{
-                  width: 'auto', padding: '10px 28px',
-                  opacity: canNext ? 1 : 0.5,
-                  cursor: canNext ? 'pointer' : 'not-allowed',
-                }}
-              >
-                Next →
-              </button>
-            )}
-            {step === 3 && (
-              <button
-                className="next-btn"
-                onClick={nextStep}
-                disabled={selectedAgents.size < 1}
-                style={{
-                  width: 'auto', padding: '10px 28px',
-                  opacity: selectedAgents.size >= 1 ? 1 : 0.5,
-                  cursor: selectedAgents.size >= 1 ? 'pointer' : 'not-allowed',
-                }}
-              >
-                ✨ Bring to Life →
-              </button>
-            )}
-          </div>
+          {step === 0 && (
+            <button
+              className="next-btn"
+              onClick={nextStep}
+              disabled={userName.trim().length === 0}
+              style={{
+                width: 'auto', padding: '10px 28px',
+                opacity: userName.trim().length === 0 ? 0.5 : 1,
+                cursor: userName.trim().length === 0 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Get Started
+            </button>
+          )}
         </div>
       )}
     </div>

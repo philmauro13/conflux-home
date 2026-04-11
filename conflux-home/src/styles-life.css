@@ -1,0 +1,164 @@
+/* ============================================================
+   LIFE AUTOPILOT — Document Management & Proactive Intelligence
+   ============================================================ */
+
+.life-view {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 20px;
+}
+
+.life-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.life-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.life-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.life-stat {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+/* Ask Section */
+.life-ask-section {
+  background: linear-gradient(135deg, #6366f110, #8b5cf610);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.life-answer {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border-left: 3px solid var(--accent-primary);
+}
+
+.life-answer p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+/* Sections */
+.life-section {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.life-section.overdue {
+  border-color: #ef444440;
+  background: #ef444408;
+}
+
+.life-empty {
+  text-align: center;
+  padding: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Reminder Cards */
+.life-reminder-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  transition: background 0.15s;
+}
+
+.life-reminder-card:hover { background: var(--bg-hover); }
+
+.life-reminder-card.overdue { background: #ef444410; }
+
+.reminder-priority { font-size: 14px; }
+
+.reminder-info { flex: 1; }
+
+.reminder-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.reminder-due {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.reminder-due.overdue {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Document Cards */
+.life-doc-card {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  background: var(--bg-primary);
+}
+
+.life-doc-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.life-doc-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 4px 0;
+}
+
+.life-doc-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Section Header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.section-header .section-title { margin-bottom: 0; }

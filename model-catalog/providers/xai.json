@@ -1,0 +1,52 @@
+[
+  {
+    "model_id": "grok-3",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "input_price_per_1m": 3.00,
+    "output_price_per_1m": 15.00,
+    "cached_input_price_per_1m": 0.75,
+    "capabilities": ["text", "image", "functions", "structured_output"],
+    "best_use_case": "Complex reasoning, analysis, and high-quality generation tasks where cost is secondary to quality"
+  },
+  {
+    "model_id": "grok-3-mini",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.25,
+    "output_price_per_1m": 0.50,
+    "cached_input_price_per_1m": 0.075,
+    "capabilities": ["text", "image", "functions", "structured_output", "reasoning"],
+    "best_use_case": "Cost-effective reasoning tasks, quick Q&A, and high-throughput applications"
+  },
+  {
+    "model_id": "grok-4.1-fast",
+    "context_window": 2000000,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.20,
+    "output_price_per_1m": 0.50,
+    "cached_input_price_per_1m": 0.05,
+    "capabilities": ["text", "image", "functions", "structured_output", "reasoning"],
+    "best_use_case": "Fast, cheap inference with massive 2M context; great for long-doc analysis and high-volume workloads"
+  },
+  {
+    "model_id": "grok-4.20",
+    "context_window": 2000000,
+    "max_output_tokens": null,
+    "input_price_per_1m": 2.00,
+    "output_price_per_1m": 6.00,
+    "cached_input_price_per_1m": 0.20,
+    "capabilities": ["text", "image", "functions", "structured_output", "reasoning", "agentic_tool_calling"],
+    "best_use_case": "Latest flagship model — lowest hallucination rate, strict prompt adherence, complex agentic workflows"
+  },
+  {
+    "model_id": "grok-code-fast-1",
+    "context_window": 256000,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.20,
+    "output_price_per_1m": 1.50,
+    "cached_input_price_per_1m": 0.02,
+    "capabilities": ["text", "functions", "structured_output", "coding"],
+    "best_use_case": "Optimized for code generation and coding tasks at low cost"
+  }
+]

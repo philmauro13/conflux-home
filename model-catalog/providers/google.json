@@ -1,0 +1,337 @@
+[
+  {
+    "id": "gemini-2.5-pro",
+    "provider": "google",
+    "displayName": "Gemini 2.5 Pro",
+    "contextWindow": 1048576,
+    "maxOutputTokens": 65536,
+    "pricing": {
+      "input": {
+        "perMillion": 1.25,
+        "note": "Prompts ≤200K tokens"
+      },
+      "inputOver200K": {
+        "perMillion": 2.50,
+        "note": "Prompts >200K tokens"
+      },
+      "output": {
+        "perMillion": 10.00,
+        "note": "Prompts ≤200K tokens"
+      },
+      "outputOver200K": {
+        "perMillion": 15.00,
+        "note": "Prompts >200K tokens"
+      },
+      "cachedInput": {
+        "perMillion": 0.125,
+        "note": "Prompts ≤200K tokens"
+      },
+      "cachedInputOver200K": {
+        "perMillion": 0.25,
+        "note": "Prompts >200K tokens"
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-generation",
+      "code-generation",
+      "reasoning",
+      "multimodal-vision",
+      "audio-understanding",
+      "video-understanding",
+      "function-calling",
+      "context-caching",
+      "grounding-with-search",
+      "thinking-mode",
+      "structured-output"
+    ],
+    "modalities": {
+      "input": ["text", "image", "audio", "video", "pdf"],
+      "output": ["text"]
+    },
+    "status": "GA",
+    "deprecationDate": null,
+    "bestUseCase": "Complex reasoning, deep code analysis, architectural reviews, long-context research tasks. Use when quality matters more than cost.",
+    "notes": "Default maxOutputTokens is 8192; must explicitly set to 65536. Context-window-tiered pricing kicks in at 200K tokens. Google's most capable general reasoning model in the 2.x line."
+  },
+  {
+    "id": "gemini-2.5-flash",
+    "provider": "google",
+    "displayName": "Gemini 2.5 Flash",
+    "contextWindow": 1048576,
+    "maxOutputTokens": 65536,
+    "pricing": {
+      "input": {
+        "perMillion": 0.30,
+        "note": "Text, image, video input"
+      },
+      "inputAudio": {
+        "perMillion": 1.00,
+        "note": "Audio input"
+      },
+      "output": {
+        "perMillion": 2.50
+      },
+      "cachedInput": {
+        "perMillion": 0.03,
+        "note": "Text, image, video"
+      },
+      "cachedInputAudio": {
+        "perMillion": 0.10,
+        "note": "Audio"
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-generation",
+      "code-generation",
+      "reasoning",
+      "multimodal-vision",
+      "audio-understanding",
+      "video-understanding",
+      "function-calling",
+      "context-caching",
+      "grounding-with-search",
+      "thinking-mode",
+      "structured-output"
+    ],
+    "modalities": {
+      "input": ["text", "image", "audio", "video", "pdf"],
+      "output": ["text"]
+    },
+    "status": "GA",
+    "deprecationDate": null,
+    "bestUseCase": "High-volume processing with good reasoning quality. Sweet spot between cost and capability. Great for agentic coding, document analysis, and batch workloads.",
+    "notes": "Best value-for-quality ratio in the 2.x lineup. 85% cheaper than Pro for most tasks. Default maxOutputTokens is 8192; must explicitly set higher."
+  },
+  {
+    "id": "gemini-2.5-flash-lite",
+    "provider": "google",
+    "displayName": "Gemini 2.5 Flash-Lite",
+    "contextWindow": 1048576,
+    "maxOutputTokens": 65536,
+    "pricing": {
+      "input": {
+        "perMillion": 0.10,
+        "note": "Text, image, video input"
+      },
+      "inputAudio": {
+        "perMillion": 0.30,
+        "note": "Audio input"
+      },
+      "output": {
+        "perMillion": 0.40
+      },
+      "cachedInput": {
+        "perMillion": 0.01,
+        "note": "Text, image, video"
+      },
+      "cachedInputAudio": {
+        "perMillion": 0.03,
+        "note": "Audio"
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-generation",
+      "code-generation",
+      "multimodal-vision",
+      "audio-understanding",
+      "video-understanding",
+      "function-calling",
+      "context-caching",
+      "structured-output"
+    ],
+    "modalities": {
+      "input": ["text", "image", "audio", "video", "pdf"],
+      "output": ["text"]
+    },
+    "status": "GA",
+    "deprecationDate": null,
+    "bestUseCase": "Ultra-low-cost tasks: classification, tagging, extraction, simple Q&A, high-throughput batch processing. Optimized for speed and cost over reasoning depth.",
+    "notes": "Cheapest Gemini 2.x model. Free tier available. Not recommended for complex reasoning tasks."
+  },
+  {
+    "id": "gemini-2.0-flash",
+    "provider": "google",
+    "displayName": "Gemini 2.0 Flash",
+    "contextWindow": 1048576,
+    "maxOutputTokens": 8192,
+    "pricing": {
+      "input": {
+        "perMillion": 0.10,
+        "note": "Text, image, video input"
+      },
+      "inputAudio": {
+        "perMillion": 0.70,
+        "note": "Audio input"
+      },
+      "output": {
+        "perMillion": 0.40
+      },
+      "cachedInput": {
+        "perMillion": 0.025,
+        "note": "Text, image, video"
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-generation",
+      "code-generation",
+      "multimodal-vision",
+      "audio-understanding",
+      "video-understanding",
+      "function-calling",
+      "context-caching",
+      "structured-output"
+    ],
+    "modalities": {
+      "input": ["text", "image", "audio", "video", "pdf"],
+      "output": ["text"]
+    },
+    "status": "deprecated",
+    "deprecationDate": "2026-06-01",
+    "bestUseCase": "Legacy workloads. Migrate to gemini-2.5-flash-lite or gemini-3-flash-preview.",
+    "notes": "DEPRECATED — shutting down June 1, 2026. Use gemini-2.5-flash-lite for comparable pricing. Free tier available with 60 RPM / 1000 RPD."
+  },
+  {
+    "id": "gemini-2.0-flash-lite",
+    "provider": "google",
+    "displayName": "Gemini 2.0 Flash-Lite",
+    "contextWindow": 1048576,
+    "maxOutputTokens": 8192,
+    "pricing": {
+      "input": {
+        "perMillion": 0.075
+      },
+      "output": {
+        "perMillion": 0.30
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-generation",
+      "multimodal-vision",
+      "function-calling",
+      "structured-output"
+    ],
+    "modalities": {
+      "input": ["text", "image"],
+      "output": ["text"]
+    },
+    "status": "deprecated",
+    "deprecationDate": "2026-06-01",
+    "bestUseCase": "Cheapest possible Gemini model. Migrate to gemini-2.5-flash-lite.",
+    "notes": "DEPRECATED — shutting down June 1, 2026. Absolute cheapest Gemini at $0.075/$0.30. No audio/video input support."
+  },
+  {
+    "id": "gemini-embedding-exp",
+    "provider": "google",
+    "displayName": "Gemini Embedding (001)",
+    "contextWindow": 2048,
+    "maxOutputTokens": null,
+    "pricing": {
+      "input": {
+        "perMillion": 0.15
+      },
+      "batchInput": {
+        "perMillion": 0.075,
+        "note": "Batch processing discount"
+      },
+      "output": {
+        "perMillion": null,
+        "note": "Embedding model — no text output"
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-embedding"
+    ],
+    "modalities": {
+      "input": ["text"],
+      "output": ["embedding"]
+    },
+    "status": "GA",
+    "deprecationDate": null,
+    "bestUseCase": "Text embeddings for RAG, semantic search, and clustering. Older model being superseded by Gemini Embedding 2.",
+    "notes": "768-dimensional embeddings. Single modality (text only). Being replaced by Gemini Embedding 2 Preview."
+  },
+  {
+    "id": "gemini-embedding-exp-03-07",
+    "provider": "google",
+    "displayName": "Gemini Embedding 2 Preview",
+    "contextWindow": 8192,
+    "maxOutputTokens": null,
+    "pricing": {
+      "input": {
+        "perMillion": 0.20,
+        "note": "Text input"
+      },
+      "inputImage": {
+        "perMillion": 0.45,
+        "note": "Image input"
+      },
+      "inputAudio": {
+        "perMillion": 6.50,
+        "note": "Audio input"
+      },
+      "output": {
+        "perMillion": null,
+        "note": "Embedding model — no text output"
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-embedding",
+      "image-embedding",
+      "audio-embedding",
+      "multimodal-embedding"
+    ],
+    "modalities": {
+      "input": ["text", "image", "audio", "video", "document"],
+      "output": ["embedding"]
+    },
+    "status": "preview",
+    "deprecationDate": null,
+    "bestUseCase": "Multimodal semantic search, cross-modal RAG, unified embedding across text/image/audio/video.",
+    "notes": "Google's first natively multimodal embedding model. Maps text, images, audio, video, and documents into a single embedding space. 3072-dimensional embeddings."
+  },
+  {
+    "id": "gemini-2.0-flash-exp-image-generation",
+    "provider": "google",
+    "displayName": "Gemini 2.0 Flash (Image Generation)",
+    "contextWindow": 32768,
+    "maxOutputTokens": 8192,
+    "pricing": {
+      "input": {
+        "perMillion": 0.10
+      },
+      "output": {
+        "perMillion": 0.40
+      },
+      "currency": "USD",
+      "billingUnit": "per 1M tokens"
+    },
+    "capabilities": [
+      "text-generation",
+      "image-generation",
+      "image-editing",
+      "multimodal-vision"
+    ],
+    "modalities": {
+      "input": ["text", "image"],
+      "output": ["text", "image"]
+    },
+    "status": "experimental",
+    "deprecationDate": null,
+    "bestUseCase": "Native image generation and editing within conversations. Inline image creation without external tools.",
+    "notes": "Experimental native image generation. Same pricing as base 2.0 Flash. Output images consume additional tokens."
+  }
+]

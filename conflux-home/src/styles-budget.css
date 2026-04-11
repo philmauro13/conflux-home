@@ -1,0 +1,327 @@
+/* ============================================================
+   BUDGET VIEW — Monthly Budget Tracker
+   ============================================================ */
+
+.budget-view {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 20px;
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.budget-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.budget-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.budget-nav-btn:hover { border-color: var(--accent-primary); }
+
+.budget-month {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Summary Cards */
+.budget-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.budget-card {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.budget-card.income { border-left: 3px solid #10b981; }
+.budget-card.expenses { border-left: 3px solid #ef4444; }
+.budget-card.savings { border-left: 3px solid #3b82f6; }
+.budget-card.net.positive { border-left: 3px solid #10b981; background: #10b98108; }
+.budget-card.net.negative { border-left: 3px solid #ef4444; background: #ef444408; }
+
+.budget-card-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.budget-card-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.budget-card-pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Progress Bar */
+.budget-progress {
+  margin: -8px 0;
+}
+
+.budget-progress-bar {
+  height: 10px;
+  background: var(--bg-primary);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+}
+
+.budget-progress-expenses {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #f97316);
+  border-radius: 5px 0 0 5px;
+  transition: width 0.5s ease;
+}
+
+.budget-progress-savings {
+  height: 100%;
+  background: #3b82f6;
+  position: absolute;
+  top: 0;
+  transition: all 0.5s ease;
+}
+
+.budget-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Add Form */
+.budget-form {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.budget-form-type {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+}
+
+.type-btn.active {
+  border-color: var(--accent-primary);
+  background: #6366f110;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.budget-form-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.budget-form-input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.budget-form-input:focus { border-color: var(--accent-primary); }
+
+.budget-form-input.amount { width: 120px; }
+.budget-form-input.full { width: 100%; box-sizing: border-box; }
+
+.budget-form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.budget-recurring {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* Category Breakdown */
+.budget-categories {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.cat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cat-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cat-bar-label {
+  width: 130px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.cat-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cat-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.cat-bar-amount {
+  width: 70px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cat-bar-pct {
+  width: 35px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Entries List */
+.budget-entries {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.entry-row:hover { background: var(--bg-hover); }
+
+.entry-type-icon { font-size: 20px; }
+
+.entry-info { flex: 1; }
+
+.entry-desc {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.entry-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.entry-amount {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.entry-amount.income { color: #10b981; }
+.entry-amount.expense { color: #ef4444; }
+.entry-amount.savings { color: #3b82f6; }
+
+.entry-delete {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.entry-row:hover .entry-delete { opacity: 1; }
+.entry-delete:hover { background: #ef444420; color: #ef4444; }
+
+.budget-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+@media (max-width: 600px) {
+  .budget-summary { grid-template-columns: repeat(2, 1fr); }
+}

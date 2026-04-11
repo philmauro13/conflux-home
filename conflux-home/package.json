@@ -1,6 +1,6 @@
 {
   "name": "conflux-home",
-  "version": "0.1.0",
+  "version": "0.1.66",
   "description": "Conflux Home — A home for your AI family",
   "type": "module",
   "scripts": {
@@ -12,19 +12,29 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@supabase/supabase-js": "^2.103.0",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/plugin-deep-link": "^2.4.7",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-notification": "^2.3.3",
-    "marked": "^15.0.12",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-updater": "^2.10.0",
+    "framer-motion": "^12.38.0",
+    "marked": "^18.0.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.1",
-    "typescript": "^5.8.3",
+    "typescript": "^6.0.2",
     "vite": "^6.3.5",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.4"
   }
 }

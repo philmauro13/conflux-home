@@ -1,0 +1,195 @@
+{
+  "meta": {
+    "baseUrl": "https://www.theconflux.com",
+    "testDate": "2026-03-29T23:22:00Z",
+    "totalPagesTested": 17,
+    "allPagesReturn200": true,
+    "summary": "All 17 pages return HTTP 200. Main pages (homepage, signup, home landing) render rich server-side content. Dashboard is client-rendered (expected). Several docs subpages render sidebar only with no main content in SSR — content loads client-side via JS. Stripe test-mode payment links found on homepage."
+  },
+  "pages": [
+    {
+      "url": "https://www.theconflux.com/",
+      "status": 200,
+      "sizeBytes": 40714,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "test-mode-payment",
+          "detail": "Stripe payment links use test mode URLs (buy.stripe.com/test/...). Three service tier CTAs (Audit $500, Build $5K-$15K, Retainer $2K-$5K/mo) all link to test Stripe checkout pages."
+        }
+      ],
+      "notes": "Homepage renders fully server-side. Contains: nav bar with 7 links (Dashboard, How It Works, Portfolio, Services, About, Contact, Conflux Home), hero section with loading placeholder (client-rendered animation), live dashboard stats (all showing 0), How It Works (4 agents: Helix/Forge/Quanta/Pulse), Portfolio (8 items), Services (3 tiers with pricing), About section, Contact form (name/email/service tier/message fields), social links (GitHub/Twitter/LinkedIn/Email), footer. OG/Twitter meta tags present. Title: 'The Conflux — AI Venture Studio'."
+    },
+    {
+      "url": "https://www.theconflux.com/signup",
+      "status": 200,
+      "sizeBytes": 17823,
+      "issues": [],
+      "notes": "Signup page renders with form fields (email, password), Google OAuth button, and Sign Up text. Page is functional from SSR perspective."
+    },
+    {
+      "url": "https://www.theconflux.com/dashboard",
+      "status": 200,
+      "sizeBytes": 13199,
+      "issues": [
+        {
+          "severity": "info",
+          "type": "client-rendered",
+          "detail": "Dashboard renders only a loading spinner server-side (animate-spin class). All content (Overview, Usage, API Keys, Billing tabs) loads client-side via JavaScript. This is expected behavior — requires authentication to display content."
+        }
+      ],
+      "notes": "SSR output is a centered loading spinner. Tab content (Overview, Usage, API Keys, Billing) renders client-side after auth. No broken elements detected in SSR shell."
+    },
+    {
+      "url": "https://www.theconflux.com/docs",
+      "status": 200,
+      "sizeBytes": 23579,
+      "issues": [],
+      "notes": "Docs page renders with full sidebar navigation containing links to all 13 subpages: Quickstart, Authentication, Chat Completions, Models, Credits, Usage, API Keys, Model Catalog, Pricing, Changelog, SDKs, FAQ. Sidebar and content both render."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/quickstart",
+      "status": 200,
+      "sizeBytes": 28071,
+      "issues": [],
+      "notes": "Quickstart page renders with rich content. Contains instructions for getting first API call running, 500 free credits mention, dashboard API key generation steps."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/api/chat",
+      "status": 200,
+      "sizeBytes": 30339,
+      "issues": [],
+      "notes": "Chat Completions API docs page renders with substantial content. 14 content matches found."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/api/credits",
+      "status": 200,
+      "sizeBytes": 18815,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "minimal-ssr-content",
+          "detail": "Page renders sidebar navigation only. Main content area appears empty in SSR — content likely loads client-side via JavaScript. No article/section content visible in static HTML."
+        }
+      ],
+      "notes": "SSR output contains only the docs sidebar (17 nav links). No main content area text visible. Likely uses client-side component to fetch/render credits documentation."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/api/keys",
+      "status": 200,
+      "sizeBytes": 26956,
+      "issues": [],
+      "notes": "API Keys docs page renders with content. 9 content matches found."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/api/models",
+      "status": 200,
+      "sizeBytes": 21942,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "minimal-ssr-content",
+          "detail": "Page renders sidebar navigation only. Main content area appears empty in SSR — content likely loads client-side via JavaScript."
+        }
+      ],
+      "notes": "SSR output contains only the docs sidebar. No main content visible in static HTML."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/api/usage",
+      "status": 200,
+      "sizeBytes": 20429,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "minimal-ssr-content",
+          "detail": "Page renders sidebar navigation only. Main content area appears empty in SSR — content likely loads client-side via JavaScript."
+        }
+      ],
+      "notes": "SSR output contains only the docs sidebar. No main content visible in static HTML."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/auth",
+      "status": 200,
+      "sizeBytes": 23945,
+      "issues": [],
+      "notes": "Authentication docs page renders with content. 8 content matches found."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/models",
+      "status": 200,
+      "sizeBytes": 28816,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "minimal-ssr-content",
+          "detail": "Page renders sidebar navigation only. Main content area appears empty in SSR — content likely loads client-side via JavaScript."
+        }
+      ],
+      "notes": "SSR output contains only the docs sidebar. No main content visible in static HTML."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/pricing",
+      "status": 200,
+      "sizeBytes": 27282,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "minimal-ssr-content",
+          "detail": "Page renders sidebar navigation only. Main content area appears empty in SSR — content likely loads client-side via JavaScript."
+        }
+      ],
+      "notes": "SSR output contains only the docs sidebar. No main content visible in static HTML."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/sdks",
+      "status": 200,
+      "sizeBytes": 22808,
+      "issues": [],
+      "notes": "SDKs docs page renders with content. 6 content matches found."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/changelog",
+      "status": 200,
+      "sizeBytes": 33507,
+      "issues": [
+        {
+          "severity": "warning",
+          "type": "minimal-ssr-content",
+          "detail": "Page renders sidebar navigation only. Main content area appears empty in SSR — content likely loads client-side via JavaScript."
+        }
+      ],
+      "notes": "SSR output contains only the docs sidebar. No main content visible in static HTML."
+    },
+    {
+      "url": "https://www.theconflux.com/docs/faq",
+      "status": 200,
+      "sizeBytes": 66741,
+      "issues": [],
+      "notes": "FAQ page renders with rich content (66KB). Contains multiple Q&A pairs including: 'What is Conflux Router?' (unified AI gateway, 16 models, 5 providers), 'How do I get started?' (500 free credits, no credit card), 'What API format?' (OpenAI-compatible). Page has 'Back to theconflux.com' link."
+    },
+    {
+      "url": "https://www.theconflux.com/home",
+      "status": 200,
+      "sizeBytes": 37305,
+      "issues": [],
+      "notes": "Home landing page renders fully server-side. Contains: version badge (v0.1.13), hero ('Your AI Family Lives Here'), platform selector (Linux/Windows/Android/Mac/iOS Soon), download button (.deb, 71 MB), features grid (6 cards: Agent Desktop, Real Conversations, Agent Marketplace, 2-Minute Setup, Persistent Memory, 100% Private), AI team roster (6 agents: Conflux/Prism/Helix/Forge/Pulse/Vector + 12 more), interactive previews (Dashboard/Chat/Marketplace/Settings), pricing tiers (Free $0, Pro $14.99/mo, Team $49.99/mo), stats section (18 agents, 2 min setup, 0 data collected, 71 MB), CTA section. OG/Twitter meta present. Schema.org SoftwareApplication markup with download URL. Title: 'Conflux Home — Your AI Family Lives Here'."
+    }
+  ],
+  "issuesSummary": {
+    "critical": 0,
+    "warnings": 7,
+    "info": 1,
+    "details": {
+      "testModeStripePayments": 1,
+      "clientRenderedDashboard": 1,
+      "minimalSSRDocsPages": 6
+    }
+  },
+  "recommendations": [
+    "Replace Stripe test-mode payment links with live payment links before launch (Homepage: Audit, Build, Retainer CTAs)",
+    "6 docs subpages render empty main content in SSR (/docs/api/credits, /docs/api/models, /docs/api/usage, /docs/models, /docs/pricing, /docs/changelog). Verify these load correctly in a real browser with JavaScript enabled. If SEO matters, consider SSR/SSG for these pages.",
+    "Dashboard (/dashboard) is fully client-rendered by design — this is acceptable but means the page shows only a spinner without JavaScript or authentication.",
+    "Homepage hero section shows 'Loading...' placeholder in SSR — relies on client-side JS for animation. Minor SEO concern.",
+    "All dashboard stats on homepage show 0 (Products Launched, AI Agents Active, Ad Spend, Autonomous Pipeline). Consider populating with real data or hiding until data exists."
+  ]
+}

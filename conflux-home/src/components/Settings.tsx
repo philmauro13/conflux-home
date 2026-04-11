@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-shell';
 import { AGENT_PROFILES, AGENT_PROFILE_MAP } from '../data/agent-descriptions';
 import Avatar from './Avatar';
 import ProviderSettings from './settings/ProviderSettings';
-import AgentEditor from './settings/AgentEditor';
 import GoogleSettings from './settings/GoogleSettings';
 import NotificationSettings from './settings/NotificationSettings';
 import EmailSettings from './settings/EmailSettings';
@@ -11,6 +11,12 @@ import CronManager from './settings/CronManager';
 import TaskView from './settings/TaskView';
 import WebhookManager from './settings/WebhookManager';
 import SkillsBrowser from './settings/SkillsBrowser';
+import BillingSection from './settings/BillingSection';
+import UsageSection from './settings/UsageSection';
+import SoundSection from './settings/SoundSection';
+import { useAuth } from '../hooks/useAuth';
+import { playToggleOn, playToggleOff } from '../lib/sound';
+import { useTourState } from '../hooks/useTourState';
 
 // ── Constants ──
 
@@ -23,8 +29,6 @@ const ACCENT_COLORS = [
   { name: 'Cyan', value: 'cyan', hex: '#00b4d8' },
 ];
 
-const WALLPAPER_LIGHT = '/wallpapers/desktop-wallpaper.png';
-const WALLPAPER_DARK = '/wallpapers/wallpaper-dark.png';
 
 // ── Toggle Switch Component ──
 
@@ -38,7 +42,7 @@ function ToggleSwitch({
   return (
     <button
       className={`toggle-switch ${checked ? 'on' : ''}`}
-      onClick={() => onChange(!checked)}
+      onClick={() => { checked ? playToggleOff() : playToggleOn(); onChange(!checked); }}
       aria-label={checked ? 'Disable' : 'Enable'}
       type="button"
     >
@@ -109,32 +113,9 @@ function EngineSection() {
 // ── Section 2: Appearance ──
 
 function AppearanceSection() {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem('conflux-theme') || 'light'
-  );
   const [accent, setAccent] = useState(
     () => localStorage.getItem('conflux-accent') || 'blue'
   );
-  const [wallpaper, setWallpaper] = useState(
-    () => localStorage.getItem('conflux-wallpaper') || WALLPAPER_LIGHT
-  );
-
-  const handleThemeChange = (t: string) => {
-    setTheme(t);
-    localStorage.setItem('conflux-theme', t);
-    window.dispatchEvent(new CustomEvent('conflux:theme-change', { detail: t }));
-
-    // Apply immediately
-    if (t === 'dark') {
-      document.body.classList.add('dark');
-    } else if (t === 'light') {
-      document.body.classList.remove('dark');
-    } else {
-      // System
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.body.classList.toggle('dark', prefersDark);
-    }
-  };
 
   const handleAccentChange = (value: string) => {
     setAccent(value);
@@ -143,35 +124,9 @@ function AppearanceSection() {
     window.dispatchEvent(new CustomEvent('conflux:accent-change', { detail: value }));
   };
 
-  const handleWallpaperChange = (url: string) => {
-    setWallpaper(url);
-    localStorage.setItem('conflux-wallpaper', url);
-    window.dispatchEvent(new CustomEvent('conflux:wallpaper-change', { detail: url }));
-  };
-
   return (
     <div className="settings-section">
       <div className="settings-section-title">🎨 Appearance</div>
-
-      {/* Theme */}
-      <div className="settings-row">
-        <span className="settings-label">Theme</span>
-        <div className="segmented-control">
-          {[
-            { key: 'light', label: 'Light ☀️' },
-            { key: 'dark', label: 'Dark 🌙' },
-            { key: 'system', label: 'System 💻' },
-          ].map((opt) => (
-            <button
-              key={opt.key}
-              className={`segment-btn ${theme === opt.key ? 'active' : ''}`}
-              onClick={() => handleThemeChange(opt.key)}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Accent Color */}
       <div className="settings-row">
@@ -189,99 +144,6 @@ function AppearanceSection() {
           ))}
         </div>
       </div>
-
-      {/* Wallpaper */}
-      <div className="settings-row" style={{ alignItems: 'flex-start' }}>
-        <span className="settings-label">Wallpaper</span>
-        <div className="wallpaper-row">
-          <button
-            className={`wallpaper-thumb ${wallpaper === WALLPAPER_LIGHT ? 'selected' : ''}`}
-            onClick={() => handleWallpaperChange(WALLPAPER_LIGHT)}
-          >
-            <img src={WALLPAPER_LIGHT} alt="Light wallpaper" />
-            <span>Light</span>
-          </button>
-          <button
-            className={`wallpaper-thumb ${wallpaper === WALLPAPER_DARK ? 'selected' : ''}`}
-            onClick={() => handleWallpaperChange(WALLPAPER_DARK)}
-          >
-            <img src={WALLPAPER_DARK} alt="Dark wallpaper" />
-            <span>Dark</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Section 3: Agents ──
-
-function AgentsSection() {
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem('conflux-selected-agents');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const toggleAgent = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      localStorage.setItem('conflux-selected-agents', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const navigateToMarketplace = () => {
-    window.dispatchEvent(new CustomEvent('conflux:navigate', { detail: 'marketplace' }));
-  };
-
-  const resetAll = () => {
-    if (!window.confirm('Reset all agents? This will clear your selections and reload.')) return;
-    localStorage.removeItem('conflux-selected-agents');
-    window.location.reload();
-  };
-
-  // Only show work agents (not coming-soon)
-  const workAgents = AGENT_PROFILES.filter((a) => !a.comingSoon);
-
-  return (
-    <div className="settings-section">
-      <div className="settings-section-title">🤖 Agents</div>
-
-      <div className="settings-agent-list">
-        {workAgents.map((profile) => {
-          const enabled = selectedIds.includes(profile.id);
-          return (
-            <div key={profile.id} className="settings-agent-row">
-              <Avatar
-                agentId={profile.id}
-                name={profile.name}
-                emoji={profile.emoji}
-                status={enabled ? 'idle' : 'offline'}
-                size="sm"
-                showStatus={false}
-              />
-              <div className="settings-agent-info">
-                <span className="settings-agent-name">{profile.name}</span>
-                <span className="settings-agent-role">{profile.role}</span>
-              </div>
-              <ToggleSwitch checked={enabled} onChange={() => toggleAgent(profile.id)} />
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="settings-actions" style={{ marginTop: 12 }}>
-        <button className="settings-button" onClick={navigateToMarketplace}>
-          🛒 Manage in Marketplace
-        </button>
-        <button className="settings-button danger" onClick={resetAll}>
-          ↺ Reset All Agents
-        </button>
-      </div>
     </div>
   );
 }
@@ -290,6 +152,12 @@ function AgentsSection() {
 
 function DataSection() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const { resetTour } = useTourState();
+
+  const handleReplayTour = () => {
+    resetTour();
+    window.location.reload();
+  };
 
   const exportData = () => {
     const data: Record<string, string> = {};
@@ -332,6 +200,9 @@ function DataSection() {
         <button className="settings-button" onClick={exportData}>
           📦 Export Data
         </button>
+        <button className="settings-button" onClick={handleReplayTour}>
+          🔄 Replay Tour
+        </button>
         <button className="settings-button danger" onClick={clearAll}>
           🗑️ Clear All Data
         </button>
@@ -362,9 +233,31 @@ function DataSection() {
   );
 }
 
-// ── Section 5: About ──
+// ── Section 5: About & Support ──
 
 function AboutSection() {
+  const [logPath, setLogPath] = useState<string>('');
+  const [systemInfo, setSystemInfo] = useState<{ os: string; arch: string; app_version: string } | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string>('');
+
+  useEffect(() => {
+    // Fetch log path and system info from Tauri
+    invoke<string>('get_log_path').then(setLogPath).catch(() => {});
+    invoke<any>('get_system_info').then(setSystemInfo).catch(() => {});
+  }, []);
+
+  const handleCopyLogPath = async () => {
+    if (!logPath) return;
+    try {
+      await navigator.clipboard.writeText(logPath);
+      setCopyStatus('Copied!');
+      setTimeout(() => setCopyStatus(''), 2000);
+    } catch {
+      setCopyStatus('Failed to copy');
+      setTimeout(() => setCopyStatus(''), 2000);
+    }
+  };
+
   return (
     <div className="settings-section">
       <div className="settings-section-title">ℹ️ About</div>
@@ -372,18 +265,123 @@ function AboutSection() {
       <div className="settings-about">
         <div className="settings-about-logo">⚡</div>
         <h2 className="settings-about-name">Conflux Home</h2>
-        <p className="settings-about-version">v0.1.0-alpha</p>
+        <p className="settings-about-version">v{systemInfo?.app_version ?? '0.1.0'}-alpha</p>
         <p className="settings-about-built">Built with: Tauri + React + Embedded Engine</p>
+        {systemInfo && (
+          <p className="settings-about-built" style={{ opacity: 0.6 }}>
+            {systemInfo.os} · {systemInfo.arch}
+          </p>
+        )}
         <p className="settings-about-tagline">A home for your AI family</p>
 
         <div className="settings-about-links">
-          <a href="#" className="settings-link" onClick={(e) => e.preventDefault()}>
+          <a href="#" className="settings-link" onClick={(e) => { e.preventDefault(); open('https://theconflux.com'); }}>
             🌐 The Conflux
           </a>
-          <a href="#" className="settings-link" onClick={(e) => e.preventDefault()}>
+          <a href="#" className="settings-link" onClick={(e) => { e.preventDefault(); open('https://github.com/TheConflux-Core/conflux-home'); }}>
             💻 GitHub
           </a>
         </div>
+      </div>
+
+      {/* Feedback & Support */}
+      <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          className="settings-button"
+          onClick={() => {
+            open('https://github.com/TheConflux-Core/conflux-home/issues/new?template=bug_report.yml&labels=bug&title=%5BBug%5D%20');
+          }}
+        >
+          🐛 Report a Bug
+        </button>
+        <button
+          className="settings-button"
+          onClick={() => {
+            open('https://github.com/TheConflux-Core/conflux-home/issues/new?template=feature_request.yml');
+          }}
+        >
+          💡 Request a Feature
+        </button>
+      </div>
+
+      {/* Log Location */}
+      {logPath && (
+        <div style={{ marginTop: 12, opacity: 0.8, fontSize: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>📋 Gateway Log:</span>
+            <code style={{ background: 'var(--bg-surface)', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>
+              {logPath}
+            </code>
+            <button
+              className="settings-button"
+              onClick={handleCopyLogPath}
+              style={{ fontSize: 12, padding: '2px 8px' }}
+            >
+              {copyStatus || 'Copy'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <span>📋 Updater Log:</span>
+            <code style={{ background: 'var(--bg-surface)', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>
+              {logPath.replace('gateway.log', 'updater.log')}
+            </code>
+            <button
+              className="settings-button"
+              onClick={() => {
+                navigator.clipboard.writeText(logPath.replace('gateway.log', 'updater.log'));
+                setCopyStatus('Copied!');
+                setTimeout(() => setCopyStatus(''), 2000);
+              }}
+              style={{ fontSize: 12, padding: '2px 8px' }}
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section: Account Info ──
+
+function AccountSection() {
+  const { user, signOut } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="settings-section">
+      <div className="settings-section-title">👤 Account</div>
+
+      <div className="settings-row">
+        <span className="settings-label">Email</span>
+        <span className="settings-value" style={{ fontFamily: 'monospace', fontSize: 13 }}>{user.email}</span>
+      </div>
+
+      <div className="settings-row">
+        <span className="settings-label">Account ID</span>
+        <span className="settings-value" style={{ fontFamily: 'monospace', fontSize: 11, opacity: 0.7, userSelect: 'all', cursor: 'text' }} title="Click to select">
+          {user.id}
+        </span>
+      </div>
+
+      <div className="settings-row">
+        <button
+          onClick={signOut}
+          style={{
+            background: '#e74c3c',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            padding: '8px 20px',
+            cursor: 'pointer',
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          Sign Out
+        </button>
       </div>
     </div>
   );
@@ -403,14 +401,29 @@ export default function Settings() {
 
   return (
     <div className="settings-page">
+      <AccountSection />
+      <AboutSection />
       <EngineSection />
       <ProviderSettings />
       <GoogleSettings />
       <AppearanceSection />
+      <SoundSection />
+      <BillingSection />
+      <UsageSection />
       <NotificationSettings />
       <EmailSettings />
-      <AgentsSection />
-      <AgentEditor />
+      <div className="settings-section">
+        <div className="settings-section-title">🤖 Agents</div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          Manage your AI agents in the dedicated Agents app.
+        </p>
+        <button
+          className="settings-button"
+          onClick={() => window.dispatchEvent(new CustomEvent('conflux:navigate', { detail: { viewId: 'agents' } }))}
+        >
+          🧩 Open Agents App
+        </button>
+      </div>
       <div className="settings-section">
         <div className="settings-section-title">🔧 Engine</div>
       </div>
@@ -419,7 +432,6 @@ export default function Settings() {
       <WebhookManager />
       <SkillsBrowser />
       <DataSection />
-      <AboutSection />
     </div>
   );
 }

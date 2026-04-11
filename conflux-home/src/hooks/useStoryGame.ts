@@ -5,15 +5,24 @@ import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { StoryGame, StoryChapter, StorySeed, CreateStoryGameRequest } from '../types';
 
+// Check if Tauri runtime is available
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
 export function useStoryGames(memberId?: string) {
   const [games, setGames] = useState<StoryGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!isTauri()) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const data = await invoke<StoryGame[]>('story_games_list', { memberId: memberId ?? null });
+      const data = await invoke<StoryGame[]>('story_games_list', { member_id: memberId ?? null });
       setGames(data);
       setError(null);
     } catch (e) {
@@ -40,7 +49,7 @@ export function useStoryGame(gameId: string | null) {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!gameId) return;
+    if (!gameId || !isTauri()) return;
     try {
       setLoading(true);
       const [g, ch] = await Promise.all([
@@ -83,6 +92,10 @@ export function useStorySeeds(ageGroup?: string, genre?: string) {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!isTauri()) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const data = await invoke<StorySeed[]>('story_seeds_list', {

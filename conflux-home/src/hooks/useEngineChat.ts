@@ -5,7 +5,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { syncSessionToEngine } from '@/lib/syncSession';
+import { supabase } from '@/lib/supabase';
 import type { AgentMessage } from '../types';
+import { useAuthContext } from '../contexts/AuthContext';
 
 export interface UseEngineChatResult {
   messages: AgentMessage[];
@@ -14,6 +17,7 @@ export interface UseEngineChatResult {
   thinking: boolean;
   error: string | null;
   remainingCalls: number;
+  credits: number;
   isQuotaExceeded: boolean;
   mode: 'engine';
   sessionId: string | null;
@@ -62,17 +66,24 @@ interface StreamDonePayload {
   tokens_used: number;
   latency_ms: number;
   calls_remaining: number;
+  credits_remaining?: number;
+  credit_source?: string;
 }
 
-export function useEngineChat(agentId: string | null): UseEngineChatResult {
+export function useEngineChat(agentId: string | null, userId?: string): UseEngineChatResult {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remainingCalls, setRemainingCalls] = useState(50);
+  const [credits, setCredits] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const assistantIdRef = useRef<string | null>(null);
   const unlistenFnsRef = useRef<(() => void)[]>([]);
+  
+  // Use AuthContext user.id if no explicit userId provided
+  const { user } = useAuthContext();
+  const authUserId = userId ?? user?.id;
 
   // Cleanup listeners on unmount
   useEffect(() => {
@@ -114,6 +125,16 @@ export function useEngineChat(agentId: string | null): UseEngineChatResult {
           const limit = 50; // free_daily_limit
           setRemainingCalls(Math.max(0, limit - quota.calls_used));
         }
+
+        // Load cloud credits if authenticated
+        if (authUserId) {
+          try {
+            const balance = await invoke<{ total_available: number }>('get_credit_balance', { userId: authUserId });
+            if (!cancelled) setCredits(balance.total_available ?? 0);
+          } catch {
+            // Cloud credits not available — engine falls back to local quota
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           console.error('[useEngineChat] Failed to init session:', err);
@@ -126,7 +147,7 @@ export function useEngineChat(agentId: string | null): UseEngineChatResult {
     setError(null);
 
     return () => { cancelled = true; };
-  }, [agentId]);
+  }, [agentId, userId, user?.id]);
 
   async function loadMessages(sid: string) {
     try {
@@ -206,6 +227,10 @@ export function useEngineChat(agentId: string | null): UseEngineChatResult {
       const unlistenDone = await listen<StreamDonePayload>('engine:done', (event) => {
         const data = event.payload;
         setRemainingCalls(data.calls_remaining);
+        // Update credits if cloud credit info is available
+        if (data.credits_remaining !== undefined && data.credits_remaining !== null) {
+          setCredits(data.credits_remaining);
+        }
         setStreaming(false);
         setThinking(false);
 
@@ -255,7 +280,37 @@ export function useEngineChat(agentId: string | null): UseEngineChatResult {
 
       unlistenFnsRef.current = [unlistenChunk, unlistenThinking, unlistenDone, unlistenError];
 
+      // Ensure we have a fresh JWT before making the request
+      console.log('[useEngineChat] ══════════════════════════════════════════');
+      console.log('[useEngineChat] 🚀 Starting sendMessage...');
+      console.log('[useEngineChat] Session ID:', sessionId);
+      console.log('[useEngineChat] Agent ID:', agentId);
+      console.log('[useEngineChat] Message:', content);
+      console.log('[useEngineChat] Syncing session before chat...');
+      const syncResult = await syncSessionToEngine();
+      
+      if (!syncResult) {
+        const errorMsg = 'Failed to sync session — please sign in again';
+        console.error('[useEngineChat] ❌', errorMsg);
+        console.log('[useEngineChat] ══════════════════════════════════════════');
+        setError(errorMsg);
+        setStreaming(false);
+        setThinking(false);
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantIdRef.current && m.content === ''
+              ? { ...m, content: `[${errorMsg}]` }
+              : m
+          )
+        );
+        return;
+      }
+      
+      console.log('[useEngineChat] Sync result:', syncResult);
+      console.log('[useEngineChat] ✅ Session synced successfully!');
+
       // Fire the streaming chat command
+      console.log('[useEngineChat] Invoking engine_chat_stream...');
       await invoke('engine_chat_stream', {
         req: {
           session_id: sessionId,
@@ -264,6 +319,8 @@ export function useEngineChat(agentId: string | null): UseEngineChatResult {
           max_tokens: null,
         },
       });
+      console.log('[useEngineChat] ✅ engine_chat_stream invoke completed');
+      console.log('[useEngineChat] ══════════════════════════════════════════');
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Engine chat failed';
@@ -287,6 +344,7 @@ export function useEngineChat(agentId: string | null): UseEngineChatResult {
     thinking,
     error,
     remainingCalls,
+    credits,
     isQuotaExceeded: remainingCalls <= 0,
     mode: 'engine',
     sessionId,

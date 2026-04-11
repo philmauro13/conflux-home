@@ -1,0 +1,69 @@
+name: 💡 Feature Request
+description: Suggest a new feature or improvement for Conflux Home
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make Conflux Home better? We'd love to hear it!
+
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      description: A brief title for your feature request
+      placeholder: "e.g. Voice commands for kitchen timer"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Which App / Feature?
+      description: Which part of Conflux Home would this affect?
+      options:
+        - Dashboard
+        - Chat
+        - Budget
+        - Kitchen
+        - Life Autopilot
+        - Dreams
+        - Feed
+        - Games
+        - Home
+        - Marketplace
+        - Settings
+        - New App / General
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+      description: Describe the feature you'd like to see. Be as detailed as possible.
+      placeholder: "I would like to be able to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What problem does this solve?
+      description: Help us understand the motivation behind this request.
+      placeholder: "This would help me because..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority to You
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would improve workflow
+        - Essential
+    validations:
+      required: false

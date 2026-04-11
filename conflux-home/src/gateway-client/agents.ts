@@ -29,7 +29,7 @@ export interface AgentIdentity {
 // ── Known Agent Identities (defaults, can be overridden by live data) ──
 
 const KNOWN_IDENTITIES: Record<string, AgentIdentity> = {
-  zigbot:   { emoji: '🤖', name: 'ZigBot',    role: 'Strategic Partner' },
+  conflux:   { emoji: '🤖', name: 'Conflux',    role: 'Strategic Partner' },
   helix:    { emoji: '🔬', name: 'Helix',     role: 'Research & Intelligence' },
   forge:    { emoji: '🔨', name: 'Forge',     role: 'Builder' },
   quanta:   { emoji: '✅', name: 'Quanta',    role: 'Quality Control' },

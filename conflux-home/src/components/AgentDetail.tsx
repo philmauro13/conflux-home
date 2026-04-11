@@ -150,9 +150,9 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
     maxWidth: 480,
     maxHeight: '90vh',
     overflowY: 'auto',
-    background: 'var(--bg-card)',
+    background: 'rgba(255,255,255,0.08)',
     borderRadius: 20,
-    border: '1px solid var(--border)',
+    border: '1px solid rgba(255,255,255,0.1)',
     boxShadow: '0 24px 80px rgba(0, 0, 0, 0.4)',
     padding: '32px 28px',
     position: 'relative',
@@ -169,7 +169,7 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
   const dividerStyle: React.CSSProperties = {
     width: '100%',
     height: 1,
-    background: 'var(--border)',
+    background: 'rgba(255,255,255,0.1)',
     margin: '20px 0',
   };
 
@@ -178,7 +178,7 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: 'var(--text-muted)',
+    color: 'rgba(255,255,255,0.6)',
     marginBottom: 8,
   };
 
@@ -210,8 +210,8 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
               height: 32,
               borderRadius: 16,
               border: 'none',
-              background: 'var(--bg-primary)',
-              color: 'var(--text-secondary)',
+              background: 'rgba(255,255,255,0.05)',
+              color: 'rgba(255,255,255,0.75)',
               fontSize: 18,
               cursor: 'pointer',
               display: 'flex',
@@ -249,7 +249,7 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
               {agent.name}
             </h2>
-            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>
               {agent.role}
             </div>
           </div>
@@ -317,7 +317,7 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
           {/* Personality */}
           <div style={dividerStyle} />
           <div style={sectionLabel}>🧠 How They Work</div>
-          <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.75)', margin: 0 }}>
             {agent.personality}
           </p>
 
@@ -332,9 +332,9 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
                   fontSize: 12,
                   padding: '5px 12px',
                   borderRadius: 16,
-                  background: 'var(--bg-primary)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.75)',
                   fontWeight: 500,
                 }}
               >
@@ -351,7 +351,7 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
               margin: 0,
               paddingLeft: 20,
               fontSize: 13,
-              color: 'var(--text-secondary)',
+              color: 'rgba(255,255,255,0.75)',
               lineHeight: 1.8,
             }}
           >
@@ -370,9 +370,9 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
                     width: '100%',
                     padding: '14px 24px',
                     borderRadius: 14,
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--text-muted)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.6)',
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: 'not-allowed',
@@ -385,7 +385,7 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
                   style={{
                     marginTop: 12,
                     fontSize: 12,
-                    color: 'var(--text-muted)',
+                    color: 'rgba(255,255,255,0.6)',
                   }}
                 >
                   Want this agent?{' '}
@@ -428,9 +428,9 @@ export default function AgentDetail({ agentId: propAgentId }: { agentId?: string
                     width: '100%',
                     padding: '10px 24px',
                     borderRadius: 14,
-                    border: '1px solid var(--border)',
+                    border: '1px solid rgba(255,255,255,0.1)',
                     background: 'transparent',
-                    color: 'var(--text-secondary)',
+                    color: 'rgba(255,255,255,0.75)',
                     fontSize: 13,
                     fontWeight: 500,
                     cursor: busy ? 'not-allowed' : 'pointer',

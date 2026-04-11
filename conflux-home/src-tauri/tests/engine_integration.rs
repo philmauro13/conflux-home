@@ -104,16 +104,16 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Store some memories
-        let id1 = db.store_memory("zigbot", "preference", Some("name"), "User's name is Don", Some("test")).unwrap();
-        let id2 = db.store_memory("zigbot", "fact", Some("timezone"), "User is in Mountain Time zone", Some("test")).unwrap();
-        let id3 = db.store_memory("zigbot", "preference", Some("style"), "User prefers direct, actionable responses", Some("test")).unwrap();
+        let id1 = db.store_memory("conflux", "preference", Some("name"), "User's name is Don", Some("test")).unwrap();
+        let id2 = db.store_memory("conflux", "fact", Some("timezone"), "User is in Mountain Time zone", Some("test")).unwrap();
+        let id3 = db.store_memory("conflux", "preference", Some("style"), "User prefers direct, actionable responses", Some("test")).unwrap();
 
         // Search with FTS
-        let results = db.search_memory("zigbot", "Don", 5).unwrap();
+        let results = db.search_memory("conflux", "Don", 5).unwrap();
         assert!(!results.is_empty(), "FTS should find 'Don' memory");
         println!("  Search 'Don': {} results", results.len());
 
-        let results2 = db.search_memory("zigbot", "timezone", 5).unwrap();
+        let results2 = db.search_memory("conflux", "timezone", 5).unwrap();
         assert!(!results2.is_empty(), "FTS should find 'timezone' memory");
         println!("  Search 'timezone': {} results", results2.len());
 
@@ -125,11 +125,11 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Create session
-        let session = db.create_session("zigbot", "test-user").unwrap();
+        let session = db.create_session("conflux", "test-user").unwrap();
         println!("  Created session: {}", session.id);
 
         // Add messages
-        let msg1 = db.add_message(&session.id, "user", "Hello ZigBot", 10, None, None, None).unwrap();
+        let msg1 = db.add_message(&session.id, "user", "Hello Conflux", 10, None, None, None).unwrap();
         let msg2 = db.add_message(&session.id, "assistant", "Hello Don! How can I help?", 25, Some("conflux-fast"), Some("cerebras"), Some(150)).unwrap();
 
         // Get messages
@@ -208,7 +208,7 @@ mod integration_tests {
     fn test_events() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-        let id = db.emit_event("test_event", Some("zigbot"), None, Some("{\"data\": \"test\"}")).unwrap();
+        let id = db.emit_event("test_event", Some("conflux"), None, Some("{\"data\": \"test\"}")).unwrap();
         println!("  Emitted event: {}", id);
 
         let events = db.get_unprocessed_events(None).unwrap();
@@ -401,7 +401,7 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_full_chat_cycle_zigbot() {
+    fn test_full_chat_cycle_conflux() {
         use app_lib::engine::{runtime, router};
         use tokio::runtime::Runtime;
 
@@ -409,33 +409,33 @@ mod integration_tests {
         rt.block_on(async {
             let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-            let agent = db.get_agent("zigbot").unwrap().expect("ZigBot should exist");
-            assert_eq!(agent.model_alias, "conflux-core", "ZigBot should use conflux-core");
-            println!("  🤖 ZigBot — model: {}", agent.model_alias);
+            let agent = db.get_agent("conflux").unwrap().expect("Conflux should exist");
+            assert_eq!(agent.model_alias, "conflux-core", "Conflux should use conflux-core");
+            println!("  🤖 Conflux — model: {}", agent.model_alias);
 
-            let session = db.create_session("zigbot", "test-user").unwrap();
+            let session = db.create_session("conflux", "test-user").unwrap();
 
             let result = runtime::process_turn(
                 &db,
                 &session.id,
-                "zigbot",
+                "conflux",
                 "Hello! What's your name and role?",
                 Some(50),
             ).await;
 
             match &result {
                 Ok(resp) => {
-                    println!("  ✅ ZigBot: '{}' ({}ms via {})",
+                    println!("  ✅ Conflux: '{}' ({}ms via {})",
                         &resp.content[..100.min(resp.content.len())], resp.latency_ms, resp.provider_name);
 
-                    // The response should reference ZigBot's identity (from the system prompt)
+                    // The response should reference Conflux's identity (from the system prompt)
                     let content_lower = resp.content.to_lowercase();
-                    let has_identity = content_lower.contains("zigbot") || content_lower.contains("strategic");
+                    let has_identity = content_lower.contains("conflux") || content_lower.contains("strategic");
                     if has_identity {
                         println!("  ✅ Agent identity confirmed in response");
                     }
                 }
-                Err(e) => println!("  ⚠️ ZigBot chat failed: {}", e),
+                Err(e) => println!("  ⚠️ Conflux chat failed: {}", e),
             }
         });
     }
@@ -487,7 +487,7 @@ mod integration_tests {
         // Create parent (head of household)
         let parent = db.create_family_member(
             "parent-1", "Don", Some(35), "adult",
-            Some("👨"), Some("#6366f1"), Some("zigbot"), None
+            Some("👨"), Some("#6366f1"), Some("conflux"), None
         ).unwrap();
         assert_eq!(parent.name, "Don");
         assert_eq!(parent.age_group, "adult");

@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════════
+   Conflux Home — Voice Input Styles
+   Mic button, waveform, overlay, animations
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── CSS Custom Properties ─────────────────────────────────── */
+
+:root {
+  --voice-accent: #ef4444;
+  --voice-accent-glow: rgba(239, 68, 68, 0.4);
+  --voice-accent-soft: rgba(239, 68, 68, 0.15);
+  --voice-idle-color: rgba(255, 255, 255, 0.55);
+  --voice-bg: rgba(255, 255, 255, 0.06);
+  --voice-bg-hover: rgba(255, 255, 255, 0.1);
+  --voice-overlay-bg: rgba(0, 0, 0, 0.7);
+  --voice-radius: 12px;
+  --voice-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Base Mic Button ───────────────────────────────────────── */
+
+.mic-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  background: var(--voice-bg);
+  color: var(--voice-idle-color);
+  transition:
+    background var(--voice-transition),
+    color var(--voice-transition),
+    box-shadow var(--voice-transition),
+    transform var(--voice-transition);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mic-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--voice-accent-glow);
+}
+
+.mic-button svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+}
+
+.mic-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ─── Variant: Inline (inside text input) ────────────────────── */
+
+.mic-button-inline {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mic-button-inline:hover {
+  background: var(--voice-bg-hover);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ─── Variant: Floating FAB ─────────────────────────────────── */
+
+.mic-button-floating {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.mic-button-floating:hover {
+  background: var(--voice-bg-hover);
+  transform: scale(1.08);
+}
+
+.mic-button-floating:active {
+  transform: scale(0.95);
+}
+
+/* ─── Variant: TopBar ────────────────────────────────────────── */
+
+.mic-button-topbar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.mic-button-topbar:hover {
+  background: var(--voice-bg-hover);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ─── State: Listening (pulsing red glow) ────────────────────── */
+
+.mic-button.listening {
+  color: var(--voice-accent);
+  background: var(--voice-accent-soft);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--voice-accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+/* ─── State: Transcribing (spinner) ──────────────────────────── */
+
+.mic-button.transcribing {
+  color: var(--voice-idle-color);
+}
+
+.mic-button.transcribing::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid transparent;
+  border-top-color: var(--voice-accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── State: Error (red flash) ───────────────────────────────── */
+
+.mic-button.error {
+  animation: flash-error 0.5s ease-out;
+}
+
+@keyframes flash-error {
+  0%   { background: rgba(239, 68, 68, 0.5); color: #fff; }
+  100% { background: var(--voice-bg); color: var(--voice-idle-color); }
+}
+
+/* ─── Voice Waveform ─────────────────────────────────────────── */
+
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 24px;
+}
+
+.voice-waveform-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--voice-accent);
+  animation: wave-bar 0.8s ease-in-out infinite alternate;
+}
+
+.voice-waveform-bar:nth-child(1) { animation-delay: 0s; height: 40%; }
+.voice-waveform-bar:nth-child(2) { animation-delay: 0.1s; height: 70%; }
+.voice-waveform-bar:nth-child(3) { animation-delay: 0.2s; height: 100%; }
+.voice-waveform-bar:nth-child(4) { animation-delay: 0.3s; height: 60%; }
+.voice-waveform-bar:nth-child(5) { animation-delay: 0.4s; height: 85%; }
+.voice-waveform-bar:nth-child(6) { animation-delay: 0.15s; height: 50%; }
+.voice-waveform-bar:nth-child(7) { animation-delay: 0.25s; height: 75%; }
+
+@keyframes wave-bar {
+  0%   { height: 20%; }
+  100% { height: 100%; }
+}
+
+.voice-waveform-idle .voice-waveform-bar {
+  animation: none;
+  height: 30%;
+  opacity: 0.4;
+}
+
+/* ─── Voice Overlay ──────────────────────────────────────────── */
+
+.voice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--voice-overlay-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.voice-overlay-enter {
+  opacity: 0;
+}
+
+.voice-overlay-active {
+  opacity: 1;
+}
+
+.voice-overlay-exit {
+  opacity: 0;
+}
+
+.voice-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  cursor: default;
+  pointer-events: none;
+}
+
+.voice-overlay-waveform .voice-waveform {
+  height: 64px;
+  gap: 5px;
+}
+
+.voice-overlay-waveform .voice-waveform-bar {
+  width: 5px;
+  border-radius: 3px;
+}
+
+.voice-overlay-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--voice-accent);
+  letter-spacing: 0.02em;
+}
+
+.voice-overlay-transcript {
+  max-width: 480px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+  line-height: 1.5;
+  min-height: 1.5em;
+}
+
+.voice-overlay-hint {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 12px;
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-button,
+  .mic-button * {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .mic-button.listening {
+    box-shadow: 0 0 8px var(--voice-accent-glow);
+  }
+}
+
+/* ─── Input with Mic ─────────────────────────────────────────── */
+
+.input-with-mic {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-mic input,
+.input-with-mic textarea {
+  flex: 1;
+  padding-right: 40px; /* room for mic button */
+}
+
+.input-with-mic .mic-button-inline {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}

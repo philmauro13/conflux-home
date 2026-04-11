@@ -1,0 +1,234 @@
+{
+  "_meta": {
+    "version": "2.1",
+    "generated": "2026-03-30T17:53:00Z",
+    "description": "Per-model penny credits. 3 task types downgraded for cost savings.",
+    "target_margin": "40-60%"
+  },
+  "task_types": {
+    "simple_chat": {
+      "tier": "core",
+      "description": "Greeting, basic Q&A, text formatting. No tools needed.",
+      "min_tool_reliability": "basic",
+      "preferred_models": [
+        "gpt-4o-mini",
+        "deepseek-chat",
+        "gemini-flash",
+        "grok-3-mini",
+        "mistral-small"
+      ]
+    },
+    "summarize": {
+      "tier": "core",
+      "description": "Text extraction, classification, summarization. Light file read.",
+      "min_tool_reliability": "basic",
+      "preferred_models": [
+        "gpt-4o-mini",
+        "claude-haiku",
+        "deepseek-chat",
+        "mistral-medium",
+        "gemini-flash"
+      ]
+    },
+    "extract": {
+      "tier": "core",
+      "description": "Data extraction, parsing, structured output from text.",
+      "min_tool_reliability": "basic",
+      "preferred_models": [
+        "gpt-4o-mini",
+        "deepseek-chat",
+        "claude-haiku",
+        "grok-4.1-fast",
+        "mistral-small"
+      ]
+    },
+    "translate": {
+      "tier": "core",
+      "description": "Language translation, localization.",
+      "min_tool_reliability": "basic",
+      "preferred_models": [
+        "gpt-4o-mini",
+        "deepseek-chat",
+        "claude-haiku",
+        "gemini-flash",
+        "mistral-medium"
+      ]
+    },
+    "code_gen": {
+      "tier": "pro",
+      "description": "Write code, fix bugs, refactor. Needs file read/write/exec.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "gemini-2.5-flash",
+        "gpt-4.1-mini",
+        "deepseek-r1",
+        "grok-code-fast",
+        "mistral-codestral"
+      ]
+    },
+    "tool_orchestrate": {
+      "tier": "pro",
+      "description": "Multi-step tool chaining, API calls, file operations.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "gpt-4.1-mini",
+        "grok-code-fast",
+        "gemini-2.5-flash",
+        "mimo-v2-pro",
+        "mistral-large"
+      ]
+    },
+    "image_gen": {
+      "tier": "pro",
+      "description": "Image creation, editing, vision tasks. Needs tool + vision.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "grok-code-fast",
+        "gpt-4.1-mini",
+        "gemini-2.5-flash",
+        "mistral-large",
+        "deepseek-r1"
+      ]
+    },
+    "file_ops": {
+      "tier": "core",
+      "description": "File read/write/edit, directory operations, search.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "gpt-4.1-mini",
+        "gemini-2.5-flash",
+        "grok-code-fast",
+        "deepseek-r1",
+        "mistral-large"
+      ]
+    },
+    "web_browse": {
+      "tier": "pro",
+      "description": "Web scraping, search, URL fetching, browser automation.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "gpt-4.1-mini",
+        "gemini-2.5-flash",
+        "grok-code-fast",
+        "deepseek-r1",
+        "mimo-v2-pro"
+      ]
+    },
+    "creative": {
+      "tier": "core",
+      "description": "Creative writing, content generation, brainstorming.",
+      "min_tool_reliability": "basic",
+      "preferred_models": [
+        "gemini-2.5-flash",
+        "gpt-4.1-mini",
+        "grok-code-fast",
+        "mistral-large",
+        "deepseek-r1"
+      ]
+    },
+    "deep_reasoning": {
+      "tier": "pro",
+      "description": "Research, analysis, complex multi-step reasoning.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "claude-sonnet",
+        "gpt-4.1",
+        "gemini-pro",
+        "grok-4.20",
+        "claude-sonnet-4.5"
+      ]
+    },
+    "agentic_complex": {
+      "tier": "ultra",
+      "description": "Full workflows, 20+ tool calls, error recovery needed.",
+      "min_tool_reliability": "reliable",
+      "preferred_models": [
+        "claude-opus",
+        "gpt-4o",
+        "grok-4.20",
+        "claude-sonnet",
+        "gpt-4.1"
+      ]
+    }
+  },
+  "tier_defaults": {
+    "core": {
+      "max_tokens": 4096,
+      "temperature": 0.7,
+      "cost_per_1k_credits": 1
+    },
+    "pro": {
+      "max_tokens": 8192,
+      "temperature": 0.7,
+      "cost_per_1k_credits": 2
+    },
+    "ultra": {
+      "max_tokens": 16384,
+      "temperature": 0.7,
+      "cost_per_1k_credits": 5
+    }
+  },
+  "tool_reliability": {
+    "reliable": [
+      "claude-opus",
+      "claude-sonnet",
+      "claude-sonnet-4.5",
+      "claude-haiku",
+      "claude-haiku-3.5",
+      "gpt-4o",
+      "gpt-4.1",
+      "gpt-4.1-mini",
+      "gpt-4.1-nano",
+      "gpt-4o-mini",
+      "gemini-pro",
+      "gemini-2.5-flash",
+      "gemini-flash",
+      "deepseek-r1",
+      "deepseek-chat",
+      "grok-3",
+      "grok-3-mini",
+      "grok-4.1-fast",
+      "grok-4.20",
+      "grok-code-fast",
+      "mimo-v2-pro",
+      "mistral-medium",
+      "mistral-small",
+      "mistral-large",
+      "mistral-codestral",
+      "o1",
+      "o3",
+      "o3-mini",
+      "o4-mini",
+      "codex-mini"
+    ],
+    "basic": [
+      "llama-3.3-70b-groq",
+      "llama-3.3-70b-cf",
+      "llama-4-scout-cf",
+      "llama-4-scout-groq",
+      "llama-3.1-8b-cerebras",
+      "llama-3.1-8b-groq",
+      "llama-3.1-8b-cf",
+      "llama-3.1-70b-cf",
+      "mimo-v2",
+      "mimo-v2-omni",
+      "ministral-8b",
+      "ministral-3b",
+      "ministral-14b",
+      "pixtral-12b",
+      "qwen-3-235b-cerebras",
+      "qwen3-32b-groq",
+      "qwen2.5-coder-cf",
+      "glm-4.7-cerebras",
+      "gpt-oss-120b-cerebras",
+      "gpt-oss-120b-groq",
+      "gpt-oss-120b-cf",
+      "gpt-oss-20b-groq",
+      "mistral-small-3.1-cf",
+      "gemma-3-12b-cf",
+      "kimi-k2.5-cf",
+      "kimi-k2-groq",
+      "deepseek-r1-distill-cf"
+    ]
+  }
+}

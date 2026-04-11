@@ -11,40 +11,12 @@
 //                   Pennies cost models when keys are configured (MiMo, GPT-4o-mini).
 //   conflux-ultra — Premium models (Claude Sonnet 4, GPT-4o, MiMo Pro). Best quality available.
 
-use anyhow::{Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::sync::{OnceLock, RwLock};
-use std::time::Instant;
 
-// ── API Key Storage ──
-// Each provider gets its own key. Stored in engine DB, loaded at startup.
-// Keys are OURS — users never see them.
-
-fn provider_keys() -> &'static RwLock<std::collections::HashMap<String, String>> {
-    static KEYS: OnceLock<RwLock<std::collections::HashMap<String, String>>> = OnceLock::new();
-    KEYS.get_or_init(|| RwLock::new(std::collections::HashMap::new()))
-}
-
-/// Set a provider API key. Called by engine on startup or when user configures a key.
-pub fn set_provider_key(provider_id: &str, key: &str) {
-    if let Ok(mut keys) = provider_keys().write() {
-        if key.is_empty() {
-            keys.remove(provider_id);
-        } else {
-            keys.insert(provider_id.to_string(), key.to_string());
-        }
-    }
-}
-
-fn get_key(provider_id: &str) -> String {
-    provider_keys()
-        .read()
-        .ok()
-        .and_then(|keys| keys.get(provider_id).cloned())
-        .unwrap_or_default()
-}
-
-// ── Provider Adapter System ──
+// ── Provider Management ──
+// Provider API keys are now managed server-side by the cloud router.
+// This client no longer stores or handles provider credentials.
 // Different providers have different API formats.
 // Adapters handle the translation so the router doesn't care.
 
@@ -210,10 +182,11 @@ struct AnthropicUsage {
     output_tokens: i64,
 }
 
-// ── Built-in Provider Registry ──
-// All providers we know about. Users can add more via settings.
+// ── Provider Registry (Read-only) ──
+// Providers are now managed server-side by the cloud router.
+// This function exists for settings UI display only.
 
-fn builtin_providers() -> Vec<ModelProvider> {
+pub fn builtin_providers() -> Vec<ModelProvider> {
     vec![
         // ══════════════════════════════════════════════════════════════
         // CORE TIER — Free providers, $0 marginal cost
@@ -292,7 +265,7 @@ fn builtin_providers() -> Vec<ModelProvider> {
             cost_per_1k_tokens: 0.0,
             max_tokens: 4096,
             rate_limit_rpm: 50,
-            is_enabled: true,
+            is_enabled: false,
         },
 
         // ══════════════════════════════════════════════════════════════
@@ -460,31 +433,12 @@ fn builtin_providers() -> Vec<ModelProvider> {
 
 // ── Public API ──
 
-/// Get all providers for a given tier, sorted by priority.
-/// Only returns enabled providers.
-pub fn get_providers_for_tier(tier: &str) -> Vec<ModelProvider> {
-    let mut providers: Vec<ModelProvider> = builtin_providers()
-        .into_iter()
-        .filter(|p| p.tier == tier && p.is_enabled)
-        .collect();
-
-    // Also check DB-stored providers (user-configured)
-    // TODO: merge with DB providers via engine.db.get_providers()
-
-    // For free providers, check if we have a key for them
-    // For paid providers, they're only enabled if explicitly configured
-    providers.retain(|p| {
-        if p.is_free {
-            // Free providers need a key in our storage
-            !get_key(&p.id).is_empty() || has_builtin_key(&p.id)
-        } else {
-            // Paid providers must have a configured key
-            !get_key(&p.id).is_empty()
-        }
-    });
-
-    providers.sort_by_key(|p| p.priority);
-    providers
+/// Get all providers for a given tier (legacy compatibility).
+/// Returns an empty list as providers are now managed server-side.
+pub fn get_providers_for_tier(_tier: &str) -> Vec<ModelProvider> {
+    // Providers are now managed server-side by the cloud router.
+    // This function exists for compatibility but returns an empty list.
+    vec![]
 }
 
 /// Check if a free provider has a built-in key.
@@ -505,9 +459,11 @@ fn has_builtin_key(provider_id: &str) -> bool {
     )
 }
 
-/// Get ALL providers (for settings UI display), regardless of enabled state.
+/// Get ALL providers (for settings UI display).
+/// Returns an empty list as providers are now managed server-side.
 pub fn get_all_providers() -> Vec<ModelProvider> {
-    builtin_providers()
+    // Providers are managed server-side by the cloud router.
+    vec![]
 }
 
 /// Get providers for a specific model alias (legacy compat).
@@ -521,27 +477,18 @@ pub fn get_providers_for_alias(alias: &str) -> Vec<ModelProvider> {
     get_providers_for_tier(tier)
 }
 
-/// Enable a provider (called when a key is configured).
-pub fn enable_provider(provider_id: &str) {
-    // Mark as enabled in our static registry
-    // In production, this updates the DB
-    log::info!("[Router] Provider {} enabled", provider_id);
+/// Enable a provider (now handled server-side).
+/// This is a no-op for compatibility as providers are managed server-side.
+pub fn enable_provider(_provider_id: &str) {
+    // Provider management is now handled server-side by the cloud router.
+    // This function exists for compatibility but does nothing.
 }
 
-/// Set an API key for a provider and enable it.
-pub fn configure_provider(provider_id: &str, api_key: &str) -> Result<()> {
-    set_provider_key(provider_id, api_key);
-    enable_provider(provider_id);
-    log::info!(
-        "[Router] Provider {} configured (key: {}...{})",
-        provider_id,
-        &api_key[..4.min(api_key.len())],
-        if api_key.len() > 4 {
-            &api_key[api_key.len() - 4..]
-        } else {
-            ""
-        }
-    );
+/// Configure a provider (now handled server-side).
+/// This is a no-op for compatibility as provider keys are no longer stored client-side.
+pub fn configure_provider(_provider_id: &str, _api_key: &str) -> Result<()> {
+    // Provider configuration is now handled server-side by the cloud router.
+    // This function exists for compatibility but does nothing.
     Ok(())
 }
 
@@ -558,7 +505,8 @@ pub fn resolve_tier(alias: &str) -> &str {
     }
 }
 
-/// Send a chat completion with automatic failover across providers in a tier.
+/// Chat completion is now handled by the cloud router.
+/// This function delegates to cloud::cloud_chat() for security.
 pub async fn chat(
     tier: &str,
     messages: Vec<OpenAIMessage>,
@@ -566,154 +514,43 @@ pub async fn chat(
     temperature: Option<f64>,
     tools: Option<Vec<serde_json::Value>>,
 ) -> Result<ModelResponse> {
-    let tier = resolve_tier(tier);
-    let providers = get_providers_for_tier(tier);
-
-    if providers.is_empty() {
-        anyhow::bail!(
-            "No enabled providers for tier '{}'. Configure an API key or enable free providers.",
-            tier
-        );
-    }
-
-    let mut last_error: Option<anyhow::Error> = None;
-
-    for provider in &providers {
-        let start = Instant::now();
-
-        match send_chat(&provider, &messages, max_tokens, temperature, &tools).await {
-            Ok(response) => {
-                let latency_ms = start.elapsed().as_millis() as i64;
-                log::info!(
-                    "[Router] {} → {} ({}ms, {} tokens)",
-                    tier,
-                    provider.name,
-                    latency_ms,
-                    response.tokens_used
-                );
-                return Ok(ModelResponse {
-                    latency_ms,
-                    ..response
-                });
-            }
-            Err(e) => {
-                log::warn!("[Router] {} failed: {}", provider.name, e);
-                last_error = Some(e);
-                continue;
-            }
-        }
-    }
-
-    Err(last_error
-        .unwrap_or_else(|| anyhow::anyhow!("All providers failed for tier: {}", tier)))
+    // Note: This is a compatibility wrapper. In production, callers should
+    // use cloud::cloud_chat() directly. The tier parameter is ignored since
+    // the cloud router handles model selection.
+    super::cloud::cloud_chat(Some(tier), messages, max_tokens, temperature, tools).await
 }
 
-/// Send a streaming chat completion.
+/// Streaming chat completion is now handled by the cloud router.
+/// This function delegates to cloud::cloud_chat_stream() for security.
 pub async fn chat_stream(
     tier: &str,
     messages: Vec<OpenAIMessage>,
     max_tokens: Option<i64>,
-    tools: Option<Vec<serde_json::Value>>,
+    _tools: Option<Vec<serde_json::Value>>,
     on_chunk: &mut dyn FnMut(&str) -> Result<()>,
 ) -> Result<ModelResponse> {
-    let tier = resolve_tier(tier);
-    let providers = get_providers_for_tier(tier);
-
-    if providers.is_empty() {
-        anyhow::bail!("No enabled providers for tier: {}", tier);
-    }
-
-    // Tools require non-streaming for reliable capture
-    if tools.is_some() {
-        return chat(tier, messages, max_tokens, None, tools).await;
-    }
-
-    let mut last_error: Option<anyhow::Error> = None;
-
-    for provider in &providers {
-        let start = Instant::now();
-
-        match send_stream(&provider, &messages, max_tokens, on_chunk).await {
-            Ok(full_text) => {
-                let latency_ms = start.elapsed().as_millis() as i64;
-                let tokens_used = (full_text.len() as f64 / 4.0).ceil() as i64;
-
-                log::info!(
-                    "[Router] {} stream → {} ({}ms)",
-                    tier,
-                    provider.name,
-                    latency_ms
-                );
-
-                return Ok(ModelResponse {
-                    content: full_text,
-                    model: provider.model_id.clone(),
-                    provider_id: provider.id.clone(),
-                    provider_name: provider.name.clone(),
-                    tokens_used,
-                    latency_ms,
-                    tool_calls: vec![],
-                });
-            }
-            Err(e) => {
-                log::warn!("[Router] Stream {} failed: {}", provider.name, e);
-                last_error = Some(e);
-                continue;
-            }
-        }
-    }
-
-    Err(last_error
-        .unwrap_or_else(|| anyhow::anyhow!("All streaming providers failed for tier: {}", tier)))
+    // Note: This is a compatibility wrapper. In production, callers should
+    // use cloud::cloud_chat_stream() directly. The tier parameter is ignored
+    // since the cloud router handles model selection. Tools are not supported
+    // in streaming mode (the cloud router handles this internally).
+    super::cloud::cloud_chat_stream(Some(tier), messages, max_tokens, on_chunk).await
 }
 
-/// Send a chat to a specific provider (for testing).
+/// This function is deprecated as provider routing is now server-side.
 pub async fn chat_with_provider(
-    provider: &ModelProvider,
-    messages: Vec<OpenAIMessage>,
-    max_tokens: Option<i64>,
+    _provider: &ModelProvider,
+    _messages: Vec<OpenAIMessage>,
+    _max_tokens: Option<i64>,
 ) -> Result<ModelResponse> {
-    send_chat(provider, &messages, max_tokens, None, &None).await
+    anyhow::bail!("chat_with_provider is deprecated. Use cloud::cloud_chat() instead.")
 }
 
-// ── Provider Adapter: Send Chat ──
-// Routes to the correct adapter based on the provider's API format.
+// Provider-specific adapters have been removed.
+// All inference now routes through the cloud router.
+// See cloud.rs for the cloud_router implementation.
 
-async fn send_chat(
-    provider: &ModelProvider,
-    messages: &[OpenAIMessage],
-    max_tokens: Option<i64>,
-    temperature: Option<f64>,
-    tools: &Option<Vec<serde_json::Value>>,
-) -> Result<ModelResponse> {
-    match provider.api_format {
-        ApiFormat::OpenAI => send_openai_chat(provider, messages, max_tokens, temperature, tools).await,
-        ApiFormat::Anthropic => send_anthropic_chat(provider, messages, max_tokens, temperature).await,
-        ApiFormat::GoogleGemini => send_gemini_chat(provider, messages, max_tokens).await,
-    }
-}
-
-async fn send_stream(
-    provider: &ModelProvider,
-    messages: &[OpenAIMessage],
-    max_tokens: Option<i64>,
-    on_chunk: &mut dyn FnMut(&str) -> Result<()>,
-) -> Result<String> {
-    match provider.api_format {
-        ApiFormat::OpenAI => send_openai_stream(provider, messages, max_tokens, on_chunk).await,
-        ApiFormat::Anthropic => send_anthropic_stream(provider, messages, max_tokens, on_chunk).await,
-        ApiFormat::GoogleGemini => {
-            // Gemini streaming not yet implemented, fall back to non-streaming
-            let result = send_gemini_chat(provider, messages, max_tokens).await?;
-            on_chunk(&result.content)?;
-            Ok(result.content)
-        }
-    }
-}
-
-// ── OpenAI Adapter ──
-// Works for: Cerebras, Groq, Mistral, DeepSeek, Cloudflare, OpenAI, and any OpenAI-compatible API
-
+// Compatibility placeholder - this function no longer does anything.
+#[allow(dead_code)]
 async fn send_openai_chat(
     provider: &ModelProvider,
     messages: &[OpenAIMessage],
@@ -721,7 +558,7 @@ async fn send_openai_chat(
     temperature: Option<f64>,
     tools: &Option<Vec<serde_json::Value>>,
 ) -> Result<ModelResponse> {
-    let api_key = resolve_key(provider);
+    // Note: API keys are handled server-side by the cloud router
 
     let request = OpenAIRequest {
         model: provider.model_id.clone(),
@@ -740,7 +577,8 @@ async fn send_openai_chat(
         .header("Content-Type", "application/json")
         .json(&request);
 
-    req_builder = apply_auth(req_builder, provider, &api_key);
+    // API authentication handled by cloud router
+    // req_builder = apply_auth(req_builder, provider, &api_key);
 
     let response = req_builder
         .send()
@@ -809,13 +647,14 @@ async fn send_openai_chat(
     })
 }
 
+#[allow(dead_code)]
 async fn send_openai_stream(
     provider: &ModelProvider,
     messages: &[OpenAIMessage],
     max_tokens: Option<i64>,
     on_chunk: &mut dyn FnMut(&str) -> Result<()>,
 ) -> Result<String> {
-    let api_key = resolve_key(provider);
+    // Note: API keys are handled server-side by the cloud router
 
     let request = OpenAIRequest {
         model: provider.model_id.clone(),
@@ -834,7 +673,8 @@ async fn send_openai_stream(
         .header("Content-Type", "application/json")
         .json(&request);
 
-    req_builder = apply_auth(req_builder, provider, &api_key);
+    // API authentication handled by cloud router
+    // req_builder = apply_auth(req_builder, provider, &api_key);
 
     let response = req_builder
         .send()
@@ -854,13 +694,14 @@ async fn send_openai_stream(
 // Handles Claude's native Messages API format.
 // Different auth header, different request shape, different response shape.
 
+#[allow(dead_code)]
 async fn send_anthropic_chat(
     provider: &ModelProvider,
     messages: &[OpenAIMessage],
     max_tokens: Option<i64>,
     temperature: Option<f64>,
 ) -> Result<ModelResponse> {
-    let api_key = resolve_key(provider);
+    // Note: API keys are handled server-side by the cloud router
 
     // Convert OpenAI messages to Anthropic format
     // Anthropic separates system message from conversation
@@ -895,7 +736,7 @@ async fn send_anthropic_chat(
     let response = client
         .post(&url)
         .header("Content-Type", "application/json")
-        .header("x-api-key", &api_key)
+        // API authentication handled by cloud router
         .header("anthropic-version", "2023-06-01")
         .json(&request)
         .send()
@@ -950,13 +791,14 @@ async fn send_anthropic_chat(
     })
 }
 
+#[allow(dead_code)]
 async fn send_anthropic_stream(
     provider: &ModelProvider,
     messages: &[OpenAIMessage],
     max_tokens: Option<i64>,
     on_chunk: &mut dyn FnMut(&str) -> Result<()>,
 ) -> Result<String> {
-    let api_key = resolve_key(provider);
+    // Note: API keys are handled server-side by the cloud router
 
     // Convert messages
     let mut system: Option<String> = None;
@@ -988,7 +830,7 @@ async fn send_anthropic_stream(
     let response = client
         .post(&url)
         .header("Content-Type", "application/json")
-        .header("x-api-key", &api_key)
+        // API authentication handled by cloud router
         .header("anthropic-version", "2023-06-01")
         .json(&request)
         .send()
@@ -1011,12 +853,13 @@ async fn send_anthropic_stream(
 // Gemini uses a different REST API with the key in the URL.
 // We convert to/from OpenAI format internally.
 
+#[allow(dead_code)]
 async fn send_gemini_chat(
     provider: &ModelProvider,
     messages: &[OpenAIMessage],
     max_tokens: Option<i64>,
 ) -> Result<ModelResponse> {
-    let api_key = resolve_key(provider);
+    // Note: API keys are handled server-side by the cloud router
 
     // Convert OpenAI messages to Gemini format
     // Gemini uses "contents" with "parts" array
@@ -1050,9 +893,10 @@ async fn send_gemini_chat(
         body["systemInstruction"] = si;
     }
 
+    // Note: API key handled server-side by cloud router
     let url = format!(
-        "{}/models/{}:generateContent?key={}",
-        provider.base_url, provider.model_id, api_key
+        "{}/models/{}:generateContent?key=REDACTED",
+        provider.base_url, provider.model_id
     );
 
     let client = reqwest::Client::new();
@@ -1197,48 +1041,28 @@ async fn parse_anthropic_sse_stream(
 
 // ── Auth Helpers ──
 
-/// Resolve the API key for a provider.
-/// Checks our key store first, then falls back to built-in keys.
-fn resolve_key(provider: &ModelProvider) -> String {
-    // Check dynamically configured key
-    let stored = get_key(&provider.id);
-    if !stored.is_empty() {
-        return stored;
-    }
+// Provider API keys are now managed server-side by the cloud router.
+// This client does not handle provider authentication.
 
-    // Built-in keys for free providers (our accounts)
-    match provider.id.as_str() {
-        "cerebras-llama-8b" | "cerebras-qwen-235b" => {
-            "csk-2kpn9eycky4ycj2dd82n6jvmhc4tjnm4ykt2vxjfvkvv9fcf".to_string()
-        }
-        "groq-llama-8b" | "groq-llama-70b" | "groq-deepseek-70b" => {
-            "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".to_string()
-        }
-        "mistral-small" | "mistral-medium" => {
-            "H24a3cJs3bTsWkYiVgmrYPr8Xs8T4ERE".to_string()
-        }
-        "deepseek-chat" => "sk-7e96dffa53324307b11da82b6ca4b934".to_string(),
-        "cloudflare-llama-8b" => {
-            "cfut_Ufhi1mcDzbLxwSNYZguzSlYsXy1GtAwzzo3mCir7fa5f5dab".to_string()
-        }
-        _ => String::new(),
-    }
-}
+// ── Provider Adapters ──
+// NOTE: These adapters are no longer used. All inference now routes
+// through the cloud router in cloud.rs. These functions are kept
+// for compatibility but are unused.
 
-/// Apply authentication to a request builder based on the provider's auth method.
+#[allow(dead_code)]
 fn apply_auth(
     builder: reqwest::RequestBuilder,
     provider: &ModelProvider,
-    api_key: &str,
+    _api_key: &str,
 ) -> reqwest::RequestBuilder {
     match provider.auth_method {
-        AuthMethod::BearerToken => builder.header("Authorization", format!("Bearer {}", api_key)),
+        AuthMethod::BearerToken => builder.header("Authorization", format!("Bearer {}", _api_key)),
         AuthMethod::AnthropicKey => builder
-            .header("x-api-key", api_key)
+            .header("x-api-key", _api_key)
             .header("anthropic-version", "2023-06-01"),
         AuthMethod::GoogleQueryParam => builder, // key is already in URL
         AuthMethod::CloudflareHeader => {
-            builder.header("Authorization", format!("Bearer {}", api_key))
+            builder.header("Authorization", format!("Bearer {}", _api_key))
         }
     }
 }

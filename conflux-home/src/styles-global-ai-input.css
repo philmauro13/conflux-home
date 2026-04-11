@@ -1,0 +1,155 @@
+/* Global AI Input — Intent Routing Component */
+
+.global-ai-input-wrapper {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  z-index: 30;
+}
+
+.global-ai-input-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.global-ai-input-trigger:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.global-ai-input-icon {
+  font-size: 16px;
+}
+
+.global-ai-input-placeholder {
+  font-weight: 400;
+}
+
+.global-ai-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.global-ai-input-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.12);
+  transition: all 0.3s ease;
+}
+
+.global-ai-input-inner:focus-within {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 32px rgba(99, 102, 241, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.global-ai-input-icon-active {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.global-ai-input-field {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #f0f0f5;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.global-ai-input-field::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.global-ai-input-field:disabled {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.global-ai-input-spinner {
+  font-size: 16px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.global-ai-input-send {
+  background: #6366F1;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.global-ai-input-send:hover {
+  background: #4f46e5;
+}
+
+/* Intent preview dropdown */
+.global-ai-intent-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  font-size: 12px;
+  animation: intentFadeIn 0.2s ease;
+}
+
+@keyframes intentFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.intent-agent-badge {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.intent-type-label {
+  color: rgba(255, 255, 255, 0.5);
+  flex: 1;
+}
+
+.intent-confidence {
+  color: #22c55e;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .global-ai-input-wrapper {
+    max-width: calc(100vw - 48px);
+    bottom: 90px;
+  }
+}

@@ -8,8 +8,6 @@ _Learn about the person you're helping. Update this as you go._
 - **Timezone:** Mountain Time (MST)
 - **Notes:**
   - Prefers direct, actionable responses over lengthy explanations
-  - Wants all currency displayed with cents (toFixed(2))
-  - Prefers "$1.2M" style for large round numbers
   - Values accurate live data over placeholder estimates
   - Likes controlled testing (test → verify → expand)
   - Prefers channel delivery over DM for agent communications

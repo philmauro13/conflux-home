@@ -9,11 +9,11 @@ describe('ChatSession', () => {
   let session: ChatSession;
 
   beforeEach(() => {
-    session = new ChatSession(config, 'zigbot');
+    session = new ChatSession(config, 'conflux');
   });
 
   it('initializes with empty state', () => {
-    expect(session.agentId).toBe('zigbot');
+    expect(session.agentId).toBe('conflux');
     expect(session.messages).toEqual([]);
     expect(session.isStreaming).toBe(false);
     expect(session.error).toBeNull();
@@ -79,7 +79,7 @@ describe('ChatSession', () => {
 
   it('state is readonly', () => {
     const state = session.state;
-    expect(state.agentId).toBe('zigbot');
+    expect(state.agentId).toBe('conflux');
     expect(state.isStreaming).toBe(false);
   });
 
@@ -135,21 +135,21 @@ describe('sendMessage', () => {
         id: 'chat-1',
         object: 'chat.completion',
         created: Date.now(),
-        model: 'openclaw:zigbot',
+        model: 'openclaw:conflux',
         choices: [{ index: 0, message: { role: 'assistant', content: 'hello back' }, finish_reason: 'stop' }],
       }),
     });
     vi.stubGlobal('fetch', fetchSpy);
 
-    const result = await sendMessage(config, 'zigbot', [{ role: 'user', content: 'hello' }]);
+    const result = await sendMessage(config, 'conflux', [{ role: 'user', content: 'hello' }]);
 
     const [url, opts] = fetchSpy.mock.calls[0];
     expect(url).toBe('http://localhost:18789/v1/chat/completions');
-    expect(opts.headers['x-openclaw-agent-id']).toBe('zigbot');
+    expect(opts.headers['x-openclaw-agent-id']).toBe('conflux');
     expect(opts.headers['Authorization']).toBe('Bearer test-token');
 
     const body = JSON.parse(opts.body);
-    expect(body.model).toBe('openclaw:zigbot');
+    expect(body.model).toBe('openclaw:conflux');
     expect(body.stream).toBe(false);
     expect(body.messages[0].content).toBe('hello');
 
@@ -164,7 +164,7 @@ describe('sendMessage', () => {
     }));
 
     await expect(
-      sendMessage(config, 'zigbot', [{ role: 'user', content: 'hi' }]),
+      sendMessage(config, 'conflux', [{ role: 'user', content: 'hi' }]),
     ).rejects.toThrow(GatewayError);
   });
 
@@ -176,7 +176,7 @@ describe('sendMessage', () => {
       }),
     }));
 
-    const result = await sendMessage(config, 'zigbot', []);
+    const result = await sendMessage(config, 'conflux', []);
     expect(result).toBe('');
   });
 });
@@ -214,7 +214,7 @@ describe('streamMessage / SSE parsing', () => {
 
     const result = await streamMessage(
       config,
-      'zigbot',
+      'conflux',
       [{ role: 'user', content: 'hi' }],
       (chunk) => chunks.push(chunk),
     );
@@ -229,7 +229,7 @@ describe('streamMessage / SSE parsing', () => {
       body: makeSSEStream(['data: [DONE]']),
     }));
 
-    const result = await streamMessage(config, 'zigbot', [], () => {});
+    const result = await streamMessage(config, 'conflux', [], () => {});
     expect(result).toBe('');
   });
 
@@ -246,7 +246,7 @@ describe('streamMessage / SSE parsing', () => {
     }));
 
     const chunks: string[] = [];
-    const result = await streamMessage(config, 'zigbot', [], (c) => chunks.push(c));
+    const result = await streamMessage(config, 'conflux', [], (c) => chunks.push(c));
     expect(result).toBe('ok');
   });
 
@@ -262,7 +262,7 @@ describe('streamMessage / SSE parsing', () => {
       body: makeSSEStream(sseLines),
     }));
 
-    const result = await streamMessage(config, 'zigbot', [], () => {});
+    const result = await streamMessage(config, 'conflux', [], () => {});
     expect(result).toBe('hi');
   });
 
@@ -274,7 +274,7 @@ describe('streamMessage / SSE parsing', () => {
     }));
 
     await expect(
-      streamMessage(config, 'zigbot', [], () => {}),
+      streamMessage(config, 'conflux', [], () => {}),
     ).rejects.toThrow(GatewayError);
   });
 
@@ -285,7 +285,7 @@ describe('streamMessage / SSE parsing', () => {
     }));
 
     await expect(
-      streamMessage(config, 'zigbot', [], () => {}),
+      streamMessage(config, 'conflux', [], () => {}),
     ).rejects.toThrow('No response body for SSE stream');
   });
 });

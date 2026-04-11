@@ -9,6 +9,8 @@ import {
   CORE_PROVIDERS,
   PRO_PROVIDERS,
   ULTRA_PROVIDERS,
+  TTS_PROVIDERS,
+  IMAGE_PROVIDERS,
   ALIAS_MAP,
 } from '../providers';
 import {
@@ -88,7 +90,7 @@ describe('Alias Map', () => {
   });
 
   it('all mapped provider IDs should exist in providers', () => {
-    const allIds = [...CORE_PROVIDERS, ...PRO_PROVIDERS, ...ULTRA_PROVIDERS].map(p => p.id);
+    const allIds = [...CORE_PROVIDERS, ...PRO_PROVIDERS, ...ULTRA_PROVIDERS, ...TTS_PROVIDERS, ...IMAGE_PROVIDERS].map(p => p.id);
     for (const [alias, providerIds] of Object.entries(ALIAS_MAP)) {
       for (const id of providerIds) {
         expect(allIds, `Alias "${alias}" references unknown provider "${id}"`).toContain(id);

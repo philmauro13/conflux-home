@@ -1,0 +1,90 @@
+[
+  {
+    "model_id": "mistral-large-2512",
+    "api_id": "mistral-large-latest",
+    "context_window": 262144,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.50,
+    "output_price_per_1m": 1.50,
+    "cached_input_price_per_1m": 0.05,
+    "capabilities": ["text", "functions", "structured_output", "multilingual"],
+    "best_use_case": "Top-tier Mistral model for complex reasoning, long-context analysis, and enterprise workloads"
+  },
+  {
+    "model_id": "mistral-medium-3.1",
+    "api_id": "mistral-medium-latest",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.40,
+    "output_price_per_1m": 2.00,
+    "cached_input_price_per_1m": 0.04,
+    "capabilities": ["text", "functions", "structured_output"],
+    "best_use_case": "Balanced quality/cost for general-purpose tasks; strong coding and reasoning"
+  },
+  {
+    "model_id": "mistral-small-3.2-24b",
+    "api_id": "mistral-small-latest",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.075,
+    "output_price_per_1m": 0.20,
+    "cached_input_price_per_1m": 0.01,
+    "capabilities": ["text", "functions", "structured_output"],
+    "best_use_case": "Ultra-cheap high-throughput model for classification, extraction, simple Q&A"
+  },
+  {
+    "model_id": "codestral-2508",
+    "api_id": "codestral-latest",
+    "context_window": 262144,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.30,
+    "output_price_per_1m": 0.90,
+    "cached_input_price_per_1m": 0.03,
+    "capabilities": ["text", "coding", "code_completion", "fill_in_middle"],
+    "best_use_case": "Dedicated coding model — code generation, completion, and FIM with 256K context"
+  },
+  {
+    "model_id": "pixtral-12b",
+    "api_id": "pixtral-12b",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.10,
+    "output_price_per_1m": 0.10,
+    "cached_input_price_per_1m": null,
+    "capabilities": ["text", "vision", "image_understanding"],
+    "best_use_case": "Multimodal vision model for image understanding, document parsing, and visual Q&A"
+  },
+  {
+    "model_id": "ministral-3b-2512",
+    "api_id": "ministral-3b-2512",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.10,
+    "output_price_per_1m": 0.10,
+    "cached_input_price_per_1m": 0.01,
+    "capabilities": ["text", "functions"],
+    "best_use_case": "Edge/mobile deployment, ultra-low-cost classification, and on-device inference"
+  },
+  {
+    "model_id": "ministral-8b-2512",
+    "api_id": "ministral-8b-2512",
+    "context_window": 262144,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.15,
+    "output_price_per_1m": 0.15,
+    "cached_input_price_per_1m": 0.015,
+    "capabilities": ["text", "functions"],
+    "best_use_case": "Small but capable model for cost-sensitive production workloads with long context"
+  },
+  {
+    "model_id": "ministral-14b-2512",
+    "api_id": "ministral-14b-2512",
+    "context_window": 262144,
+    "max_output_tokens": null,
+    "input_price_per_1m": 0.20,
+    "output_price_per_1m": 0.20,
+    "cached_input_price_per_1m": 0.02,
+    "capabilities": ["text", "functions"],
+    "best_use_case": "Mid-range small model balancing cost and capability for production use"
+  }
+]

@@ -1,0 +1,861 @@
+/* ============================================================
+   FEED RADAR — Tactical Intelligence Design System
+   Ripple Radar / Neon Command Center aesthetic
+   ============================================================ */
+
+/* ---------------------------------------------------------
+   CSS Custom Properties — Tactical Palette
+   --------------------------------------------------------- */
+:root {
+  /* Background */
+  --radar-bg: #18181b;
+  --radar-surface: rgba(255, 255, 255, 0.04);
+  --radar-surface-hover: rgba(255, 255, 255, 0.08);
+  --radar-border: rgba(255, 255, 255, 0.08);
+
+  /* Accent colors by category */
+  --radar-cyan: #06b6d4;
+  --radar-emerald: #10b981;
+  --radar-amber: #f59e0b;
+  --radar-violet: #8b5cf6;
+
+  /* Text */
+  --radar-text-primary: #e4e4e7;
+  --radar-text-secondary: #a1a1aa;
+  --radar-text-muted: #71717a;
+
+  /* Glassmorphism */
+  --radar-glass-bg: rgba(30, 30, 35, 0.6);
+  --radar-glass-border: rgba(255, 255, 255, 0.1);
+  --radar-glass-blur: blur(16px);
+
+  /* Fonts */
+  --radar-font-mono: 'JetBrains Mono', monospace;
+  --radar-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radar-font-header: 'Orbitron', 'Segoe UI', sans-serif;
+
+  /* Spacing */
+  --radar-radius: 12px;
+  --radar-radius-sm: 8px;
+  --radar-radius-lg: 16px;
+}
+
+/* ---------------------------------------------------------
+   Grid Background
+   --------------------------------------------------------- */
+.radar-grid-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-color: var(--radar-bg);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.radar-grid-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, var(--radar-bg) 70%);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------
+   Feed View Container
+   --------------------------------------------------------- */
+.feed-radar-view {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  font-family: var(--radar-font-body);
+  color: var(--radar-text-primary);
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  padding: 24px;
+  background: var(--radar-bg);
+}
+
+.feed-radar-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.feed-radar-sidebar {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+/* ---------------------------------------------------------
+   Radar View — Central SVG/CSS Radar
+   --------------------------------------------------------- */
+.radar-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.05) 0%, transparent 70%);
+  border: 1px solid var(--radar-border);
+}
+
+.radar-svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.radar-ring {
+  fill: none;
+  stroke: var(--radar-border);
+  stroke-width: 1;
+}
+
+.radar-ring-active {
+  fill: none;
+  stroke: var(--radar-cyan);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+
+.radar-sweep {
+  fill: none;
+  stroke: var(--radar-cyan);
+  stroke-width: 2;
+  opacity: 0.4;
+  transform-origin: center;
+  animation: radarSweep 8s linear infinite;
+}
+
+@keyframes radarSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Radar blips (expandable ripples) */
+.radar-blip {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.radar-blip:hover {
+  filter: brightness(1.3);
+  transform: scale(1.2);
+}
+
+.radar-blip-circle {
+  animation: blipPulse 2s ease-in-out infinite;
+}
+
+@keyframes blipPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Expanding ripple rings */
+.radar-ripple-ring {
+  fill: none;
+  stroke-width: 1.5;
+  opacity: 0;
+  animation: rippleExpand 3s ease-out forwards;
+}
+
+@keyframes rippleExpand {
+  0% {
+    r: 0;
+    opacity: 0.8;
+  }
+  100% {
+    r: 60;
+    opacity: 0;
+  }
+}
+
+/* Category-specific colors */
+.radar-blip-cyan .radar-blip-circle {
+  fill: var(--radar-cyan);
+  filter: drop-shadow(0 0 8px var(--radar-cyan));
+}
+.radar-blip-cyan .radar-ripple-ring {
+  stroke: var(--radar-cyan);
+}
+
+.radar-blip-emerald .radar-blip-circle {
+  fill: var(--radar-emerald);
+  filter: drop-shadow(0 0 8px var(--radar-emerald));
+}
+.radar-blip-emerald .radar-ripple-ring {
+  stroke: var(--radar-emerald);
+}
+
+.radar-blip-amber .radar-blip-circle {
+  fill: var(--radar-amber);
+  filter: drop-shadow(0 0 8px var(--radar-amber));
+}
+.radar-blip-amber .radar-ripple-ring {
+  stroke: var(--radar-amber);
+}
+
+.radar-blip-violet .radar-blip-circle {
+  fill: var(--radar-violet);
+  filter: drop-shadow(0 0 8px var(--radar-violet));
+}
+.radar-blip-violet .radar-ripple-ring {
+  stroke: var(--radar-violet);
+}
+
+/* Radar header */
+.radar-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.radar-title {
+  font-family: var(--radar-font-header);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--radar-text-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.radar-subtitle {
+  font-family: var(--radar-font-mono);
+  font-size: 0.75rem;
+  color: var(--radar-text-muted);
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------
+   Signal Card (Swipeable Glassmorphic Card)
+   --------------------------------------------------------- */
+.signal-card-container {
+  position: relative;
+  perspective: 1000px;
+}
+
+.signal-card {
+  position: relative;
+  background: var(--radar-glass-bg);
+  backdrop-filter: var(--radar-glass-blur);
+  -webkit-backdrop-filter: var(--radar-glass-blur);
+  border: 1px solid var(--radar-glass-border);
+  border-radius: var(--radar-radius-lg);
+  padding: 20px;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+.signal-card:active {
+  cursor: grabbing;
+}
+
+.signal-card.swiping-right {
+  box-shadow: -4px 0 20px rgba(16, 185, 129, 0.4);
+  border-color: var(--radar-emerald);
+}
+
+.signal-card.swiping-left {
+  box-shadow: 4px 0 20px rgba(239, 68, 68, 0.4);
+  border-color: #ef4444;
+}
+
+.signal-category-badge {
+  display: inline-block;
+  font-family: var(--radar-font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.signal-category-cyan {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--radar-cyan);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.signal-category-emerald {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--radar-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.signal-category-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--radar-amber);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.signal-category-violet {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--radar-violet);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.signal-title {
+  font-family: var(--radar-font-body);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--radar-text-primary);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.signal-body {
+  font-size: 0.875rem;
+  color: var(--radar-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+}
+
+.signal-confidence {
+  font-family: var(--radar-font-mono);
+  font-size: 0.7rem;
+  color: var(--radar-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signal-confidence-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.signal-confidence-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.signal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--radar-border);
+}
+
+.signal-action-btn {
+  flex: 1;
+  font-family: var(--radar-font-mono);
+  font-size: 0.7rem;
+  padding: 8px 12px;
+  border: 1px solid var(--radar-border);
+  border-radius: var(--radar-radius-sm);
+  background: var(--radar-surface);
+  color: var(--radar-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.signal-action-btn:hover {
+  background: var(--radar-surface-hover);
+  color: var(--radar-text-primary);
+}
+
+.signal-action-btn.save {
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--radar-emerald);
+}
+
+.signal-action-btn.save:hover {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.signal-action-btn.dismiss {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.signal-action-btn.dismiss:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.signal-action-btn.expand {
+  border-color: rgba(6, 182, 212, 0.3);
+  color: var(--radar-cyan);
+}
+
+.signal-action-btn.expand:hover {
+  background: rgba(6, 182, 212, 0.1);
+}
+
+/* Swipe indicators */
+.signal-swipe-hint {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.signal-swipe-hint.left {
+  left: -40px;
+  color: #ef4444;
+}
+
+.signal-swipe-hint.right {
+  right: -40px;
+  color: var(--radar-emerald);
+}
+
+.signal-card.swiping-right ~ .signal-swipe-hint.right,
+.signal-card.swiping-left ~ .signal-swipe-hint.left {
+  opacity: 1;
+}
+
+/* Expanded state */
+.signal-expanded-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--radar-border);
+}
+
+.signal-expanded-detail h4 {
+  font-family: var(--radar-font-mono);
+  font-size: 0.7rem;
+  color: var(--radar-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 6px 0;
+}
+
+.signal-expanded-detail p {
+  font-size: 0.8rem;
+  color: var(--radar-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------
+   Cognitive Sidebar — Learning Velocity Stats
+   --------------------------------------------------------- */
+.cognitive-sidebar {
+  background: var(--radar-glass-bg);
+  backdrop-filter: var(--radar-glass-blur);
+  -webkit-backdrop-filter: var(--radar-glass-blur);
+  border: 1px solid var(--radar-glass-border);
+  border-radius: var(--radar-radius-lg);
+  padding: 20px;
+}
+
+.cognitive-sidebar-title {
+  font-family: var(--radar-font-header);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--radar-text-primary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 16px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--radar-border);
+}
+
+.cognitive-stat {
+  margin-bottom: 16px;
+}
+
+.cognitive-stat-label {
+  font-family: var(--radar-font-mono);
+  font-size: 0.65rem;
+  color: var(--radar-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.cognitive-stat-value {
+  font-family: var(--radar-font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--radar-text-primary);
+  line-height: 1;
+}
+
+.cognitive-stat-trend {
+  font-family: var(--radar-font-mono);
+  font-size: 0.7rem;
+  margin-top: 4px;
+}
+
+.cognitive-stat-trend.up {
+  color: var(--radar-emerald);
+}
+
+.cognitive-stat-trend.down {
+  color: #ef4444;
+}
+
+.cognitive-stat-trend.stable {
+  color: var(--radar-text-muted);
+}
+
+/* Trend line mini chart */
+.cognitive-trend-chart {
+  margin: 16px 0;
+  height: 60px;
+  position: relative;
+}
+
+.cognitive-trend-line {
+  fill: none;
+  stroke: var(--radar-cyan);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px var(--radar-cyan));
+}
+
+.cognitive-trend-area {
+  fill: url(#trendGradient);
+  opacity: 0.3;
+}
+
+/* Category breakdown */
+.cognitive-categories {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--radar-border);
+}
+
+.cognitive-category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+}
+
+.cognitive-category-name {
+  font-family: var(--radar-font-mono);
+  color: var(--radar-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cognitive-category-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.cognitive-category-dot.cyan { background: var(--radar-cyan); }
+.cognitive-category-dot.emerald { background: var(--radar-emerald); }
+.cognitive-category-dot.amber { background: var(--radar-amber); }
+.cognitive-category-dot.violet { background: var(--radar-violet); }
+
+.cognitive-category-pct {
+  font-family: var(--radar-font-mono);
+  color: var(--radar-text-muted);
+}
+
+/* ---------------------------------------------------------
+   Briefing Overlay — Full-screen AI Summary
+   --------------------------------------------------------- */
+.briefing-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(24, 24, 27, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  animation: briefingFadeIn 0.3s ease-out;
+}
+
+@keyframes briefingFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.briefing-panel {
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--radar-glass-bg);
+  border: 1px solid var(--radar-glass-border);
+  border-radius: var(--radar-radius-lg);
+  padding: 32px;
+  position: relative;
+  animation: briefingSlideUp 0.35s ease-out;
+}
+
+@keyframes briefingSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.briefing-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--radar-border);
+  border-radius: 50%;
+  background: var(--radar-surface);
+  color: var(--radar-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.15s ease;
+}
+
+.briefing-close:hover {
+  background: var(--radar-surface-hover);
+  color: var(--radar-text-primary);
+}
+
+.briefing-title {
+  font-family: var(--radar-font-header);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--radar-text-primary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 8px 0;
+}
+
+.briefing-subtitle {
+  font-family: var(--radar-font-mono);
+  font-size: 0.7rem;
+  color: var(--radar-text-muted);
+  margin: 0 0 24px 0;
+}
+
+.briefing-items {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.briefing-item {
+  background: var(--radar-surface);
+  border: 1px solid var(--radar-border);
+  border-radius: var(--radar-radius);
+  padding: 16px;
+}
+
+.briefing-item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.briefing-item-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.briefing-item-content {
+  flex: 1;
+}
+
+.briefing-item-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--radar-text-primary);
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+}
+
+.briefing-item-body {
+  font-size: 0.8rem;
+  color: var(--radar-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.briefing-item-relevance {
+  font-family: var(--radar-font-mono);
+  font-size: 0.65rem;
+  color: var(--radar-emerald);
+  margin-top: 8px;
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+}
+
+.briefing-generate-btn {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px 20px;
+  font-family: var(--radar-font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, var(--radar-cyan), var(--radar-violet));
+  border: none;
+  border-radius: var(--radar-radius-sm);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.briefing-generate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.3);
+}
+
+.briefing-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------------------------------------------------------
+   Briefing Toggle Button (in main view)
+   --------------------------------------------------------- */
+.briefing-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-family: var(--radar-font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--radar-surface);
+  border: 1px solid var(--radar-border);
+  border-radius: var(--radar-radius-sm);
+  color: var(--radar-text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.briefing-trigger-btn:hover {
+  background: var(--radar-surface-hover);
+  border-color: var(--radar-cyan);
+  color: var(--radar-cyan);
+}
+
+/* ---------------------------------------------------------
+   Loading States
+   --------------------------------------------------------- */
+.radar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--radar-text-muted);
+  font-family: var(--radar-font-mono);
+  font-size: 0.8rem;
+}
+
+.radar-spinner {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--radar-border);
+  border-top-color: var(--radar-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------
+   Empty States
+   --------------------------------------------------------- */
+.radar-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--radar-text-muted);
+}
+
+.radar-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.radar-empty-title {
+  font-family: var(--radar-font-mono);
+  font-size: 0.85rem;
+  color: var(--radar-text-secondary);
+  margin: 0 0 6px 0;
+}
+
+.radar-empty-hint {
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------
+   Responsive — Stack sidebar on small screens
+   --------------------------------------------------------- */
+@media (max-width: 900px) {
+  .feed-radar-view {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-radar-sidebar {
+    position: relative;
+    top: 0;
+  }
+
+  .briefing-overlay {
+    padding: 20px;
+  }
+
+  .briefing-panel {
+    max-height: 90vh;
+    padding: 24px;
+  }
+}
+
+/* ---------------------------------------------------------
+   Accessibility — Reduced motion
+   --------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .radar-sweep,
+  .radar-blip-circle,
+  .radar-ripple-ring,
+  .briefing-overlay,
+  .briefing-panel {
+    animation: none !important;
+  }
+}

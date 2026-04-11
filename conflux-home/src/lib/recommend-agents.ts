@@ -36,7 +36,7 @@ const GOAL_MAP: Record<string, GoalDefinition> = {
   'building-a-business': {
     description: 'Launch, grow, and scale a business — from idea to revenue',
     agents: [
-      { agentId: 'zigbot', reason: 'Strategic planning for your business' },
+      { agentId: 'conflux', reason: 'Strategic planning for your business' },
       { agentId: 'helix', reason: 'Market research while you sleep' },
       { agentId: 'forge', reason: 'Build products fast' },
       { agentId: 'vector', reason: 'Financial strategy and opportunity evaluation' },
@@ -48,7 +48,7 @@ const GOAL_MAP: Record<string, GoalDefinition> = {
     agents: [
       { agentId: 'helix', reason: 'Deep research on any topic' },
       { agentId: 'quanta', reason: 'Verify information accuracy' },
-      { agentId: 'zigbot', reason: 'Connect insights to action' },
+      { agentId: 'conflux', reason: 'Connect insights to action' },
     ],
   },
   'work-productivity': {
@@ -71,7 +71,7 @@ const GOAL_MAP: Record<string, GoalDefinition> = {
   'everyday-life': {
     description: 'Daily planning, quick research, and keeping everything running smoothly',
     agents: [
-      { agentId: 'zigbot', reason: 'Daily planning and decisions' },
+      { agentId: 'conflux', reason: 'Daily planning and decisions' },
       { agentId: 'helix', reason: 'Research anything, anytime' },
       { agentId: 'catalyst', reason: 'Keep everything running smoothly' },
     ],
@@ -154,4 +154,4 @@ export function getAgentInfo(agentId: string): AgentInfo | null {
 // ── Defaults for skip-onboarding path ──
 
 export const DEFAULT_GOALS = ['building-a-business', 'work-productivity'];
-export const DEFAULT_AGENTS = ['zigbot', 'forge', 'prism'];
+export const DEFAULT_AGENTS = ['conflux', 'forge', 'prism'];

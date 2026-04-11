@@ -1,0 +1,23 @@
+[
+  {
+    "model_id": "deepseek-chat",
+    "context_window": 65536,
+    "max_output_tokens": 8192,
+    "input_price_per_1m": 0.27,
+    "cached_input_price_per_1m": 0.07,
+    "output_price_per_1m": 1.10,
+    "capabilities": ["text", "functions", "structured_output", "coding"],
+    "best_use_case": "General-purpose chat and coding; extremely cost-effective at $0.27/M input. Great for high-volume production use."
+  },
+  {
+    "model_id": "deepseek-reasoner",
+    "context_window": 65536,
+    "max_cot_tokens": 32768,
+    "max_output_tokens": 8192,
+    "input_price_per_1m": 0.55,
+    "cached_input_price_per_1m": 0.14,
+    "output_price_per_1m": 2.19,
+    "capabilities": ["text", "reasoning", "chain_of_thought", "coding", "math"],
+    "best_use_case": "Complex reasoning, math, and logic problems. Chain-of-thought reasoning with 32K CoT budget."
+  }
+]

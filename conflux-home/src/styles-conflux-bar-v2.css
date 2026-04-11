@@ -1,0 +1,727 @@
+/* ═══════════════════════════════════════════════════════════
+   ConfluxBarV2 — Three-Point Navigation Spine v2.1
+   Floating command center, not a taskbar
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Wrapper ── */
+
+.conflux-bar-v2-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+/* ── The Bar — Floating Pill ── */
+
+.conflux-bar-v2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  width: auto;
+  max-width: none;
+  margin-bottom: 4px;
+  transition: all 0.3s ease;
+}
+
+.conflux-bar-v2:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ══════════════════════════════════════
+   Side Buttons — Unified Orb Style
+   ══════════════════════════════════════ */
+
+/* Shared base for logo + home */
+.conflux-logo-btn,
+.conflux-home-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inner glow ring on hover */
+.conflux-logo-btn::before,
+.conflux-home-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.conflux-logo-btn::before {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
+}
+
+.conflux-home-btn::before {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+}
+
+.conflux-logo-btn:hover::before,
+.conflux-home-btn:hover::before {
+  opacity: 1;
+}
+
+/* ── Logo Button (Left) ── */
+
+.conflux-logo-btn {
+  font-size: 26px;
+  color: rgba(165, 180, 252, 0.7);
+  font-family: inherit;
+  line-height: 1;
+}
+
+.conflux-logo-btn:hover {
+  transform: scale(1.15);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+.conflux-logo-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Home Button (Right) ── */
+
+.conflux-home-btn {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.conflux-home-btn:hover {
+  transform: scale(1.15);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.conflux-home-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* ══════════════════════════════════════
+   Hero Button (Center) — THE SOUL
+   ══════════════════════════════════════ */
+
+@keyframes hero-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 16px rgba(99, 102, 241, 0.25),
+      0 0 32px rgba(99, 102, 241, 0.08),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 24px rgba(99, 102, 241, 0.4),
+      0 0 48px rgba(99, 102, 241, 0.15),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@keyframes hero-breathe-notifications {
+  0%, 100% {
+    box-shadow:
+      0 0 16px rgba(245, 158, 11, 0.3),
+      0 0 32px rgba(245, 158, 11, 0.1),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 24px rgba(245, 158, 11, 0.5),
+      0 0 48px rgba(245, 158, 11, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Subtle ring rotation */
+@keyframes hero-ring-rotate {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.hero-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #818cf8, #6366f1 50%, #4338ca);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  /* Elevate above the bar */
+  margin-top: -30px;
+  margin-left: 6px;
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: hero-breathe 3.5s ease-in-out infinite;
+  z-index: 2;
+  color: white;
+  font-size: 22px;
+}
+
+/* Rotating ring border */
+.hero-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  border-radius: 50%;
+  border: 1.5px solid rgba(129, 140, 248, 0.3);
+  border-top-color: rgba(129, 140, 248, 0.7);
+  animation: hero-ring-rotate 8s linear infinite;
+  pointer-events: none;
+}
+
+/* Outer soft glow halo */
+.hero-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+.hero-btn:hover {
+  transform: scale(1.18);
+  background: radial-gradient(circle at 35% 35%, #a5b4fc, #818cf8 50%, #6366f1);
+  box-shadow:
+    0 0 36px rgba(99, 102, 241, 0.5),
+    0 0 72px rgba(99, 102, 241, 0.2),
+    0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.hero-btn:hover::after {
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+}
+
+/* Chat is currently open — subtle "active" state */
+.hero-btn.chat-active {
+  background: radial-gradient(circle at 35% 35%, #a5b4fc, #818cf8 50%, #6366f1);
+  animation: none;
+  box-shadow:
+    0 0 24px rgba(99, 102, 241, 0.45),
+    0 0 48px rgba(99, 102, 241, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Notification variant */
+.hero-btn.has-notifications {
+  animation: hero-breathe-notifications 2.5s ease-in-out infinite;
+}
+
+.hero-btn.has-notifications::before {
+  border-color: rgba(245, 158, 11, 0.3);
+  border-top-color: rgba(245, 158, 11, 0.7);
+}
+
+/* Notification dot */
+.hero-btn-notification {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2.5px solid rgba(8, 8, 18, 0.95);
+  z-index: 3;
+  animation: notification-pulse 2s ease-in-out infinite;
+}
+
+@keyframes notification-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Agent status indicator */
+.hero-btn-status {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(8, 8, 18, 0.95);
+  z-index: 3;
+  transition: background 0.3s ease;
+}
+
+/* ══════════════════════════════════════
+   Rising Menu — Scoped to V2
+   ══════════════════════════════════════ */
+
+.conflux-bar-v2-wrapper .conflux-menu {
+  width: 420px;
+  max-height: 60vh;
+  background: rgba(8, 8, 18, 0.96);
+  backdrop-filter: blur(48px) saturate(1.4);
+  -webkit-backdrop-filter: blur(48px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px 20px 24px 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 -8px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  animation: conflux-menu-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-bottom: 4px;
+}
+
+@keyframes conflux-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Hero Section ── */
+
+.conflux-bar-v2-wrapper .conflux-menu-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.06));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-hero-icon {
+  font-size: 26px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-hero-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-hero-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Search ── */
+
+.conflux-bar-v2-wrapper .conflux-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-search-icon {
+  font-size: 15px;
+  opacity: 0.35;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Categories ── */
+
+.conflux-bar-v2-wrapper .conflux-menu-categories {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-cat {
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-cat:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-cat.active {
+  background: rgba(99, 102, 241, 0.18);
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+/* ── App Grid ── */
+
+.conflux-bar-v2-wrapper .conflux-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app.active {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-app-desc {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conflux-bar-v2-wrapper .conflux-menu-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 12px;
+}
+
+/* ══════════════════════════════════════
+   Intelligence Badges Bar (Phase 1)
+   Sits above the 3-point spine
+   ══════════════════════════════════════ */
+
+.conflux-bar-v2-wrapper .intelligence-bar {
+  position: absolute;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(12, 12, 24, 0.95);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  animation: intel-bar-enter 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  z-index: 15;
+}
+
+@keyframes intel-bar-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* Individual intelligence badge */
+.conflux-bar-v2-wrapper .intelligence-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge.attention {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge.attention:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge-emoji {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(99, 102, 241, 0.6);
+  line-height: 1;
+}
+
+.conflux-bar-v2-wrapper .intelligence-badge-value.attention {
+  background: rgba(245, 158, 11, 0.8);
+  animation: intel-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes intel-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
+}
+
+/* Hover tooltip */
+.conflux-bar-v2-wrapper .intelligence-badge-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  max-width: 280px;
+  padding: 12px 14px;
+  background: rgba(12, 12, 26, 0.96);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  animation: intel-tooltip-enter 0.15s ease-out;
+  pointer-events: none;
+  z-index: 20;
+}
+
+@keyframes intel-tooltip-enter {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Tooltip arrow */
+.conflux-bar-v2-wrapper .intelligence-badge-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(12, 12, 26, 0.96);
+}
+
+.conflux-bar-v2-wrapper .tooltip-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.conflux-bar-v2-wrapper .tooltip-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+.conflux-bar-v2-wrapper .tooltip-detail {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+.conflux-bar-v2-wrapper .tooltip-hint {
+  font-size: 9px;
+  color: rgba(99, 102, 241, 0.6);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Summary button */
+.conflux-bar-v2-wrapper .intelligence-bar-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  transition: all 0.15s ease;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.conflux-bar-v2-wrapper .intelligence-bar-summary:hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ══════════════════════════════════════
+   Menu app badge and count badge (Phase 1)
+   ══════════════════════════════════════ */
+
+.conflux-bar-v2-wrapper .conflux-menu-app-badge {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.conflux-bar-v2-wrapper .menu-app-count-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(99, 102, 241, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.conflux-bar-v2-wrapper .menu-app-count-badge.attention {
+  background: rgba(239, 68, 68, 0.8);
+}

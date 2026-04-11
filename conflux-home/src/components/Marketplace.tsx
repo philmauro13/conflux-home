@@ -1,384 +1,262 @@
-import { useState, useMemo } from 'react';
-import { AGENT_PROFILES, AgentCategory } from '../data/agent-descriptions';
-import Avatar from './Avatar';
+import { useState, useMemo, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { MARKETPLACE_ITEMS, MarketplaceItem, MarketplaceItemType } from '../data/marketplace-items';
+import '../styles-marketplace.css';
 
-// ─── Types ─────────────────────────────────────────────────────
+type TypeTab = 'all' | MarketplaceItemType;
 
-export type CategoryType = AgentCategory;
-
-interface MarketplaceAgent {
-  id: string;
-  name: string;
-  emoji: string;
-  role: string;
-  tagline: string;
-  description: string;
-  personality: string;
-  skills: string[];
-  bestFor: string[];
-  avatarPath: string;
-  color: string;
-  category: CategoryType;
-  isCore: boolean;
-  comingSoon: boolean;
-  installed: boolean;
-}
-
-// ─── Categories ────────────────────────────────────────────────
-
-const CATEGORIES = [
+const TYPE_TABS: { id: TypeTab; label: string; emoji: string }[] = [
   { id: 'all', label: 'All', emoji: '🌟' },
-  { id: 'work', label: 'Work', emoji: '💼' },
-  { id: 'life', label: 'Life', emoji: '🏥' },
-  { id: 'creative', label: 'Creative', emoji: '🎨' },
-  { id: 'fun', label: 'Fun', emoji: '🎮' },
-  { id: 'expert', label: 'Expert', emoji: '🎓' },
+  { id: 'app', label: 'Apps', emoji: '📱' },
+  { id: 'game', label: 'Games', emoji: '🎮' },
+  { id: 'agent', label: 'Agents', emoji: '🤖' },
 ];
 
-// ─── Component ─────────────────────────────────────────────────
+const TYPE_LABELS: Record<MarketplaceItemType, string> = {
+  app: 'App',
+  game: 'Game',
+  agent: 'Agent',
+};
 
 export default function Marketplace() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [typeTab, setTypeTab] = useState<TypeTab>('all');
+  const [categoryTab, setCategoryTab] = useState('all');
   const [search, setSearch] = useState('');
-  const [installedSet, setInstalledSet] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem('conflux-selected-agents');
-      return raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [localStatus, setLocalStatus] = useState<Record<string, MarketplaceItem['status']>>({});
 
-  // Merge core + marketplace agents from unified AGENT_PROFILES
-  const allAgents: MarketplaceAgent[] = useMemo(() => {
-    return AGENT_PROFILES.map((p) => ({
-      id: p.id,
-      name: p.name,
-      emoji: p.emoji,
-      role: p.role,
-      tagline: p.tagline,
-      description: p.description,
-      personality: p.personality,
-      skills: p.skills,
-      bestFor: p.bestFor,
-      avatarPath: p.avatarPath,
-      color: p.color,
-      category: p.category,
-      isCore: !p.comingSoon,
-      comingSoon: p.comingSoon ?? false,
-      installed: !p.comingSoon && installedSet.has(p.id),
-    }));
-  }, [installedSet]);
+  // Compute categories for current type
+  const categories = useMemo(() => {
+    const source = typeTab === 'all' ? MARKETPLACE_ITEMS : MARKETPLACE_ITEMS.filter((i) => i.type === typeTab);
+    const cats = [...new Set(source.map((i) => i.category))];
+    return ['all', ...cats.sort()];
+  }, [typeTab]);
 
-  // Filter
+  // Reset category when type changes
+  const handleTypeTab = (id: TypeTab) => {
+    setTypeTab(id);
+    setCategoryTab('all');
+  };
+
+  // Filtered items
   const filtered = useMemo(() => {
-    let list = allAgents;
-    if (selectedCategory !== 'all') {
-      list = list.filter((a) => a.category === selectedCategory);
-    }
+    let items = MARKETPLACE_ITEMS;
+    if (typeTab !== 'all') items = items.filter((i) => i.type === typeTab);
+    if (categoryTab !== 'all') items = items.filter((i) => i.category === categoryTab);
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(
-        (a) =>
-          a.name.toLowerCase().includes(q) ||
-          a.role.toLowerCase().includes(q) ||
-          a.tagline.toLowerCase().includes(q) ||
-          a.description.toLowerCase().includes(q)
+      items = items.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.tagline.toLowerCase().includes(q) ||
+          i.description.toLowerCase().includes(q) ||
+          i.skills.some((s) => s.toLowerCase().includes(q))
       );
     }
-    return list;
-  }, [allAgents, selectedCategory, search]);
+    return items.map((i) => ({ ...i, status: localStatus[i.id] ?? i.status }));
+  }, [typeTab, categoryTab, search, localStatus]);
 
-  // Featured: Legal Eagle, Code Sensei, Chef Bot
-  const featuredIds = ['legal-expert', 'code-mentor', 'chef'];
-  const featuredAgents = allAgents.filter((a) => featuredIds.includes(a.id));
+  // Featured items
+  const featured = useMemo(() => {
+    if (typeTab !== 'all' || search.trim()) {
+      return filtered.filter((i) => i.featured);
+    }
+    return MARKETPLACE_ITEMS.filter((i) => i.featured).map((i) => ({
+      ...i,
+      status: localStatus[i.id] ?? i.status,
+    }));
+  }, [typeTab, search, filtered, localStatus]);
 
-  const handleInstall = (id: string, comingSoon: boolean) => {
-    if (comingSoon) return;
-    setInstalledSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      localStorage.setItem('conflux-selected-agents', JSON.stringify([...next]));
-      return next;
-    });
+  // Handlers
+  const handleOpen = useCallback((item: MarketplaceItem) => {
+    if (item.status === 'coming-soon') return;
+    window.dispatchEvent(
+      new CustomEvent('conflux:navigate', {
+        detail: { viewId: item.viewId, gameId: item.gameId },
+      })
+    );
+  }, []);
+
+  const handleInstall = useCallback(async (item: MarketplaceItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.status === 'coming-soon' || item.status === 'installed') return;
+    try {
+      await invoke('agent_template_install', { templateId: item.agentId, memberId: null });
+      setLocalStatus((prev) => ({ ...prev, [item.id]: 'installed' }));
+    } catch {
+      // install failed — leave as available
+    }
+  }, []);
+
+  const getButtonText = (status: MarketplaceItem['status']) => {
+    switch (status) {
+      case 'installed': return '✓ Open';
+      case 'available': return '+ Install';
+      case 'coming-soon': return '🔒 Coming Soon';
+    }
   };
 
-  const handleCardClick = (id: string) => {
-    window.dispatchEvent(new CustomEvent('conflux:agent-detail', { detail: { agentId: id } }));
-  };
+  const showCategories = categories.length > 2;
 
   return (
-    <div>
+    <div className="marketplace-hub">
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>
-          Agent Marketplace
-        </h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          Browse, install, and manage your AI agents.
-        </p>
+      <div className="marketplace-header">
+        <h2>🏪 Marketplace</h2>
+        <p>Apps, games, and agents for your AI home</p>
       </div>
 
-      {/* Search + Category Tabs */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <span
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: 14,
-              opacity: 0.5,
-            }}
+      {/* Search */}
+      <div className="marketplace-search">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search marketplace..."
+        />
+      </div>
+
+      {/* Type Tabs */}
+      <div className="marketplace-tabs">
+        {TYPE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            className={`type-tab ${typeTab === tab.id ? 'active' : ''}`}
+            data-type={tab.id}
+            onClick={() => handleTypeTab(tab.id)}
           >
-            🔍
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agents..."
-            style={{
-              width: '100%',
-              padding: '10px 12px 10px 36px',
-              borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              outline: 'none',
-              boxSizing: 'border-box',
-              transition: 'border-color 0.2s',
-            }}
-          />
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            overflowX: 'auto',
-            paddingBottom: 4,
-            scrollbarWidth: 'none',
-          }}
-        >
-          {CATEGORIES.map((cat) => (
+            {tab.emoji} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Category Tabs */}
+      {showCategories && (
+        <div className="marketplace-tabs">
+          {categories.map((cat) => (
             <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 20,
-                border: `1px solid ${selectedCategory === cat.id ? 'var(--accent-secondary)' : 'var(--border)'}`,
-                background:
-                  selectedCategory === cat.id ? 'rgba(123, 47, 255, 0.1)' : 'transparent',
-                color:
-                  selectedCategory === cat.id
-                    ? 'var(--accent-secondary)'
-                    : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontSize: 12,
-                whiteSpace: 'nowrap',
-                fontWeight: selectedCategory === cat.id ? 600 : 400,
-                transition: 'all 0.15s ease',
-              }}
+              key={cat}
+              className={`category-tab ${categoryTab === cat ? 'active' : ''}`}
+              onClick={() => setCategoryTab(cat)}
             >
-              {cat.emoji} {cat.label}
+              {cat === 'all' ? 'All' : cat}
             </button>
           ))}
         </div>
-      </div>
+      )}
 
       {/* Featured Section */}
-      {selectedCategory === 'all' && !search.trim() && (
-        <div style={{ marginBottom: 32 }}>
-          <h4
-            style={{
-              fontSize: 14,
-              color: 'var(--text-secondary)',
-              marginBottom: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            ⭐ Featured
-          </h4>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-              gap: 16,
-            }}
-          >
-            {featuredAgents.map((agent, i) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                onInstall={() => handleInstall(agent.id, agent.comingSoon)}
-                onClick={() => handleCardClick(agent.id)}
-                featured
-                index={i}
+      {featured.length > 0 && typeTab === 'all' && !search.trim() && (
+        <div className="marketplace-featured">
+          <h3>⭐ Featured</h3>
+          <div className="featured-grid">
+            {featured.map((item) => (
+              <MarketplaceFeaturedCard
+                key={item.id}
+                item={item}
+                onOpen={() => handleOpen(item)}
+                onInstall={(e) => handleInstall(item, e)}
+                getButtonText={getButtonText}
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* All Agents Grid */}
-      <div>
-        <h4
-          style={{
-            fontSize: 14,
-            color: 'var(--text-secondary)',
-            marginBottom: 12,
-          }}
-        >
-          {selectedCategory === 'all'
-            ? 'All Agents'
-            : CATEGORIES.find((c) => c.id === selectedCategory)?.label}{' '}
-          ({filtered.length})
-        </h4>
+      {/* Main Grid */}
+      {filtered.length > 0 ? (
         <div className="marketplace-grid">
-          {filtered.map((agent, i) => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              onInstall={() => handleInstall(agent.id, agent.comingSoon)}
-              onClick={() => handleCardClick(agent.id)}
-              index={i}
+          {filtered.map((item) => (
+            <MarketplaceCard
+              key={item.id}
+              item={item}
+              onOpen={() => handleOpen(item)}
+              onInstall={(e) => handleInstall(item, e)}
+              getButtonText={getButtonText}
             />
           ))}
-          {filtered.length === 0 && (
-            <div className="marketplace-empty-state">
-              <div className="marketplace-empty-emoji">🔍</div>
-              <h4 className="marketplace-empty-title">No agents found</h4>
-              <p className="marketplace-empty-text">
-                Try a different search, or browse all agents.
-              </p>
-              <button
-                className="marketplace-empty-btn"
-                onClick={() => {
-                  setSearch('');
-                  setSelectedCategory('all');
-                }}
-              >
-                Clear Search
-              </button>
-            </div>
-          )}
         </div>
-      </div>
+      ) : (
+        <div className="marketplace-empty">
+          <div className="empty-emoji">🔍</div>
+          <h3>No results found</h3>
+          <p>Try a different search or browse all categories.</p>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Agent Card Component ──────────────────────────────────────
+// ─── Card Components ──────────────────────────────────────────
 
-function AgentCard({
-  agent,
+function MarketplaceCard({
+  item,
+  onOpen,
   onInstall,
-  onClick,
-  featured = false,
-  index = 0,
+  getButtonText,
 }: {
-  agent: MarketplaceAgent;
-  onInstall: () => void;
-  onClick: () => void;
-  featured?: boolean;
-  index?: number;
+  item: MarketplaceItem;
+  onOpen: () => void;
+  onInstall: (e: React.MouseEvent) => void;
+  getButtonText: (s: MarketplaceItem['status']) => string;
 }) {
   return (
     <div
-      className="marketplace-card"
-      onClick={onClick}
-      style={{
-        cursor: 'pointer',
-        position: 'relative',
-        animation: `card-enter 0.4s ease-out both`,
-        animationDelay: `${index * 50}ms`,
-        ...(featured
-          ? {
-              borderColor: 'var(--accent-secondary)',
-              borderWidth: 1.5,
-            }
-          : {}),
-      }}
+      className={`marketplace-card ${item.status === 'coming-soon' ? 'coming-soon' : ''}`}
+      style={{ '--card-color': item.color } as React.CSSProperties}
+      onClick={onOpen}
     >
-      {/* Coming Soon overlay */}
-      {agent.comingSoon && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            fontSize: 10,
-            padding: '3px 8px',
-            borderRadius: 12,
-            background: 'rgba(123, 47, 255, 0.15)',
-            color: 'var(--accent-secondary)',
-            fontWeight: 600,
-            letterSpacing: 0.5,
-          }}
-        >
-          🔒 Coming Soon
-        </div>
-      )}
-
-      <div className="category-badge">{agent.category}</div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-        <Avatar
-          agentId={agent.id}
-          name={agent.name}
-          emoji={agent.emoji}
-          status="idle"
-          size="md"
-          showStatus={false}
-        />
-        <div>
-          <h3>{agent.name}</h3>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{agent.tagline}</div>
-        </div>
-      </div>
-
-      <p className="description">{agent.description}</p>
-
-      <div className="skills">
-        {agent.skills.slice(0, 4).map((skill) => (
-          <span key={skill} className="skill-tag">
-            {skill}
-          </span>
+      <span className="card-emoji">{item.emoji}</span>
+      <h3 className="card-name">{item.name}</h3>
+      <p className="card-tagline">{item.tagline}</p>
+      <span className="card-category">{TYPE_LABELS[item.type]}</span>
+      <div className="card-skills">
+        {item.skills.slice(0, 3).map((skill) => (
+          <span key={skill} className="skill-tag">{skill}</span>
         ))}
       </div>
-
       <button
-        className={`install-btn ${agent.installed ? 'installed' : ''}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onInstall();
-        }}
-        disabled={agent.comingSoon}
-        style={
-          agent.comingSoon
-            ? {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-                borderColor: 'var(--text-muted)',
-                color: 'var(--text-muted)',
-              }
-            : {}
-        }
+        className={`card-action ${item.status}`}
+        onClick={item.status === 'available' ? onInstall : item.status === 'installed' ? onOpen : undefined}
+        disabled={item.status === 'coming-soon'}
       >
-        {agent.comingSoon
-          ? '🔒 Coming Soon'
-          : agent.installed
-            ? '✓ Installed'
-            : '+ Install Agent'}
+        {getButtonText(item.status)}
+      </button>
+    </div>
+  );
+}
+
+function MarketplaceFeaturedCard({
+  item,
+  onOpen,
+  onInstall,
+  getButtonText,
+}: {
+  item: MarketplaceItem;
+  onOpen: () => void;
+  onInstall: (e: React.MouseEvent) => void;
+  getButtonText: (s: MarketplaceItem['status']) => string;
+}) {
+  return (
+    <div
+      className={`featured-card ${item.status === 'coming-soon' ? 'coming-soon' : ''}`}
+      style={{ '--card-color': item.color } as React.CSSProperties}
+      onClick={onOpen}
+    >
+      <span className="card-emoji">{item.emoji}</span>
+      <h3 className="card-name">{item.name}</h3>
+      <p className="card-tagline">{item.tagline}</p>
+      <span className="card-category">{TYPE_LABELS[item.type]}</span>
+      <div className="card-skills">
+        {item.skills.slice(0, 3).map((skill) => (
+          <span key={skill} className="skill-tag">{skill}</span>
+        ))}
+      </div>
+      <button
+        className={`card-action ${item.status}`}
+        onClick={item.status === 'available' ? onInstall : item.status === 'installed' ? onOpen : undefined}
+        disabled={item.status === 'coming-soon'}
+      >
+        {getButtonText(item.status)}
       </button>
     </div>
   );

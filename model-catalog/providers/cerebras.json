@@ -1,0 +1,58 @@
+[
+  {
+    "model_id": "llama3.1-8b",
+    "display_name": "Llama 3.1 8B",
+    "parameters": "8B",
+    "context_window": 8192,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 2200,
+    "blended_price_per_1m": 0.10,
+    "input_price_per_1m": 0.06,
+    "output_price_per_1m": 0.14,
+    "capabilities": ["text", "chat"],
+    "tier": "production",
+    "best_use_case": "Ultra-fast, ultra-cheap inference; simple tasks, classification, high-throughput pipelines"
+  },
+  {
+    "model_id": "gpt-oss-120b",
+    "display_name": "OpenAI GPT-OSS 120B",
+    "parameters": "120B",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 3000,
+    "blended_price_per_1m": 0.45,
+    "input_price_per_1m": 0.22,
+    "output_price_per_1m": 0.68,
+    "capabilities": ["text", "chat", "functions", "reasoning"],
+    "tier": "production",
+    "best_use_case": "High-quality reasoning and general-purpose tasks at blazing speed"
+  },
+  {
+    "model_id": "qwen-3-235b-a22b-instruct-2507",
+    "display_name": "Qwen 3 235B Instruct",
+    "parameters": "235B",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 1400,
+    "blended_price_per_1m": null,
+    "input_price_per_1m": null,
+    "output_price_per_1m": null,
+    "capabilities": ["text", "chat", "functions"],
+    "tier": "preview",
+    "best_use_case": "Large MoE model for complex reasoning; free tier available with rate limits"
+  },
+  {
+    "model_id": "zai-glm-4.7",
+    "display_name": "Z.ai GLM 4.7",
+    "parameters": "355B",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 1000,
+    "blended_price_per_1m": 2.38,
+    "input_price_per_1m": 1.19,
+    "output_price_per_1m": 3.57,
+    "capabilities": ["text", "chat", "functions", "reasoning"],
+    "tier": "preview",
+    "best_use_case": "Highest-intelligence model on Cerebras; complex reasoning, multilingual"
+  }
+]

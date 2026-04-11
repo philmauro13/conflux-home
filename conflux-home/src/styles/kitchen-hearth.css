@@ -1,0 +1,2127 @@
+/* ==========================================================================
+   Hearth Design System — Kitchen (Conflux Home)
+   Warm, inviting, like standing near a hearth.
+   Mobile-first: 375px base → 640px tablet → 1024px desktop
+   All classes prefixed .hearth-
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design Tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Amber scale */
+  --hearth-50:  #FFFBEB;
+  --hearth-100: #FEF3C7;
+  --hearth-200: #FDE68A;
+  --hearth-300: #FCD34D;
+  --hearth-400: #FBBF24;
+  --hearth-500: #F59E0B;
+  --hearth-600: #D97706;
+  --hearth-700: #B45309;
+  --hearth-800: #92400E;
+  --hearth-900: #78350F;
+  --hearth-950: #451A03;
+
+  /* Surfaces */
+  --hearth-bg:       #1C1917;
+  --hearth-bg-card:  #292524;
+  --hearth-bg-input: #1C1917;
+  --hearth-bg-hover: #3A3533;
+  --hearth-surface:  #44403C;
+
+  /* Text */
+  --hearth-text:       #FEF3C7;
+  --hearth-text-muted: #A8A29E;
+  --hearth-text-dim:   #78716C;
+  --hearth-text-on-btn: #1C1917;
+
+  /* Accent colors */
+  --hearth-primary:  #F59E0B;
+  --hearth-success:  #22C55E;
+  --hearth-urgent:   #EF4444;
+  --hearth-info:     #38BDF8;
+
+  /* Shadows — warm tinted */
+  --hearth-shadow-sm:  0 1px 3px rgba(245, 158, 11, 0.06), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --hearth-shadow-md:  0 4px 12px rgba(245, 158, 11, 0.08), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --hearth-shadow-lg:  0 10px 30px rgba(245, 158, 11, 0.10), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --hearth-shadow-glow: 0 0 20px rgba(245, 158, 11, 0.25);
+
+  /* Radii */
+  --hearth-radius-sm:  6px;
+  --hearth-radius-md:  12px;
+  --hearth-radius-lg:  16px;
+  --hearth-radius-xl:  24px;
+  --hearth-radius-full: 9999px;
+
+  /* Spacing */
+  --hearth-space-xs:  4px;
+  --hearth-space-sm:  8px;
+  --hearth-space-md:  16px;
+  --hearth-space-lg:  24px;
+  --hearth-space-xl:  32px;
+  --hearth-space-2xl: 48px;
+
+  /* Transitions */
+  --hearth-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --hearth-duration: 200ms;
+  --hearth-duration-slow: 400ms;
+
+  /* Typography */
+  --hearth-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --hearth-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Touch */
+  --hearth-touch-min: 44px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Base Container — .hearth-view
+   -------------------------------------------------------------------------- */
+
+.hearth-view {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--hearth-bg);
+  color: var(--hearth-text);
+  font-family: var(--hearth-font);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   3. Hero Section with CSS-only Ember Particles
+   -------------------------------------------------------------------------- */
+
+.hearth-hero {
+  position: relative;
+  padding: var(--hearth-space-2xl) var(--hearth-space-lg);
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    #292524 0%,
+    #1C1917 100%
+  );
+}
+
+/* Ember particles via box-shadow on pseudo-elements */
+.hearth-hero::before,
+.hearth-hero::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  animation: hearth-ember-float 6s ease-in-out infinite;
+}
+
+.hearth-hero::before {
+  background: var(--hearth-500);
+  box-shadow:
+    42px 18px 0 var(--hearth-400),
+    85px -10px 0 var(--hearth-300),
+    130px 30px 0 var(--hearth-500),
+    -35px -5px 0 var(--hearth-400),
+    -78px 25px 0 var(--hearth-600),
+    -120px 8px 0 var(--hearth-300),
+    170px -15px 0 var(--hearth-500),
+    -160px -12px 0 var(--hearth-400),
+    200px 35px 0 var(--hearth-600);
+  bottom: 30%;
+  left: 50%;
+  animation-delay: 0s;
+}
+
+.hearth-hero::after {
+  background: var(--hearth-400);
+  box-shadow:
+    30px 22px 0 var(--hearth-500),
+    70px -8px 0 var(--hearth-300),
+    110px 15px 0 var(--hearth-400),
+    -50px 12px 0 var(--hearth-500),
+    -90px -18px 0 var(--hearth-300),
+    -140px 5px 0 var(--hearth-600),
+    155px 28px 0 var(--hearth-400),
+    -175px -8px 0 var(--hearth-500),
+    190px 8px 0 var(--hearth-300);
+  bottom: 35%;
+  left: 50%;
+  animation-delay: -3s;
+}
+
+.hearth-hero-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.hearth-hero-subtitle {
+  font-size: 0.95rem;
+  color: var(--hearth-text-muted);
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* --------------------------------------------------------------------------
+   4. Input Wrap with Amber Glow Ring
+   -------------------------------------------------------------------------- */
+
+.hearth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--hearth-radius-lg);
+  background: var(--hearth-bg-card);
+  padding: 2px;
+  transition: box-shadow var(--hearth-duration) var(--hearth-ease);
+}
+
+.hearth-input-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--hearth-radius-lg) + 2px);
+  background: conic-gradient(
+    from 0deg,
+    var(--hearth-500),
+    var(--hearth-700),
+    var(--hearth-500),
+    var(--hearth-700),
+    var(--hearth-500)
+  );
+  opacity: 0;
+  z-index: -1;
+  transition: opacity var(--hearth-duration) var(--hearth-ease);
+}
+
+.hearth-input-wrap:focus-within::before {
+  opacity: 1;
+  animation: hearth-glow-pulse 2.5s ease-in-out infinite;
+}
+
+.hearth-input-wrap:focus-within {
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   5. Text Input
+   -------------------------------------------------------------------------- */
+
+.hearth-input {
+  width: 100%;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-md);
+  background: var(--hearth-bg-input);
+  border: 1px solid var(--hearth-surface);
+  border-radius: calc(var(--hearth-radius-lg) - 2px);
+  color: var(--hearth-text);
+  font-family: var(--hearth-font);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color var(--hearth-duration) var(--hearth-ease);
+  box-sizing: border-box;
+}
+
+.hearth-input::placeholder {
+  color: var(--hearth-text-dim);
+}
+
+.hearth-input:focus {
+  border-color: var(--hearth-500);
+}
+
+/* --------------------------------------------------------------------------
+   6. Buttons
+   -------------------------------------------------------------------------- */
+
+.hearth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hearth-space-sm);
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-lg);
+  background: var(--hearth-500);
+  color: var(--hearth-text-on-btn);
+  font-family: var(--hearth-font);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--hearth-radius-full);
+  cursor: pointer;
+  transition:
+    background var(--hearth-duration) var(--hearth-ease),
+    box-shadow var(--hearth-duration) var(--hearth-ease),
+    transform var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.hearth-btn:active {
+  transform: scale(0.97);
+  background: var(--hearth-600);
+}
+
+.hearth-btn:focus-visible {
+  outline: 2px solid var(--hearth-300);
+  outline-offset: 2px;
+}
+
+.hearth-btn-secondary {
+  background: transparent;
+  color: var(--hearth-400);
+  border: 1.5px solid var(--hearth-700);
+}
+
+.hearth-btn-secondary:active {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--hearth-500);
+  transform: scale(0.97);
+}
+
+/* --------------------------------------------------------------------------
+   7 & 8. Recipe Card — Paper Texture, Warm Shadow, Hover Lift + Glow
+   -------------------------------------------------------------------------- */
+
+.hearth-card {
+  position: relative;
+  padding: var(--hearth-space-lg);
+  background:
+    /* paper texture grain */
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.015) 100%
+    ),
+    var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-lg);
+  box-shadow: var(--hearth-shadow-md);
+  transition:
+    transform var(--hearth-duration) var(--hearth-ease),
+    box-shadow var(--hearth-duration) var(--hearth-ease);
+  overflow: hidden;
+}
+
+.hearth-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(245, 158, 11, 0.06);
+  pointer-events: none;
+}
+
+/* Touch / focus lift + glow — works on tap too */
+.hearth-card:active,
+.hearth-card:focus-within {
+  transform: translateY(-3px);
+  box-shadow: var(--hearth-shadow-lg), var(--hearth-shadow-glow);
+}
+
+@media (hover: hover) {
+  .hearth-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--hearth-shadow-lg), var(--hearth-shadow-glow);
+  }
+}
+
+/* Card enter animation class */
+.hearth-card-enter {
+  animation: hearth-card-enter 0.5s var(--hearth-ease) both;
+}
+
+/* --------------------------------------------------------------------------
+   9. Responsive Card Grid
+   -------------------------------------------------------------------------- */
+
+.hearth-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--hearth-space-md);
+  padding: 0 var(--hearth-space-md);
+}
+
+@media (min-width: 640px) {
+  .hearth-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--hearth-space-lg);
+    padding: 0 var(--hearth-space-lg);
+  }
+}
+
+@media (min-width: 1024px) {
+  .hearth-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--hearth-space-xl);
+    padding: 0 var(--hearth-space-xl);
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   10. Tab Bar & Pill Navigation
+   -------------------------------------------------------------------------- */
+
+.hearth-tab-bar {
+  display: flex;
+  gap: var(--hearth-space-xs);
+  padding: var(--hearth-space-xs);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-full);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.hearth-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.hearth-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-xs) var(--hearth-space-md);
+  font-family: var(--hearth-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--hearth-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--hearth-radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--hearth-duration) var(--hearth-ease),
+    background var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hearth-tab:active {
+  color: var(--hearth-100);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.hearth-tab[aria-selected="true"],
+.hearth-tab.is-active {
+  color: var(--hearth-text-on-btn);
+  background: var(--hearth-500);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   11. Badges
+   -------------------------------------------------------------------------- */
+
+.hearth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: var(--hearth-radius-full);
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--hearth-400);
+  line-height: 1.6;
+}
+
+.hearth-badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--hearth-success);
+}
+
+.hearth-badge-urgent {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--hearth-urgent);
+  animation: hearth-freshness-pulse 2s ease-in-out infinite;
+}
+
+.hearth-badge-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--hearth-400);
+}
+
+/* --------------------------------------------------------------------------
+   12. Insight Cards — Proactive Nudge Cards
+   -------------------------------------------------------------------------- */
+
+.hearth-insight-card {
+  position: relative;
+  padding: var(--hearth-space-md) var(--hearth-space-md) var(--hearth-space-md) calc(var(--hearth-space-md) + 4px);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-md);
+  border-left: 4px solid var(--hearth-500);
+  box-shadow: var(--hearth-shadow-sm);
+  transition: box-shadow var(--hearth-duration) var(--hearth-ease);
+}
+
+.hearth-insight-card:active,
+.hearth-insight-card:focus-within {
+  box-shadow: var(--hearth-shadow-md);
+}
+
+@media (hover: hover) {
+  .hearth-insight-card:hover {
+    box-shadow: var(--hearth-shadow-md);
+  }
+}
+
+.hearth-insight-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-xs);
+}
+
+.hearth-insight-body {
+  font-size: 0.85rem;
+  color: var(--hearth-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   13. Heatmap Items — Freshness Indicators
+   -------------------------------------------------------------------------- */
+
+.hearth-heatmap-item {
+  position: relative;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-md);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-md);
+  border-left: 3px solid var(--hearth-surface);
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+  transition: border-color var(--hearth-duration) var(--hearth-ease);
+}
+
+.hearth-heatmap-fresh {
+  border-left-color: var(--hearth-success);
+}
+
+.hearth-heatmap-soon {
+  border-left-color: var(--hearth-400);
+}
+
+.hearth-heatmap-urgent {
+  border-left-color: var(--hearth-urgent);
+  animation: hearth-freshness-pulse 2s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   14. Step Cards — Cooking Mode
+   -------------------------------------------------------------------------- */
+
+.hearth-step-card {
+  position: relative;
+  padding: var(--hearth-space-lg);
+  padding-left: calc(var(--hearth-space-lg) + 32px);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-lg);
+  box-shadow: var(--hearth-shadow-sm);
+  min-height: var(--hearth-touch-min);
+}
+
+.hearth-step-card::before {
+  content: attr(data-step);
+  position: absolute;
+  left: var(--hearth-space-md);
+  top: var(--hearth-space-lg);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hearth-500);
+  color: var(--hearth-text-on-btn);
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.hearth-step-card.is-active {
+  border-left: 3px solid var(--hearth-500);
+  box-shadow: var(--hearth-shadow-md), 0 0 12px rgba(245, 158, 11, 0.12);
+}
+
+.hearth-step-slide-in {
+  animation: hearth-step-slide 0.4s var(--hearth-ease) both;
+}
+
+/* --------------------------------------------------------------------------
+   15. Circular Timer
+   -------------------------------------------------------------------------- */
+
+.hearth-timer {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--hearth-bg-card);
+  border: 3px solid var(--hearth-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--hearth-font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--hearth-text-muted);
+  transition:
+    border-color var(--hearth-duration) var(--hearth-ease),
+    box-shadow var(--hearth-duration) var(--hearth-ease),
+    color var(--hearth-duration) var(--hearth-ease);
+}
+
+.hearth-timer.is-active {
+  border-color: var(--hearth-500);
+  color: var(--hearth-100);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  animation: hearth-glow-pulse 3s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   16. Timeline — Meal Planner
+   -------------------------------------------------------------------------- */
+
+.hearth-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hearth-space-md);
+}
+
+.hearth-timeline-day {
+  padding: var(--hearth-space-md);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-lg);
+}
+
+.hearth-timeline-day-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--hearth-400);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--hearth-space-sm);
+}
+
+.hearth-timeline-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.hearth-timeline-slot:last-child {
+  border-bottom: none;
+}
+
+.hearth-timeline-slot-time {
+  font-size: 0.8rem;
+  font-family: var(--hearth-font-mono);
+  color: var(--hearth-text-dim);
+  min-width: 52px;
+}
+
+.hearth-timeline-slot-label {
+  font-size: 0.9rem;
+  color: var(--hearth-text);
+}
+
+/* --------------------------------------------------------------------------
+   17. Modal — Bottom Sheet Mobile, Centered Desktop
+   -------------------------------------------------------------------------- */
+
+.hearth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hearth-modal {
+  width: 100%;
+  max-height: 85vh;
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-xl) var(--hearth-radius-xl) 0 0;
+  padding: var(--hearth-space-lg);
+  overflow-y: auto;
+  animation: hearth-card-enter 0.35s var(--hearth-ease) both;
+}
+
+.hearth-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--hearth-space-md);
+}
+
+.hearth-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0;
+}
+
+.hearth-modal-close {
+  min-width: var(--hearth-touch-min);
+  min-height: var(--hearth-touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--hearth-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background var(--hearth-duration) var(--hearth-ease);
+}
+
+.hearth-modal-close:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (min-width: 640px) {
+  .hearth-modal-backdrop {
+    align-items: center;
+  }
+
+  .hearth-modal {
+    width: 480px;
+    max-width: 90vw;
+    border-radius: var(--hearth-radius-xl);
+    max-height: 70vh;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hearth-modal {
+    width: 520px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   18. Empty & Loading States
+   -------------------------------------------------------------------------- */
+
+.hearth-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--hearth-space-2xl) var(--hearth-space-lg);
+  text-align: center;
+  color: var(--hearth-text-dim);
+}
+
+.hearth-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--hearth-space-md);
+  opacity: 0.5;
+}
+
+.hearth-empty-text {
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.hearth-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--hearth-space-2xl);
+  gap: var(--hearth-space-md);
+}
+
+.hearth-loading-dots {
+  display: flex;
+  gap: var(--hearth-space-sm);
+}
+
+.hearth-loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hearth-500);
+  animation: hearth-ember-float 1.4s ease-in-out infinite;
+}
+
+.hearth-loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.hearth-loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.hearth-loading-text {
+  font-size: 0.85rem;
+  color: var(--hearth-text-dim);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   19. Keyframe Animations
+   -------------------------------------------------------------------------- */
+
+/* Ember particles drifting upward */
+@keyframes hearth-ember-float {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-20px) translateX(8px);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-40px) translateX(-5px);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translateY(-55px) translateX(12px);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-70px) translateX(0);
+    opacity: 0;
+  }
+}
+
+/* Glow ring pulse for active focus / timer */
+@keyframes hearth-glow-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.15);
+  }
+}
+
+/* Subtle heat shimmer — for hero or ambient backgrounds */
+@keyframes hearth-heat-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Steam / smoke rising */
+@keyframes hearth-steam {
+  0% {
+    transform: translateY(0) scaleX(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-30px) scaleX(1.3);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(-60px) scaleX(1.6);
+    opacity: 0;
+  }
+}
+
+/* Urgent / freshness pulse for badges and heatmap items */
+@keyframes hearth-freshness-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Card entrance — warm fade + slight scale */
+@keyframes hearth-card-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Step card slide-in from left */
+@keyframes hearth-step-slide {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Utility / Layout Helpers
+   -------------------------------------------------------------------------- */
+
+.hearth-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.hearth-px-safe {
+  padding-left: max(var(--hearth-space-md), env(safe-area-inset-left));
+  padding-right: max(var(--hearth-space-md), env(safe-area-inset-right));
+}
+
+.hearth-pb-safe {
+  padding-bottom: max(var(--hearth-space-md), env(safe-area-inset-bottom));
+}
+
+/* ==========================================================================
+   20. Component-Level Styles (class-name bridge)
+   Components use non-prefixed class names; these bridge rules target them
+   using the hearth design tokens.
+   ========================================================================== */
+
+/* ---- KitchenView container ---- */
+.kitchen-view,
+.kitchen-matrix {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--hearth-bg);
+  color: var(--hearth-text);
+  font-family: var(--hearth-font);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.kitchen-matrix {
+  padding: var(--hearth-space-xl) var(--hearth-space-2xl);
+}
+
+.kitchen-header {
+  margin-bottom: var(--hearth-space-lg);
+}
+
+.kitchen-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-md);
+}
+
+.kitchen-tabs {
+  display: flex;
+  gap: var(--hearth-space-xs);
+  padding: var(--hearth-space-xs);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-full);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.kitchen-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.kitchen-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-xs) var(--hearth-space-md);
+  font-family: var(--hearth-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--hearth-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--hearth-radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--hearth-duration) var(--hearth-ease),
+    background var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kitchen-tab.active {
+  color: var(--hearth-text-on-btn);
+  background: var(--hearth-500);
+  font-weight: 600;
+}
+
+.kitchen-tab:hover:not(.active) {
+  color: var(--hearth-100);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.kitchen-home,
+.kitchen-library,
+.kitchen-plan,
+.kitchen-grocery,
+.kitchen-pantry {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--hearth-space-lg);
+}
+
+.kitchen-loading {
+  text-align: center;
+  padding: var(--hearth-space-2xl) var(--hearth-space-lg);
+  color: var(--hearth-text-dim);
+  font-size: 0.95rem;
+}
+
+.kitchen-empty {
+  text-align: center;
+  padding: var(--hearth-space-2xl) var(--hearth-space-lg);
+  color: var(--hearth-text-dim);
+}
+
+.kitchen-empty p {
+  margin: 0 0 var(--hearth-space-sm);
+}
+
+.kitchen-empty-hint {
+  font-size: 0.85rem;
+  color: var(--hearth-text-dim);
+  opacity: 0.7;
+  margin: var(--hearth-space-xs) 0 0;
+}
+
+.kitchen-select {
+  padding: var(--hearth-space-xs) var(--hearth-space-md);
+  border-radius: var(--hearth-radius-full);
+  border: 1px solid var(--hearth-surface);
+  background: var(--hearth-bg-card);
+  color: var(--hearth-text-muted);
+  font-family: var(--hearth-font);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color var(--hearth-duration) var(--hearth-ease);
+  min-height: var(--hearth-touch-min);
+}
+
+.kitchen-select:focus {
+  border-color: var(--hearth-500);
+  outline: none;
+}
+
+/* ---- HearthHero sub-elements ---- */
+.hearth-hero-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 80%,
+    rgba(245, 158, 11, 0.08) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.hearth-hero-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--hearth-space-md);
+  width: 100%;
+  max-width: 480px;
+}
+
+.hearth-hero-actions {
+  display: flex;
+  gap: var(--hearth-space-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hearth-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hearth-space-xs);
+  padding: var(--hearth-space-sm) var(--hearth-space-lg);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--hearth-300);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--hearth-radius-full);
+  font-family: var(--hearth-font);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: var(--hearth-touch-min);
+  transition:
+    background var(--hearth-duration) var(--hearth-ease),
+    border-color var(--hearth-duration) var(--hearth-ease),
+    transform var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hearth-action-btn:active {
+  transform: scale(0.97);
+  background: rgba(245, 158, 11, 0.2);
+  border-color: var(--hearth-500);
+}
+
+@media (hover: hover) {
+  .hearth-action-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--hearth-500);
+  }
+}
+
+.hearth-nudges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hearth-space-sm);
+  width: 100%;
+  max-width: 380px;
+}
+
+.hearth-nudge-card {
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+  padding: var(--hearth-space-sm) var(--hearth-space-md);
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: var(--hearth-radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.12);
+}
+
+.hearth-nudge-emoji {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.hearth-nudge-msg {
+  font-size: 0.85rem;
+  color: var(--hearth-text-muted);
+  line-height: 1.4;
+}
+
+/* ---- HomeMenu ---- */
+.home-menu {
+  padding: 0 var(--hearth-space-md);
+}
+
+.home-menu-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-md);
+}
+
+.home-menu-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--hearth-space-md);
+}
+
+@media (min-width: 640px) {
+  .home-menu-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-menu-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.home-menu-card {
+  position: relative;
+  display: flex;
+  gap: var(--hearth-space-md);
+  padding: var(--hearth-space-md);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-lg);
+  border: 1px solid rgba(245, 158, 11, 0.06);
+  box-shadow: var(--hearth-shadow-sm);
+  cursor: pointer;
+  transition:
+    transform var(--hearth-duration) var(--hearth-ease),
+    box-shadow var(--hearth-duration) var(--hearth-ease),
+    border-color var(--hearth-duration) var(--hearth-ease);
+}
+
+.home-menu-card:active {
+  transform: translateY(-2px);
+  box-shadow: var(--hearth-shadow-md);
+  border-color: rgba(245, 158, 11, 0.15);
+}
+
+@media (hover: hover) {
+  .home-menu-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--hearth-shadow-md);
+    border-color: rgba(245, 158, 11, 0.15);
+  }
+}
+
+.home-menu-emoji {
+  font-size: 2rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.home-menu-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-menu-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--hearth-100);
+  margin-bottom: 2px;
+}
+
+.home-menu-reason {
+  font-size: 0.8rem;
+  color: var(--hearth-text-muted);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.home-menu-time {
+  font-size: 0.75rem;
+  color: var(--hearth-400);
+  font-weight: 500;
+}
+
+.home-menu-missing {
+  font-size: 0.75rem;
+  color: var(--hearth-urgent);
+  margin-top: var(--hearth-space-xs);
+  padding-top: var(--hearth-space-xs);
+  border-top: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+/* ---- CookingMode ---- */
+.cooking-mode-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--hearth-space-lg);
+  animation: hearth-card-enter 0.3s var(--hearth-ease) both;
+}
+
+.cooking-mode {
+  width: 100%;
+  max-width: 520px;
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-xl);
+  padding: var(--hearth-space-xl);
+  box-shadow: var(--hearth-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--hearth-space-lg);
+}
+
+.cooking-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cooking-mode-progress {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--hearth-400);
+}
+
+.cooking-mode-close {
+  min-width: var(--hearth-touch-min);
+  min-height: var(--hearth-touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--hearth-text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background var(--hearth-duration) var(--hearth-ease);
+}
+
+.cooking-mode-close:active,
+.cooking-mode-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cooking-mode-step {
+  padding: var(--hearth-space-lg);
+  padding-left: calc(var(--hearth-space-lg) + 36px);
+  background: var(--hearth-bg-input);
+  border-radius: var(--hearth-radius-lg);
+  position: relative;
+  min-height: 80px;
+}
+
+.cooking-step-number {
+  position: absolute;
+  left: var(--hearth-space-md);
+  top: var(--hearth-space-lg);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hearth-500);
+  color: var(--hearth-text-on-btn);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.cooking-step-instruction {
+  font-size: 1rem;
+  color: var(--hearth-text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cooking-step-timer {
+  margin-top: var(--hearth-space-sm);
+  font-size: 0.85rem;
+  color: var(--hearth-400);
+  font-weight: 500;
+}
+
+.cooking-mode-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hearth-space-sm);
+}
+
+.cooking-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-lg);
+  background: var(--hearth-500);
+  color: var(--hearth-text-on-btn);
+  font-family: var(--hearth-font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--hearth-radius-full);
+  cursor: pointer;
+  transition:
+    background var(--hearth-duration) var(--hearth-ease),
+    opacity var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cooking-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cooking-nav-btn:active:not(:disabled) {
+  background: var(--hearth-600);
+}
+
+.cooking-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cooking-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hearth-surface);
+  transition:
+    background var(--hearth-duration) var(--hearth-ease),
+    transform var(--hearth-duration) var(--hearth-ease);
+}
+
+.cooking-dot.active {
+  background: var(--hearth-500);
+  transform: scale(1.3);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.cooking-dot.done {
+  background: var(--hearth-success);
+}
+
+/* ---- KitchenDigest ---- */
+.kitchen-digest-card {
+  padding: var(--hearth-space-lg);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-lg);
+  border: 1px solid rgba(245, 158, 11, 0.08);
+  box-shadow: var(--hearth-shadow-sm);
+}
+
+.kitchen-digest-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-md);
+}
+
+.kitchen-digest-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--hearth-space-sm);
+  margin-bottom: var(--hearth-space-md);
+}
+
+.kitchen-digest-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--hearth-space-sm) var(--hearth-space-xs);
+  background: var(--hearth-bg-input);
+  border-radius: var(--hearth-radius-md);
+  text-align: center;
+}
+
+.kitchen-digest-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--hearth-300);
+  line-height: 1.2;
+}
+
+.kitchen-digest-label {
+  font-size: 0.7rem;
+  color: var(--hearth-text-muted);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kitchen-digest-suggestion {
+  font-size: 0.85rem;
+  color: var(--hearth-text-muted);
+  line-height: 1.5;
+  margin: 0;
+  padding-top: var(--hearth-space-sm);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ---- KitchenNudges ---- */
+.kitchen-nudges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hearth-space-sm);
+  padding: 0 var(--hearth-space-md);
+}
+
+.kitchen-nudge-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--hearth-space-sm);
+  padding: var(--hearth-space-md);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-md);
+  border-left: 4px solid var(--hearth-500);
+  box-shadow: var(--hearth-shadow-sm);
+  cursor: pointer;
+  transition:
+    box-shadow var(--hearth-duration) var(--hearth-ease),
+    border-color var(--hearth-duration) var(--hearth-ease);
+}
+
+.kitchen-nudge-card:active {
+  box-shadow: var(--hearth-shadow-md);
+  border-left-color: var(--hearth-400);
+}
+
+@media (hover: hover) {
+  .kitchen-nudge-card:hover {
+    box-shadow: var(--hearth-shadow-md);
+    border-left-color: var(--hearth-400);
+  }
+}
+
+.kitchen-nudge-emoji {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.kitchen-nudge-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.kitchen-nudge-message {
+  font-size: 0.9rem;
+  color: var(--hearth-text);
+  line-height: 1.4;
+  margin: 0 0 4px;
+}
+
+.kitchen-nudge-action {
+  font-size: 0.8rem;
+  color: var(--hearth-400);
+  font-weight: 600;
+}
+
+/* ---- PantryHeatmap ---- */
+.pantry-heatmap {
+  padding: 0 var(--hearth-space-md);
+}
+
+.pantry-heatmap-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-md);
+}
+
+.pantry-heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hearth-space-sm);
+}
+
+.pantry-heat-item {
+  position: relative;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-md);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-md);
+  border-left: 3px solid var(--hearth-surface);
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+  overflow: hidden;
+  transition: border-color var(--hearth-duration) var(--hearth-ease);
+}
+
+.pantry-heat-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 0 2px 0 0;
+  transition: width var(--hearth-duration-slow) var(--hearth-ease);
+}
+
+.pantry-heat-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--hearth-text);
+}
+
+.pantry-heat-days {
+  font-size: 0.8rem;
+  color: var(--hearth-text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* ---- SmartGrocery ---- */
+.smart-grocery {
+  padding: 0 var(--hearth-space-md);
+}
+
+.smart-grocery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--hearth-space-md);
+}
+
+.smart-grocery-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0;
+}
+
+.smart-grocery-count {
+  font-size: 0.8rem;
+  color: var(--hearth-text-muted);
+  background: var(--hearth-bg-card);
+  padding: 2px 10px;
+  border-radius: var(--hearth-radius-full);
+}
+
+.smart-grocery-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.smart-grocery-item {
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+  padding: var(--hearth-space-sm) var(--hearth-space-md);
+  min-height: var(--hearth-touch-min);
+  background: var(--hearth-bg-card);
+  border-radius: var(--hearth-radius-md);
+  cursor: pointer;
+  transition:
+    background var(--hearth-duration) var(--hearth-ease),
+    opacity var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.smart-grocery-item:active {
+  background: var(--hearth-bg-hover);
+}
+
+@media (hover: hover) {
+  .smart-grocery-item:hover {
+    background: var(--hearth-bg-hover);
+  }
+}
+
+.smart-grocery-item.checked {
+  opacity: 0.5;
+}
+
+.smart-grocery-item.checked .grocery-name {
+  text-decoration: line-through;
+  color: var(--hearth-text-dim);
+}
+
+.grocery-check {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  color: var(--hearth-400);
+}
+
+.smart-grocery-item.checked .grocery-check {
+  color: var(--hearth-success);
+}
+
+.grocery-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--hearth-text);
+}
+
+.grocery-qty {
+  font-size: 0.8rem;
+  color: var(--hearth-text-muted);
+  flex-shrink: 0;
+}
+
+.smart-grocery-divider {
+  font-size: 0.75rem;
+  color: var(--hearth-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--hearth-space-sm) var(--hearth-space-md) 2px;
+  margin-top: var(--hearth-space-sm);
+}
+
+/* ---- Filters row ---- */
+.kitchen-filters {
+  display: flex;
+  gap: var(--hearth-space-sm);
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 var(--hearth-space-md);
+}
+
+/* ---- AI Add ---- */
+.kitchen-ai-add {
+  padding: 0 var(--hearth-space-md);
+}
+
+.ai-add-header {
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+  margin-bottom: var(--hearth-space-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--hearth-100);
+}
+
+.ai-add-icon {
+  font-size: 1.25rem;
+}
+
+.ai-add-row {
+  display: flex;
+  gap: var(--hearth-space-sm);
+}
+
+.ai-add-input {
+  flex: 1;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-md);
+  background: var(--hearth-bg-input);
+  border: 1px solid var(--hearth-surface);
+  border-radius: var(--hearth-radius-lg);
+  color: var(--hearth-text);
+  font-family: var(--hearth-font);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--hearth-duration) var(--hearth-ease);
+  box-sizing: border-box;
+}
+
+.ai-add-input::placeholder {
+  color: var(--hearth-text-dim);
+}
+
+.ai-add-input:focus {
+  border-color: var(--hearth-500);
+}
+
+/* ---- Primary button (non-hearth-prefixed) ---- */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hearth-space-xs);
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-sm) var(--hearth-space-lg);
+  background: var(--hearth-500);
+  color: var(--hearth-text-on-btn);
+  font-family: var(--hearth-font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--hearth-radius-full);
+  cursor: pointer;
+  transition:
+    background var(--hearth-duration) var(--hearth-ease),
+    transform var(--hearth-duration) var(--hearth-ease);
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+  background: var(--hearth-600);
+}
+
+/* ---- Genre / filter buttons ---- */
+.genre-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hearth-touch-min);
+  padding: var(--hearth-space-xs) var(--hearth-space-md);
+  background: transparent;
+  color: var(--hearth-text-muted);
+  border: 1px solid var(--hearth-surface);
+  border-radius: var(--hearth-radius-full);
+  font-family: var(--hearth-font);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color var(--hearth-duration) var(--hearth-ease),
+    background var(--hearth-duration) var(--hearth-ease),
+    border-color var(--hearth-duration) var(--hearth-ease);
+}
+
+.genre-btn.active {
+  color: var(--hearth-text-on-btn);
+  background: var(--hearth-500);
+  border-color: var(--hearth-500);
+}
+
+/* ---- Meal detail (modal-like panel) ---- */
+.meal-detail {
+  margin-top: var(--hearth-space-lg);
+  padding: var(--hearth-space-lg);
+  background: var(--hearth-bg-card);
+  border: 1px solid rgba(245, 158, 11, 0.08);
+  border-radius: var(--hearth-radius-lg);
+  box-shadow: var(--hearth-shadow-md);
+  animation: hearth-card-enter 0.4s var(--hearth-ease) both;
+}
+
+.meal-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--hearth-space-md);
+}
+
+.meal-detail-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0;
+}
+
+.modal-close {
+  min-width: var(--hearth-touch-min);
+  min-height: var(--hearth-touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--hearth-text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background var(--hearth-duration) var(--hearth-ease);
+}
+
+.modal-close:active,
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.meal-detail-desc {
+  font-size: 0.9rem;
+  color: var(--hearth-text-muted);
+  margin: 0 0 var(--hearth-space-md);
+  line-height: 1.5;
+}
+
+.meal-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--hearth-space-sm);
+  margin-bottom: var(--hearth-space-md);
+}
+
+.stat {
+  padding: var(--hearth-space-sm);
+  background: var(--hearth-bg-input);
+  border-radius: var(--hearth-radius-md);
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--hearth-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.stat span:not(.stat-label) {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--hearth-200);
+}
+
+.meal-detail-section h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--hearth-100);
+  margin: 0 0 var(--hearth-space-sm);
+}
+
+.meal-instructions {
+  font-size: 0.85rem;
+  color: var(--hearth-text-muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.meal-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hearth-space-xs);
+  margin-top: var(--hearth-space-md);
+}
+
+.topic-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--hearth-400);
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: var(--hearth-radius-full);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+/* ---- Week Plan grid (overrides for hearth theming) ---- */
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--hearth-space-md);
+  padding: 0 var(--hearth-space-md);
+}
+
+.plan-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--hearth-100);
+  margin: 0;
+}
+
+.plan-stats {
+  display: flex;
+  gap: var(--hearth-space-md);
+  font-size: 0.85rem;
+  color: var(--hearth-text-muted);
+}
+
+.plan-grid {
+  overflow-x: auto;
+  padding: 0 var(--hearth-space-md);
+  -webkit-overflow-scrolling: touch;
+}
+
+.plan-grid-header {
+  display: grid;
+  grid-template-columns: 90px repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+  min-width: 600px;
+}
+
+.plan-day-header {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--hearth-400);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--hearth-space-xs) 0;
+}
+
+.plan-grid-row {
+  display: grid;
+  grid-template-columns: 90px repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+  min-width: 600px;
+}
+
+.plan-slot-label {
+  font-size: 0.75rem;
+  color: var(--hearth-text-muted);
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  text-transform: capitalize;
+}
+
+.plan-cell {
+  min-height: 48px;
+  border-radius: var(--hearth-radius-md);
+  border: 1px dashed var(--hearth-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--hearth-duration) var(--hearth-ease);
+}
+
+.plan-cell.filled {
+  border-style: solid;
+  background: var(--hearth-bg-card);
+  border-color: rgba(245, 158, 11, 0.12);
+}
+
+.plan-cell:hover {
+  border-color: var(--hearth-500);
+}
+
+.plan-meal-chip {
+  padding: 4px 6px;
+  text-align: center;
+  max-width: 100%;
+}
+
+.plan-meal-name {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--hearth-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+.plan-meal-cost {
+  font-size: 0.65rem;
+  color: var(--hearth-text-dim);
+}
+
+.plan-add-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px dashed var(--hearth-surface);
+  background: transparent;
+  color: var(--hearth-text-dim);
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    border-color var(--hearth-duration) var(--hearth-ease),
+    color var(--hearth-duration) var(--hearth-ease);
+}
+
+.plan-add-btn:hover {
+  border-color: var(--hearth-500);
+  color: var(--hearth-500);
+}
+
+/* ---- Grocery header overrides ---- */
+.grocery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--hearth-space-md);
+  flex-wrap: wrap;
+  gap: var(--hearth-space-sm);
+  padding: 0 var(--hearth-space-md);
+}
+
+.grocery-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--hearth-space-sm);
+}
+
+.grocery-total {
+  font-size: 0.85rem;
+  color: var(--hearth-text-muted);
+}
+
+.grocery-total strong {
+  color: var(--hearth-300);
+}
+
+/* --------------------------------------------------------------------------
+   Kitchen Matrix — Responsive Adjustments
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1280px) {
+  .kitchen-matrix {
+    padding: var(--hearth-space-xl) 48px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .kitchen-matrix {
+    padding: var(--hearth-space-xl);
+  }
+}
+
+@media (max-width: 768px) {
+  .kitchen-matrix {
+    padding: var(--hearth-space-lg) var(--hearth-space-md);
+  }
+  
+  .kitchen-matrix .kitchen-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  .kitchen-matrix .kitchen-tabs::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (min-width: 1440px) {
+  .kitchen-matrix {
+    padding: 48px 80px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion — respect user preference
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .hearth-hero::before,
+  .hearth-hero::after {
+    animation: none;
+  }
+
+  .hearth-badge-urgent,
+  .hearth-heatmap-urgent {
+    animation: none;
+  }
+
+  .hearth-timer.is-active {
+    animation: none;
+  }
+
+  .hearth-card-enter,
+  .hearth-step-slide-in {
+    animation: none;
+  }
+
+  .hearth-loading-dots span {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

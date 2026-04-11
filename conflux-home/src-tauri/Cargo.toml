@@ -1,10 +1,10 @@
 [package]
-name = "app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+name = "conflux-home"
+version = "0.1.66"
+description = "Conflux Home — Your AI Family Lives Here"
+authors = ["The Conflux AI"]
+license = "MIT"
+repository = "https://github.com/TheConflux-Core/conflux-home"
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -18,21 +18,24 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
+dotenvy = "0.15"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.10.3", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
-tauri-plugin-dialog = "2"
+tauri-plugin-dialog = "=2.6.0"
 tauri-plugin-fs = "2"
 
 # Conflux Engine dependencies
-rusqlite = { version = "0.31", features = ["bundled"] }  # SQLite (bundled = no system dep)
+rusqlite = { version = "0.31", features = ["bundled-full"] }  # SQLite with all extensions (FTS5, JSON1, etc.)
 uuid = { version = "1", features = ["v4"] }               # UUID generation
+regex = "1"                                               # Natural language parsing
 chrono = { version = "0.4", features = ["serde"] }        # Timestamps
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking"] }  # HTTP client (rustls, no OpenSSL)
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking", "multipart"] }  # HTTP client (rustls, no OpenSSL)
 tokio = { version = "1", features = ["full"] }            # Async runtime
+tokio-tungstenite = { version = "0.20", features = ["rustls-tls-webpki-roots"] }  # WebSocket client with TLS support
 anyhow = "1"                                               # Error handling
 thiserror = "1"                                            # Typed errors
 dashmap = "5"                                              # Concurrent hashmap
@@ -42,7 +45,19 @@ futures-util = "0.3"                                        # Stream utilities
 urlencoding = "2"                                           # URL encoding for search
 base64 = "0.22"                                             # Base64 encoding for Gmail
 open = "5"                                                  # Open URLs in browser
-tauri-plugin-notification = "2"                             # Native desktop/mobile notifications
+tauri-plugin-notification = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"                              # Auto-update from GitHub Releases
+tauri-plugin-process = "2"                             # Process control (graceful exit)
 lettre = { version = "0.11", features = ["smtp-transport", "builder", "hostname", "rustls-tls"], default-features = false }  # Email sending (SMTP, rustls)
+
+# Voice Engine — desktop only (cpal for capture, ElevenLabs for STT/TTS)
+[target.'cfg(not(target_os = "android"))'.dependencies]
+cpal = "0.15"
+# Removed whisper-rs, piper-rs, and hound to avoid ort-sys linker conflicts and remove unused local processing
+
 # imap = "2"                                              # TODO: Add when OpenSSL available
 # native-tls = "0.2"                                      # TODO: Add when OpenSSL available
+
+[patch.crates-io]

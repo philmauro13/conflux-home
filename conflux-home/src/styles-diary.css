@@ -1,0 +1,290 @@
+/* ============================================================
+   AGENT DIARY — Personal Journals for AI Agents
+   ============================================================ */
+
+.diary-view {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 16px;
+}
+
+.diary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.diary-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.diary-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.diary-stat {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.diary-back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.15s;
+}
+
+.diary-back-btn:hover {
+  background: var(--bg-hover);
+}
+
+/* Mood Strip */
+.diary-mood-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.mood-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 13px;
+  white-space: nowrap;
+  background: var(--bg-card);
+}
+
+.mood-count {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Agent Shelf */
+.diary-section {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.agent-shelf {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.agent-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  min-width: 80px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.agent-book:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.agent-book-emoji {
+  font-size: 28px;
+}
+
+.agent-book-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.agent-book-write {
+  background: none;
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--accent-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.agent-book-write:hover {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.agent-book-write:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Diary Entry Cards */
+.diary-entries-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diary-entry-card {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.15s;
+}
+
+.diary-entry-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.diary-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.diary-entry-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.diary-entry-meta {
+  flex: 1;
+}
+
+.diary-entry-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.diary-entry-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.diary-entry-mood {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.diary-entry-content {
+  transition: max-height 0.3s ease;
+}
+
+.diary-entry-text {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin: 0 0 10px 0;
+  font-style: italic;
+}
+
+.diary-entry-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.diary-topic-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.diary-memorable-moment {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f59e0b10;
+  border-left: 3px solid #f59e0b;
+}
+
+.moment-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  margin-bottom: 6px;
+}
+
+.moment-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-style: italic;
+}
+
+.moment-feeling {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.diary-expand-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  opacity: 0.6;
+}
+
+/* Empty State */
+.diary-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.diary-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.diary-empty p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.diary-empty-hint {
+  font-size: 13px;
+  margin-top: 8px !important;
+}

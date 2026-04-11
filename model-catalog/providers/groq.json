@@ -1,0 +1,93 @@
+[
+  {
+    "model_id": "llama-3.3-70b-versatile",
+    "api_id": "llama-3.3-70b-versatile",
+    "display_name": "Llama 3.3 70B Versatile",
+    "context_window": 131072,
+    "max_output_tokens": 32768,
+    "speed_tokens_per_sec": 394,
+    "input_price_per_1m": 0.59,
+    "output_price_per_1m": 0.79,
+    "cached_input_price_per_1m": null,
+    "capabilities": ["text", "chat", "functions", "tool_use"],
+    "best_use_case": "High-quality open-source model with tool use support; good balance of quality and speed"
+  },
+  {
+    "model_id": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "api_id": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "display_name": "Llama 4 Scout (17Bx16E)",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 594,
+    "input_price_per_1m": 0.11,
+    "output_price_per_1m": 0.34,
+    "cached_input_price_per_1m": null,
+    "capabilities": ["text", "chat", "functions", "vision", "multimodal"],
+    "best_use_case": "Multimodal MoE model — fast, cheap, handles images; great for vision+text tasks"
+  },
+  {
+    "model_id": "llama-3.1-8b-instant",
+    "api_id": "llama-3.1-8b-instant",
+    "display_name": "Llama 3.1 8B Instant",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 840,
+    "input_price_per_1m": 0.05,
+    "output_price_per_1m": 0.08,
+    "cached_input_price_per_1m": null,
+    "capabilities": ["text", "chat"],
+    "best_use_case": "Cheapest Groq option; instant responses for simple tasks, classification, and high-volume workloads"
+  },
+  {
+    "model_id": "qwen/qwen3-32b",
+    "api_id": "qwen/qwen3-32b",
+    "display_name": "Qwen3 32B",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 662,
+    "input_price_per_1m": 0.29,
+    "output_price_per_1m": 0.59,
+    "cached_input_price_per_1m": null,
+    "capabilities": ["text", "chat", "functions", "reasoning"],
+    "best_use_case": "Strong multilingual model with reasoning; good mid-range option"
+  },
+  {
+    "model_id": "openai/gpt-oss-120b",
+    "api_id": "openai/gpt-oss-120b",
+    "display_name": "GPT-OSS 120B",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 500,
+    "input_price_per_1m": 0.15,
+    "output_price_per_1m": 0.60,
+    "cached_input_price_per_1m": 0.075,
+    "capabilities": ["text", "chat", "functions", "reasoning"],
+    "best_use_case": "OpenAI's open-weight model for high-reasoning tasks at low cost"
+  },
+  {
+    "model_id": "openai/gpt-oss-20b",
+    "api_id": "openai/gpt-oss-20b",
+    "display_name": "GPT-OSS 20B",
+    "context_window": 131072,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 1000,
+    "input_price_per_1m": 0.075,
+    "output_price_per_1m": 0.30,
+    "cached_input_price_per_1m": 0.0375,
+    "capabilities": ["text", "chat", "functions", "reasoning"],
+    "best_use_case": "Lightweight GPT-OSS for fast reasoning at near-free pricing"
+  },
+  {
+    "model_id": "moonshotai/kimi-k2-instruct-0905",
+    "api_id": "moonshotai/kimi-k2-instruct",
+    "display_name": "Kimi K2 1T",
+    "context_window": 262144,
+    "max_output_tokens": null,
+    "speed_tokens_per_sec": 200,
+    "input_price_per_1m": 1.00,
+    "output_price_per_1m": 3.00,
+    "cached_input_price_per_1m": 0.50,
+    "capabilities": ["text", "chat", "functions", "reasoning", "tool_use"],
+    "best_use_case": "Massive 1T MoE model for complex agentic tasks and tool calling"
+  }
+]

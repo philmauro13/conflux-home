@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "description": "Living opportunity feed. Don and agents add ideas anytime. Reviewed daily by ZigBot. Best ideas flow into Helix → Vector pipeline.",
+  "created_at": "2026-03-31T04:53:00Z",
+  "updated_at": "2026-03-31T04:53:00Z",
+  "next_id": 1,
+  "items": [],
+  "schema": {
+    "item": {
+      "id": "number (auto-increment)",
+      "title": "string (short description)",
+      "detail": "string (full context)",
+      "source": "string (don | agent_name | growth_question_N)",
+      "category": "string (revenue | product | distribution | operations | security | wild_idea)",
+      "created_at": "ISO-8601 UTC",
+      "status": "new | reviewing | scored | approved | rejected | merged | mission_created",
+      "score": "number (1-10, assigned by ZigBot during review)",
+      "score_rationale": "string",
+      "route_to": "string (helix | vector | prism | forge | pulse | none)",
+      "linked_mission": "string (mission ID if created)",
+      "linked_product": "string (product ID if relevant)",
+      "tags": ["string"],
+      "notes": "string"
+    }
+  },
+  "review_log": [],
+  "stats": {
+    "total_added": 0,
+    "total_reviewed": 0,
+    "total_approved": 0,
+    "total_rejected": 0,
+    "total_merged": 0,
+    "total_mission_created": 0
+  }
+}

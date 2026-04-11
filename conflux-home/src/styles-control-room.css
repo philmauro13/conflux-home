@@ -1,0 +1,162 @@
+/* ============================================================
+   CONTROL ROOM — Virtual Home Placeholder
+   Phase 2: Desktop Life
+   ============================================================ */
+
+.control-room {
+  position: fixed;
+  inset: 0;
+  background: #0a0a0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+}
+
+.control-room-placeholder {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── Grid Lines — blueprint feel ── */
+
+.cr-grid-lines {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(52, 211, 153, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52, 211, 153, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: grid-breathe 8s ease-in-out infinite;
+}
+
+@keyframes grid-breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── Center Glow — the heart ── */
+
+.cr-center-glow {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.08), transparent 70%);
+  animation: cr-pulse 4s ease-in-out infinite;
+}
+
+@keyframes cr-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+/* ── Text ── */
+
+.cr-text {
+  position: relative;
+  text-align: center;
+  z-index: 1;
+}
+
+.cr-text h2 {
+  font-size: 32px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.cr-text p {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 6px 0;
+}
+
+.cr-hint {
+  font-size: 13px;
+  color: rgba(52, 211, 153, 0.5);
+  letter-spacing: 0.5px;
+}
+
+/* ── Agent Nodes Preview ── */
+
+.cr-agents-preview {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.cr-agent-node {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.3s;
+}
+
+.cr-node-idle {
+  animation: node-idle 3s ease-in-out infinite;
+}
+
+.cr-node-working {
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.2);
+  animation: node-working 1.5s ease-in-out infinite;
+}
+
+.cr-node-thinking {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.2);
+  animation: node-thinking 2s ease-in-out infinite;
+}
+
+@keyframes node-idle {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+@keyframes node-working {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(52, 211, 153, 0.2); }
+  50% { transform: scale(1.1); box-shadow: 0 0 24px rgba(52, 211, 153, 0.4); }
+}
+
+@keyframes node-thinking {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(139, 92, 246, 0.2); }
+  50% { transform: scale(1.08); box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
+}
+
+/* ── Dev Toggle Button ── */
+
+.topbar-control-room-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  opacity: 0.6;
+  transition: all 0.2s;
+  border-radius: 6px;
+}
+
+.topbar-control-room-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.topbar-control-room-btn.active {
+  opacity: 1;
+  background: rgba(52, 211, 153, 0.15);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.2);
+}

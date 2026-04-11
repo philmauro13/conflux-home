@@ -118,7 +118,7 @@ export default function Avatar({
       >
         {!imgError ? (
           <img
-            src={`/avatars/${agentId}.png`}
+            src={`/avatars/${agentId}.webp`}
             alt={name}
             style={imgStyle}
             onError={handleError}

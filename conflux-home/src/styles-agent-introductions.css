@@ -1,0 +1,388 @@
+/* Agent Introductions — Premium Ceremony */
+
+/* ── Full-screen overlay ── */
+.ai-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.ai-overlay.entering {
+  animation: aiFadeIn 400ms ease-out forwards;
+}
+
+.ai-overlay.exiting {
+  animation: aiFadeOut 300ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes aiFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes aiFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ── Ambient background ── */
+.ai-bg {
+  position: absolute;
+  inset: -40px;
+  z-index: 0;
+  background: var(--bg-primary, #0a0a1a);
+  transition: background 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ai-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  transition: all 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: orbFloat 12s ease-in-out infinite alternate;
+}
+
+.ai-bg-orb.orb-1 {
+  width: 400px;
+  height: 400px;
+  top: -10%;
+  left: -5%;
+  background: var(--theme-primary);
+}
+
+.ai-bg-orb.orb-2 {
+  width: 300px;
+  height: 300px;
+  bottom: -8%;
+  right: -5%;
+  background: var(--theme-secondary, var(--theme-primary));
+  animation-delay: -4s;
+}
+
+.ai-bg-orb.orb-3 {
+  width: 200px;
+  height: 200px;
+  top: 20%;
+  right: 15%;
+  background: var(--theme-accent);
+  animation-delay: -8s;
+}
+
+@keyframes orbFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(20px, -15px) scale(1.1); }
+}
+
+/* ── Content layer ── */
+.ai-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 90vw;
+  max-width: 520px;
+  min-height: 0;
+}
+
+/* ── Glassmorphism card ── */
+.ai-card {
+  width: 100%;
+  padding: 40px 32px 32px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.ai-card.entering {
+  animation: cardSlideIn 500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ai-card.exiting {
+  animation: cardSlideOut 300ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cardSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+}
+
+/* ── Animated agent emblem ── */
+.ai-emblem {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  animation: emblemBounce 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+@keyframes emblemBounce {
+  from {
+    opacity: 0;
+    transform: scale(0.5) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Agent name ── */
+.ai-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f0f0f5;
+  text-align: center;
+  margin: 0 0 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Intro text ── */
+.ai-intro {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(240, 240, 245, 0.75);
+  text-align: center;
+  margin: 0 0 20px;
+}
+
+/* ── Starter config badge ── */
+.ai-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 0 0 24px;
+}
+
+.ai-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  color: rgba(240, 240, 245, 0.7);
+  font-weight: 500;
+}
+
+/* ── Input field ── */
+.ai-input-wrap {
+  margin: 0 0 20px;
+}
+
+.ai-input-label {
+  font-size: 12px;
+  color: rgba(240, 240, 245, 0.5);
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.ai-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f0f0f5;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.ai-input:focus {
+  border-color: var(--theme-primary, rgba(255, 255, 255, 0.3));
+  box-shadow: 0 0 0 3px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.15);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-input::placeholder {
+  color: rgba(240, 240, 245, 0.3);
+}
+
+/* ── Action button ── */
+.ai-action {
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+  background: var(--theme-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.ai-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ai-action:active {
+  transform: translateY(0);
+}
+
+/* ── Progress dots ── */
+.ai-progress {
+  display: flex;
+  gap: 6px;
+  margin-top: 24px;
+}
+
+.ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.ai-dot.active {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.2);
+}
+
+.ai-dot.done {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Skip button ── */
+.ai-skip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-skip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Agent-specific theme overrides ── */
+.ai-card[data-agent="hearth"] {
+  --theme-primary: #FF9800;
+  --theme-secondary: #FF5722;
+  --theme-accent: #FFB74D;
+  --bg-primary: #0e0a05;
+}
+
+.ai-card[data-agent="pulse"] {
+  --theme-primary: #00C853;
+  --theme-secondary: #009624;
+  --theme-accent: #69F0AE;
+  --bg-primary: #050e08;
+}
+
+.ai-card[data-agent="horizon"] {
+  --theme-primary: #42A5F5;
+  --theme-secondary: #1565C0;
+  --theme-accent: #90CAF9;
+  --bg-primary: #060a10;
+}
+
+.ai-card[data-agent="orbit"] {
+  --theme-primary: #7C4DFF;
+  --theme-secondary: #651FFF;
+  --theme-accent: #B388FF;
+  --bg-primary: #0a060f;
+}
+
+.ai-card[data-agent="conflux"] {
+  --theme-primary: #6366F1;
+  --theme-secondary: #8B5CF6;
+  --theme-accent: #A5B4FC;
+  --bg-primary: #08060e;
+}
+
+/* ── Responsive ── */
+@media (max-width: 560px) {
+  .ai-content {
+    width: 94vw;
+  }
+
+  .ai-card {
+    padding: 32px 20px 24px;
+    border-radius: 20px;
+  }
+
+  .ai-emblem {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+    border-radius: 14px;
+  }
+
+  .ai-name {
+    font-size: 20px;
+  }
+
+  .ai-intro {
+    font-size: 14px;
+  }
+
+  .ai-bg-orb.orb-1 {
+    width: 240px;
+    height: 240px;
+  }
+
+  .ai-bg-orb.orb-2 {
+    width: 180px;
+    height: 180px;
+  }
+
+  .ai-bg-orb.orb-3 {
+    width: 120px;
+    height: 120px;
+  }
+}

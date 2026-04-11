@@ -21,14 +21,14 @@ describe('AgentReader', () => {
     const client = mockClient({
       agents_list: {
         ok: true,
-        result: { details: { agents: [{ id: 'zigbot' }, { id: 'forge' }] } },
+        result: { details: { agents: [{ id: 'conflux' }, { id: 'forge' }] } },
       },
       sessions_list: {
         ok: true,
         result: {
           details: {
             sessions: [
-              { agentId: 'zigbot', lastActivity: new Date().toISOString() },
+              { agentId: 'conflux', lastActivity: new Date().toISOString() },
             ],
           },
         },
@@ -39,11 +39,11 @@ describe('AgentReader', () => {
     const agents = await reader.getAllAgents();
 
     expect(agents.length).toBeGreaterThanOrEqual(2);
-    const zigbot = agents.find((a) => a.id === 'zigbot');
-    expect(zigbot).toBeDefined();
-    expect(zigbot!.name).toBe('ZigBot');
-    expect(zigbot!.emoji).toBe('🤖');
-    expect(zigbot!.status).toBe('working'); // recent activity
+    const conflux = agents.find((a) => a.id === 'conflux');
+    expect(conflux).toBeDefined();
+    expect(conflux!.name).toBe('Conflux');
+    expect(conflux!.emoji).toBe('🤖');
+    expect(conflux!.status).toBe('working'); // recent activity
   });
 
   it('getAgent returns null for unknown agent', async () => {
@@ -120,7 +120,7 @@ describe('AgentReader', () => {
 
   it('caches results within TTL', async () => {
     const client = mockClient({
-      agents_list: { ok: true, result: { details: { agents: [{ id: 'zigbot' }] } } },
+      agents_list: { ok: true, result: { details: { agents: [{ id: 'conflux' }] } } },
       sessions_list: { ok: true, result: { details: { sessions: [] } } },
     });
 
@@ -134,7 +134,7 @@ describe('AgentReader', () => {
 
   it('clearCache forces fresh fetch', async () => {
     const client = mockClient({
-      agents_list: { ok: true, result: { details: { agents: [{ id: 'zigbot' }] } } },
+      agents_list: { ok: true, result: { details: { agents: [{ id: 'conflux' }] } } },
       sessions_list: { ok: true, result: { details: { sessions: [] } } },
     });
 

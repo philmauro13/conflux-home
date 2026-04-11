@@ -1,0 +1,625 @@
+/* ============================================================
+   Pac-Man CSS — "Neon Maze" Design System
+   Conflux Home · styles-pacman.css
+   ============================================================ */
+
+/* ---------- Keyframes ---------- */
+
+@keyframes pacman-glow-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.03; }
+  25%      { transform: translate(12px, -8px) scale(1.06); opacity: 0.05; }
+  50%      { transform: translate(-6px, 10px) scale(0.97); opacity: 0.04; }
+  75%      { transform: translate(-14px, -6px) scale(1.03); opacity: 0.05; }
+}
+
+@keyframes pacman-level-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.6; }
+}
+
+@keyframes pacman-card-enter {
+  0%   { transform: scale(0.7) translateY(16px); opacity: 0; }
+  60%  { transform: scale(1.06) translateY(-2px); opacity: 1; }
+  80%  { transform: scale(0.97) translateY(1px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes pacman-pellet-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ---------- Container ---------- */
+
+.pacman-container {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+  isolation: isolate;
+}
+
+.pacman-container::before {
+  content: '';
+  position: absolute;
+  inset: -60px;
+  background: radial-gradient(
+    circle at 40% 35%,
+    rgba(251, 191, 36, 0.12) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: pacman-glow-drift 24s ease-in-out infinite;
+}
+
+.pacman-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Difficulty Selector ---------- */
+
+.pacman-difficulty {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.pacman-diff-tile,
+.difficulty-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, background 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pacman-diff-tile:hover,
+.pacman-diff-tile:focus-visible,
+.difficulty-tile:hover,
+.difficulty-tile:focus-visible {
+  border-color: #fbbf24;
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.15), 0 0 48px rgba(251, 191, 36, 0.06);
+  transform: translateY(-2px);
+  background: rgba(251, 191, 36, 0.06);
+}
+
+.pacman-diff-tile:active,
+.difficulty-tile:active {
+  transform: scale(0.97);
+}
+
+.pacman-diff-tile.selected {
+  border-color: #fbbf24;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.18), inset 0 0 20px rgba(251, 191, 36, 0.04);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.pacman-diff-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.pacman-diff-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fbbf24;
+  letter-spacing: 0.02em;
+}
+
+.pacman-diff-meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ---------- HUD ---------- */
+
+.pacman-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  margin-bottom: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(251, 191, 36, 0.12);
+  border-radius: 14px;
+}
+
+.pacman-hud-score,
+.pacman-hud-lives,
+.pacman-hud-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pacman-hud-score { align-items: flex-start; }
+.pacman-hud-lives { align-items: flex-end; }
+
+.pacman-hud-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pacman-hud-value {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #fbbf24;
+  line-height: 1.1;
+}
+
+.pacman-hud-level .pacman-hud-value {
+  animation: pacman-level-pulse 2.5s ease-in-out infinite;
+}
+
+.pacman-hud-lives .pacman-hud-value {
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+/* ---------- Canvas Wrapper ---------- */
+
+.pacman-canvas-wrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  box-shadow:
+    0 0 20px rgba(251, 191, 36, 0.08),
+    0 0 60px rgba(251, 191, 36, 0.04);
+  background: #000;
+  transition: box-shadow 0.3s;
+}
+
+.pacman-canvas-wrapper:hover {
+  box-shadow:
+    0 0 28px rgba(251, 191, 36, 0.12),
+    0 0 72px rgba(251, 191, 36, 0.06);
+}
+
+.pacman-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+/* ---------- Game Over Overlay ---------- */
+
+.pacman-game-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
+}
+
+.pacman-go-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 20px;
+  text-align: center;
+  animation: pacman-card-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.pacman-go-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.pacman-go-score {
+  font-size: 48px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #fbbf24;
+  text-shadow: 0 0 24px rgba(251, 191, 36, 0.4);
+  line-height: 1;
+}
+
+.pacman-go-level {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pacman-go-newbest {
+  display: inline-block;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.08);
+  animation: pacman-pellet-blink 1.4s ease-in-out infinite;
+}
+
+.pacman-go-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pacman-go-actions button {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.pacman-go-actions button:hover {
+  background: rgba(251, 191, 36, 0.18);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.12);
+}
+
+.pacman-go-actions button:active {
+  transform: scale(0.96);
+}
+
+.pacman-go-actions button.primary,
+.pacman-go-actions button:nth-child(1) {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+}
+
+/* ---------- Pause Overlay ---------- */
+
+.pacman-paused {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 10;
+}
+
+.pacman-paused::after {
+  content: '⏸  PAUSED';
+  font-size: 28px;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.35);
+  animation: pacman-level-pulse 2s ease-in-out infinite;
+}
+
+/* ---------- Controls Hint ---------- */
+
+.pacman-controls {
+  margin-top: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Mobile D-pad ---------- */
+
+.pacman-dpad {
+  display: none;
+  grid-template-areas:
+    '.    up   .'
+    'left .    right'
+    '.    down .';
+  grid-template-columns: 56px 56px 56px;
+  grid-template-rows: 56px 56px 56px;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 16px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pacman-dpad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fbbf24;
+  font-size: 22px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, transform 0.08s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.pacman-dpad-btn:hover {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.pacman-dpad-btn:active {
+  background: rgba(251, 191, 36, 0.2);
+  transform: scale(0.92);
+}
+
+.pacman-dpad-up    { grid-area: up; }
+.pacman-dpad-down  { grid-area: down; }
+.pacman-dpad-left  { grid-area: left; }
+.pacman-dpad-right { grid-area: right; }
+
+/* ---------- Back Button ---------- */
+
+.back-to-hub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.back-to-hub:hover {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+  .pacman-difficulty {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pacman-container {
+    padding: 16px;
+  }
+
+  .pacman-hud {
+    padding: 10px 14px;
+  }
+
+  .pacman-hud-value {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pacman-container {
+    padding: 12px;
+  }
+
+  .pacman-difficulty {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .pacman-diff-tile,
+  .difficulty-tile {
+    padding: 12px 8px;
+  }
+
+  .pacman-diff-icon {
+    font-size: 22px;
+  }
+
+  .pacman-diff-label {
+    font-size: 13px;
+  }
+
+  .pacman-diff-meta {
+    display: none;
+  }
+
+  .pacman-hud {
+    padding: 8px 12px;
+  }
+
+  .pacman-hud-value {
+    font-size: 16px;
+  }
+
+  .pacman-hud-label {
+    font-size: 9px;
+  }
+
+  .pacman-canvas-wrapper {
+    border-radius: 12px;
+  }
+
+  .pacman-go-card {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+
+  .pacman-go-score {
+    font-size: 36px;
+  }
+
+  .pacman-go-title {
+    font-size: 20px;
+  }
+
+  .pacman-dpad {
+    display: grid;
+  }
+
+  .pacman-controls {
+    display: none;
+  }
+}
+
+/* Coarse pointer (touch devices) — show D-pad regardless of width */
+@media (pointer: coarse) {
+  .pacman-dpad {
+    display: grid;
+  }
+
+  .pacman-controls {
+    display: none;
+  }
+}
+
+/* ---------- Light Mode ---------- */
+
+@media (prefers-color-scheme: light) {
+  .pacman-canvas-wrapper {
+    box-shadow:
+      0 0 16px rgba(251, 191, 36, 0.1),
+      0 4px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .pacman-hud {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(251, 191, 36, 0.15);
+  }
+
+  .pacman-hud-label {
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .pacman-hud-value {
+    color: #d97706;
+  }
+
+  .pacman-diff-tile,
+  .difficulty-tile {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(251, 191, 36, 0.12);
+  }
+
+  .pacman-diff-label {
+    color: #d97706;
+  }
+
+  .pacman-diff-meta {
+    color: rgba(0, 0, 0, 0.4);
+  }
+
+  .pacman-go-card {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(251, 191, 36, 0.2);
+  }
+
+  .pacman-go-title {
+    color: #1a1a1a;
+  }
+
+  .pacman-go-score {
+    color: #d97706;
+    text-shadow: 0 0 16px rgba(217, 119, 6, 0.25);
+  }
+
+  .pacman-go-level {
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .pacman-go-actions button {
+    background: rgba(251, 191, 36, 0.08);
+    color: #d97706;
+    border-color: rgba(251, 191, 36, 0.2);
+  }
+
+  .pacman-go-actions button.primary,
+  .pacman-go-actions button:nth-child(1) {
+    background: rgba(251, 191, 36, 0.15);
+  }
+
+  .pacman-dpad-btn {
+    background: rgba(255, 255, 255, 0.6);
+    color: #d97706;
+    border-color: rgba(251, 191, 36, 0.15);
+  }
+
+  .pacman-controls {
+    color: rgba(0, 0, 0, 0.3);
+  }
+
+  .back-to-hub {
+    color: rgba(0, 0, 0, 0.4);
+    border-color: rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  .back-to-hub:hover {
+    color: #d97706;
+    border-color: rgba(251, 191, 36, 0.2);
+    background: rgba(251, 191, 36, 0.06);
+  }
+
+  .pacman-paused::after {
+    color: #d97706;
+    text-shadow: 0 0 14px rgba(217, 119, 6, 0.25);
+  }
+}
+
+/* ---------- Reduced Motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .pacman-container::before {
+    animation: none;
+  }
+
+  .pacman-hud-level .pacman-hud-value {
+    animation: none;
+  }
+
+  .pacman-go-card {
+    animation: none;
+  }
+
+  .pacman-go-newbest {
+    animation: none;
+  }
+
+  .pacman-paused::after {
+    animation: none;
+  }
+
+  .pacman-diff-tile,
+  .difficulty-tile,
+  .pacman-dpad-btn,
+  .pacman-go-actions button,
+  .back-to-hub {
+    transition: none;
+  }
+}

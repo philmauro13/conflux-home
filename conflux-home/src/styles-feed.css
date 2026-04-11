@@ -1,0 +1,174 @@
+/* ============================================================
+   CONTENT FEED — Daily Brief
+   ============================================================ */
+
+.feed-view {
+  padding: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.feed-header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feed-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.feed-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.feed-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.feed-loading, .feed-empty {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--text-muted);
+}
+
+.feed-empty-hint {
+  font-size: 13px;
+  margin-top: 6px;
+  opacity: 0.7;
+}
+
+/* Feed List */
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feed-item {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.feed-item.unread {
+  border-left: 3px solid var(--accent-primary);
+  background: #6366f105;
+}
+
+.feed-item:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.feed-item.read {
+  opacity: 0.7;
+}
+
+.feed-unread-dot {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+}
+
+.feed-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.feed-item-type {
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.feed-item-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.feed-item-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.feed-item-body {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+}
+
+.feed-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.feed-item-category {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+}
+
+.feed-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-link {
+  font-size: 12px;
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.feed-link:hover { text-decoration: underline; }
+
+.feed-bookmark-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+
+.feed-bookmark-btn:hover { opacity: 1; transform: scale(1.2); }

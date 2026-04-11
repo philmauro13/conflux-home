@@ -1,0 +1,64 @@
+name: pack-smarter
+
+services:
+  web:
+    image: ghcr.io/theconflux-core/pack-smarter-web:latest
+    container_name: pack-smarter-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/pack_smarter
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - pack-smarter-net
+
+  db:
+    image: postgres:16-alpine
+    container_name: pack-smarter-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pack_smarter
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - pack-smarter-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: pack-smarter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - pack-smarter-net
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  pack-smarter-net:
+    driver: bridge

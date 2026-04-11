@@ -10,9 +10,10 @@ interface FamilySwitcherProps {
   activeMemberId: string | null;
   onSelect: (member: FamilyMember | null) => void;
   onAddClick: () => void;
+  onProgressClick: (memberId: string) => void;
 }
 
-export default function FamilySwitcher({ members, activeMemberId, onSelect, onAddClick }: FamilySwitcherProps) {
+export default function FamilySwitcher({ members, activeMemberId, onSelect, onAddClick, onProgressClick }: FamilySwitcherProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const activeMember = members.find(m => m.id === activeMemberId);
@@ -71,6 +72,13 @@ export default function FamilySwitcher({ members, activeMemberId, onSelect, onAd
           <span className="family-age-badge">
             {AGE_GROUP_CONFIG[activeMember.age_group].emoji} {AGE_GROUP_CONFIG[activeMember.age_group].ageRange}
           </span>
+          <button
+            className="family-progress-btn"
+            onClick={() => onProgressClick(activeMember.id)}
+            title={`${activeMember.name}'s Progress`}
+          >
+            📊
+          </button>
         </div>
       )}
     </div>

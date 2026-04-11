@@ -32,7 +32,7 @@ export function useTasks() {
   const refresh = useCallback(async () => {
     try {
       // Fetch tasks for all agents by passing empty string or null
-      const result = await invoke<Task[]>('engine_get_tasks_for_agent', { agentId: '', status: null });
+      const result = await invoke<Task[]>('engine_get_tasks_for_agent', { agent_id: '', status: null });
       setTasks(result);
     } catch (err) {
       console.error('[useTasks] Failed to load:', err);

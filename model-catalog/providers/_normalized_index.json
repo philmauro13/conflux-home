@@ -1,0 +1,440 @@
+{
+  "gpt-4o": {
+    "in": 2.5,
+    "out": 10.0,
+    "status": "active",
+    "provider": "openai"
+  },
+  "gpt-4o-mini": {
+    "in": 0.15,
+    "out": 0.6,
+    "status": "active",
+    "provider": "openai"
+  },
+  "gpt-4.1": {
+    "in": 2.0,
+    "out": 8.0,
+    "status": "active",
+    "provider": "openai"
+  },
+  "gpt-4.1-mini": {
+    "in": 0.4,
+    "out": 1.6,
+    "status": "active",
+    "provider": "openai"
+  },
+  "gpt-4.1-nano": {
+    "in": 0.1,
+    "out": 0.4,
+    "status": "active",
+    "provider": "openai"
+  },
+  "o1": {
+    "in": 15.0,
+    "out": 60.0,
+    "status": "active",
+    "provider": "openai"
+  },
+  "o1-mini": {
+    "in": 1.1,
+    "out": 4.4,
+    "status": "deprecated",
+    "provider": "openai"
+  },
+  "o3": {
+    "in": 2.0,
+    "out": 8.0,
+    "status": "active",
+    "provider": "openai"
+  },
+  "o3-mini": {
+    "in": 1.1,
+    "out": 4.4,
+    "status": "active",
+    "provider": "openai"
+  },
+  "o4-mini": {
+    "in": 1.1,
+    "out": 4.4,
+    "status": "active",
+    "provider": "openai"
+  },
+  "codex-mini-latest": {
+    "in": 1.5,
+    "out": 6.0,
+    "status": "active",
+    "provider": "openai"
+  },
+  "gpt-4-turbo": {
+    "in": 10.0,
+    "out": 30.0,
+    "status": "deprecated",
+    "provider": "openai"
+  },
+  "claude-opus-4-6": {
+    "in": 5.0,
+    "out": 25.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-sonnet-4-6": {
+    "in": 3.0,
+    "out": 15.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-haiku-4-5-20251001": {
+    "in": 1.0,
+    "out": 5.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-sonnet-4-5-20250929": {
+    "in": 3.0,
+    "out": 15.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-opus-4-5-20251101": {
+    "in": 5.0,
+    "out": 25.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-opus-4-1-20250805": {
+    "in": 15.0,
+    "out": 75.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-sonnet-4-20250514": {
+    "in": 3.0,
+    "out": 15.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-opus-4-20250514": {
+    "in": 15.0,
+    "out": 75.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-3-7-sonnet-20250219": {
+    "in": 3.0,
+    "out": 15.0,
+    "status": "deprecated",
+    "provider": "anthropic"
+  },
+  "claude-3-5-haiku-20241022": {
+    "in": 0.8,
+    "out": 4.0,
+    "status": "active",
+    "provider": "anthropic"
+  },
+  "claude-3-haiku-20240307": {
+    "in": 0.25,
+    "out": 1.25,
+    "status": "deprecated",
+    "provider": "anthropic"
+  },
+  "gemini-2.5-pro": {
+    "in": 1.25,
+    "out": 10.0,
+    "status": "GA",
+    "provider": "google"
+  },
+  "gemini-2.5-flash": {
+    "in": 0.3,
+    "out": 2.5,
+    "status": "GA",
+    "provider": "google"
+  },
+  "gemini-2.5-flash-lite": {
+    "in": 0.1,
+    "out": 0.4,
+    "status": "GA",
+    "provider": "google"
+  },
+  "gemini-2.0-flash": {
+    "in": 0.1,
+    "out": 0.4,
+    "status": "deprecated",
+    "provider": "google"
+  },
+  "gemini-2.0-flash-lite": {
+    "in": 0.075,
+    "out": 0.3,
+    "status": "deprecated",
+    "provider": "google"
+  },
+  "gemini-embedding-exp": {
+    "in": 0.15,
+    "out": null,
+    "status": "GA",
+    "provider": "google"
+  },
+  "gemini-embedding-exp-03-07": {
+    "in": 0.2,
+    "out": null,
+    "status": "preview",
+    "provider": "google"
+  },
+  "gemini-2.0-flash-exp-image-generation": {
+    "in": 0.1,
+    "out": 0.4,
+    "status": "experimental",
+    "provider": "google"
+  },
+  "mistral-large-2512": {
+    "in": 0.5,
+    "out": 1.5,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "mistral-medium-3.1": {
+    "in": 0.4,
+    "out": 2.0,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "mistral-small-3.2-24b": {
+    "in": 0.075,
+    "out": 0.2,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "codestral-2508": {
+    "in": 0.3,
+    "out": 0.9,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "pixtral-12b": {
+    "in": 0.1,
+    "out": 0.1,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "ministral-3b-2512": {
+    "in": 0.1,
+    "out": 0.1,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "ministral-8b-2512": {
+    "in": 0.15,
+    "out": 0.15,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "ministral-14b-2512": {
+    "in": 0.2,
+    "out": 0.2,
+    "status": "active",
+    "provider": "mistral"
+  },
+  "deepseek-chat": {
+    "in": 0.27,
+    "out": 1.1,
+    "status": "active",
+    "provider": "deepseek"
+  },
+  "deepseek-reasoner": {
+    "in": 0.55,
+    "out": 2.19,
+    "status": "active",
+    "provider": "deepseek"
+  },
+  "grok-3": {
+    "in": 3.0,
+    "out": 15.0,
+    "status": "active",
+    "provider": "xai"
+  },
+  "grok-3-mini": {
+    "in": 0.25,
+    "out": 0.5,
+    "status": "active",
+    "provider": "xai"
+  },
+  "grok-4.1-fast": {
+    "in": 0.2,
+    "out": 0.5,
+    "status": "active",
+    "provider": "xai"
+  },
+  "grok-4.20": {
+    "in": 2.0,
+    "out": 6.0,
+    "status": "active",
+    "provider": "xai"
+  },
+  "grok-code-fast-1": {
+    "in": 0.2,
+    "out": 1.5,
+    "status": "active",
+    "provider": "xai"
+  },
+  "llama-3.3-70b-versatile": {
+    "in": 0.59,
+    "out": 0.79,
+    "status": "active",
+    "provider": "groq"
+  },
+  "meta-llama/llama-4-scout-17b-16e-instruct": {
+    "in": 0.11,
+    "out": 0.34,
+    "status": "active",
+    "provider": "groq"
+  },
+  "llama-3.1-8b-instant": {
+    "in": 0.05,
+    "out": 0.08,
+    "status": "active",
+    "provider": "groq"
+  },
+  "qwen/qwen3-32b": {
+    "in": 0.29,
+    "out": 0.59,
+    "status": "active",
+    "provider": "groq"
+  },
+  "openai/gpt-oss-120b": {
+    "in": 0.15,
+    "out": 0.6,
+    "status": "active",
+    "provider": "groq"
+  },
+  "openai/gpt-oss-20b": {
+    "in": 0.075,
+    "out": 0.3,
+    "status": "active",
+    "provider": "groq"
+  },
+  "moonshotai/kimi-k2-instruct-0905": {
+    "in": 1.0,
+    "out": 3.0,
+    "status": "active",
+    "provider": "groq"
+  },
+  "llama3.1-8b": {
+    "in": 0.06,
+    "out": 0.14,
+    "status": "active",
+    "provider": "cerebras"
+  },
+  "gpt-oss-120b": {
+    "in": 0.22,
+    "out": 0.68,
+    "status": "active",
+    "provider": "cerebras"
+  },
+  "qwen-3-235b-a22b-instruct-2507": {
+    "in": null,
+    "out": null,
+    "status": "active",
+    "provider": "cerebras"
+  },
+  "zai-glm-4.7": {
+    "in": 1.19,
+    "out": 3.57,
+    "status": "active",
+    "provider": "cerebras"
+  },
+  "xiaomi/mimo-v2-flash": {
+    "in": 0.09,
+    "out": 0.29,
+    "status": "active",
+    "provider": "mimo"
+  },
+  "xiaomi/mimo-v2-pro": {
+    "in": 1.0,
+    "out": 3.0,
+    "status": "active",
+    "provider": "mimo"
+  },
+  "xiaomi/mimo-v2-omni": {
+    "in": 0.4,
+    "out": 2.0,
+    "status": "active",
+    "provider": "mimo"
+  },
+  "@cf/meta/llama-4-scout-17b-16e-instruct": {
+    "in": 0.1,
+    "out": 0.44,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/openai/gpt-oss-120b": {
+    "in": 0.35,
+    "out": 0.75,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/moonshotai/kimi-k2.5": {
+    "in": null,
+    "out": null,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast": {
+    "in": 0.293,
+    "out": 2.253,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/meta/llama-3.1-70b-instruct-fp8-fast": {
+    "in": 0.293,
+    "out": 2.253,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/meta/llama-3.1-8b-instruct-fp8-fast": {
+    "in": 0.045,
+    "out": 0.384,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/meta/llama-3.2-1b-instruct": {
+    "in": 0.027,
+    "out": 0.201,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/meta/llama-3.2-3b-instruct": {
+    "in": 0.051,
+    "out": 0.335,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/meta/llama-3.2-11b-vision-instruct": {
+    "in": 0.049,
+    "out": 0.676,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b": {
+    "in": 0.497,
+    "out": 4.881,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/mistralai/mistral-small-3.1-24b-instruct": {
+    "in": 0.351,
+    "out": 0.555,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/qwen/qwen2.5-coder-32b-instruct": {
+    "in": 0.3,
+    "out": 0.55,
+    "status": "active",
+    "provider": "cloudflare"
+  },
+  "@cf/google/gemma-3-12b-it": {
+    "in": 0.15,
+    "out": 0.75,
+    "status": "active",
+    "provider": "cloudflare"
+  }
+}

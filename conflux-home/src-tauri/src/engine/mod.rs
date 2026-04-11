@@ -4,11 +4,20 @@
 pub mod db;
 pub mod types;
 pub mod router;
+pub mod deterministic;
 pub mod runtime;
 pub mod tools;
 pub mod memory;
 pub mod google;
 pub mod cron;
+pub mod orbit_prompts;
+pub mod cloud;
+pub mod state_events;
+pub mod state_manager;
+pub mod echo_counselor;
+pub mod commands {
+    pub mod voice_commands;
+}
 
 pub use db::EngineDb;
 
@@ -19,45 +28,55 @@ use std::sync::OnceLock;
 /// Global engine instance.
 static ENGINE: OnceLock<ConfluxEngine> = OnceLock::new();
 
-/// Get the global engine instance.
+/// Get the global engine instance. Panics if not initialized.
 pub fn get_engine() -> &'static ConfluxEngine {
     ENGINE.get().expect("Conflux Engine not initialized")
+}
+
+/// Get the global engine instance safely. Returns None if not initialized.
+pub fn try_get_engine() -> Option<&'static ConfluxEngine> {
+    ENGINE.get()
 }
 
 /// Initialize the global engine. Call once during app setup.
 pub fn init_engine(db_path: &Path) -> Result<()> {
     let engine = ConfluxEngine::new(db_path)?;
 
-    // Load provider API keys from config
-    // Free providers ship with built-in keys (already active)
-    // Paid providers require user configuration
-    match engine.db.get_config("openai_api_key") {
-        Ok(Some(key)) if !key.is_empty() => {
-            router::configure_provider("openai-gpt4o", &key).ok();
-            router::configure_provider("openai-gpt4o-mini", &key).ok();
-            log::info!("[Engine] OpenAI API key loaded");
+    // NOTE: All provider API keys have been removed. Inference now routes through
+    // the cloud router (https://theconflux.com/v1/chat/completions) using Supabase JWT.
+    // Client-side provider keys are no longer supported.
+
+    // Load Studio API keys from environment variables (if not already in DB)
+    // These are for Studio features (Replicate, ElevenLabs), not inference
+    if engine.db.get_config("studio_replicate_key").ok().flatten().is_none() {
+        if let Ok(key) = std::env::var("REPLICATE_API_KEY") {
+            if !key.is_empty() {
+                engine.db.set_config("studio_replicate_key", &key).ok();
+                log::info!("[Engine] Replicate API key loaded from env");
+            }
         }
-        _ => {}
     }
-    match engine.db.get_config("anthropic_api_key") {
-        Ok(Some(key)) if !key.is_empty() => {
-            router::configure_provider("anthropic-claude-sonnet", &key).ok();
-            router::configure_provider("anthropic-claude-opus", &key).ok();
-            log::info!("[Engine] Anthropic API key loaded");
+    if engine.db.get_config("studio_elevenlabs_key").ok().flatten().is_none() {
+        // Try runtime env var first, then compile-time embedded key
+        let key = std::env::var("ELEVENLABS_API_KEY")
+            .ok()
+            .filter(|k| !k.is_empty())
+            .or_else(|| option_env!("ELEVENLABS_API_KEY").map(|s| s.to_string()))
+            .filter(|k| !k.is_empty());
+        if let Some(key) = key {
+            engine.db.set_config("studio_elevenlabs_key", &key).ok();
+            log::info!("[Engine] ElevenLabs API key loaded");
         }
-        _ => {}
-    }
-    match engine.db.get_config("xiaomi_api_key") {
-        Ok(Some(key)) if !key.is_empty() => {
-            router::configure_provider("xiaomi-mimo-flash", &key).ok();
-            router::configure_provider("xiaomi-mimo-pro", &key).ok();
-            log::info!("[Engine] Xiaomi API key loaded");
-        }
-        _ => {}
     }
 
     ENGINE.set(engine)
         .map_err(|_| anyhow::anyhow!("Engine already initialized"))?;
+
+    // Auto-create system cron jobs (idempotent — skips if they already exist)
+    if let Err(e) = get_engine().ensure_system_cron_jobs() {
+        log::warn!("[Engine] Failed to ensure system cron jobs: {}", e);
+    }
+
     Ok(())
 }
 
@@ -125,8 +144,12 @@ impl ConfluxEngine {
         Ok(session)
     }
 
-    pub fn get_sessions(&self, limit: i64) -> Result<Vec<types::Session>> {
-        self.db.get_recent_sessions(limit)
+    pub fn get_sessions(&self, user_id: &str, limit: i64) -> Result<Vec<types::Session>> {
+        self.db.get_recent_sessions(user_id, limit)
+    }
+
+    pub fn get_session(&self, session_id: &str) -> Result<Option<types::Session>> {
+        self.db.get_session(session_id)
     }
 
     pub fn get_messages(&self, session_id: &str, limit: i64) -> Result<Vec<types::Message>> {
@@ -302,9 +325,9 @@ impl ConfluxEngine {
         self.get_key_masked("xiaomi_api_key")
     }
 
-    /// Get the list of all router providers (for display in settings).
-    pub fn get_router_providers(&self) -> Vec<router::ModelProvider> {
-        router::get_all_providers()
+    /// Get the list of available models from cloud router (for display in settings).
+    pub async fn get_available_models(&self) -> Result<Vec<cloud::CloudModel>> {
+        cloud::cloud_get_models().await
     }
 
     // ── Agent Capabilities & Permissions ──
@@ -487,6 +510,81 @@ impl ConfluxEngine {
         }
 
         Ok(executed)
+    }
+
+    /// Create default system cron jobs if they don't exist yet.
+    /// Called once at startup — idempotent (skips jobs that already exist by name).
+    pub fn ensure_system_cron_jobs(&self) -> Result<()> {
+        let existing = self.db.get_cron_jobs(false)?;
+        let existing_names: std::collections::HashSet<String> = existing.iter().map(|j| j.name.clone()).collect();
+
+        let system_jobs: Vec<(&str, &str, &str, &str, &str)> = vec![
+            ("morning-brief", "conflux", "0 7 * * *", "local",
+             "Generate the daily morning briefing. \
+              Use budget_get_summary for this month's spending. \
+              Use kitchen_get_inventory to check items expiring within 3 days. \
+              Use life_list_tasks with status 'pending' for today's tasks. \
+              Use home_get_bills to check bills due within 7 days. \
+              Use dream_list to check active dreams and their progress. \
+              Compile a warm, concise morning briefing (5-8 sentences). \
+              Start with 'Good morning! Here is your day:' \
+              Include specific dollar amounts, item names, and task titles. \
+              End with one actionable recommendation."),
+
+            ("agent-diary", "conflux", "0 23 * * *", "local",
+             "Write tonight's diary entry. \
+              Reflect on the day — what patterns do you notice in the user's behavior? \
+              Check budget entries from today for spending patterns. \
+              Check kitchen meals logged this week for cooking frequency. \
+              Check life tasks for completion rate. \
+              Write a warm, reflective 3-5 sentence diary entry. \
+              Be observational, not judgmental. Note trends and growth. \
+              Store this reflection using memory_write with category 'diary' and a descriptive title."),
+
+            ("weekly-insights", "conflux", "0 10 * * 0", "local",
+             "Generate a weekly cross-app insights report. \
+              1. Budget: Use budget_get_summary for this month. Note total spent, top categories, any unusual spending. \
+              2. Kitchen: Use kitchen_list_meals to see what was cooked. Use kitchen_get_inventory for expiring items. \
+              3. Life: Use life_list_tasks for completion stats. Use life_list_habits for streaks. \
+              4. Home: Use home_get_bills for upcoming due dates. \
+              5. Dreams: Use dream_list for progress percentages. \
+              Write a structured report with specific numbers and 2-3 actionable recommendations. \
+              Store the report using memory_write with category 'weekly-insights'."),
+
+            ("pantry-check", "conflux", "0 8 * * *", "local",
+             "Check kitchen inventory for items expiring in the next 3 days using kitchen_get_inventory. \
+              If any items are expiring soon, use kitchen_list_meals to suggest a recipe that uses them. \
+              If nothing is expiring, just say 'Pantry looks good!' with a 1-sentence inventory summary. \
+              Keep it brief — 2-3 sentences max."),
+
+            ("budget-nudge", "conflux", "0 18 * * *", "local",
+             "Check today's budget entries using budget_get_entries for this month. \
+              If the user spent money today, give a brief 1-sentence spending summary. \
+              If a savings goal is close to deadline, mention progress using budget_get_goals. \
+              If no budget activity today, stay completely silent — do not generate any output. \
+              Be encouraging, never judgmental. 1-2 sentences max."),
+
+            ("dream-motivation", "conflux", "0 9 * * 1-5", "local",
+             "Check active dreams using dream_list. \
+              Look for any dream tasks due today or this week. \
+              If there are upcoming tasks, send a brief motivational 1-2 sentence reminder. \
+              Reference the dream title and the specific task name. \
+              If no upcoming tasks, check if any milestones were recently completed and celebrate briefly. \
+              If nothing notable, stay silent — do not generate output."),
+        ];
+
+        for (name, agent_id, schedule, tz, message) in system_jobs {
+            if !existing_names.contains(name) {
+                let id = self.db.create_cron_job(name, agent_id, schedule, tz, message)?;
+                log::info!("[SystemCron] Created job '{}' (id={})", name, id);
+                if let Some(next) = cron::next_run(schedule, chrono::Utc::now()) {
+                    let next_str = next.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+                    self.db.update_cron_next_run_by_name(name, &next_str)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     // ── Webhooks ──
@@ -722,20 +820,16 @@ impl ConfluxEngine {
         self.db.uninstall_skill(id)
     }
 
-    pub fn test_provider(&self, id: &str) -> Result<router::ModelResponse> {
-        // Run a test call using the tier-based router
-        let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(async {
-            let messages = vec![router::OpenAIMessage {
-                role: "user".to_string(),
-                content: Some("Say 'hello' in one word.".to_string()),
-                tool_call_id: None,
-                tool_calls: None,
-            }];
+    pub async fn test_provider(&self) -> Result<router::ModelResponse> {
+        // Run a test call using the cloud router
+        let messages = vec![router::OpenAIMessage {
+            role: "user".to_string(),
+            content: Some("Say 'hello' in one word.".to_string()),
+            tool_call_id: None,
+            tool_calls: None,
+        }];
 
-            // Test by calling through the core tier
-            router::chat("core", messages, Some(50), None, None).await
-        })
+        cloud::cloud_chat(None, messages, Some(50), None, None).await
     }
 
     // ── Quota ──
@@ -759,12 +853,41 @@ impl ConfluxEngine {
         self.db.increment_quota(user_id, &today, tokens, provider_id)
     }
 
-    pub fn has_quota(&self, user_id: &str) -> Result<bool> {
+    pub async fn has_quota(&self, user_id: &str) -> Result<cloud::QuotaStatus> {
+        // Try cloud first
+        match cloud::check_cloud_balance(user_id).await {
+            Ok(status) => {
+                if status.has_active_subscription {
+                    return Ok(cloud::QuotaStatus {
+                        allowed: status.total_available > 0,
+                        source: "subscription".to_string(),
+                        remaining: status.total_available,
+                    });
+                }
+                if status.deposit_balance > 0 {
+                    return Ok(cloud::QuotaStatus {
+                        allowed: true,
+                        source: "deposit".to_string(),
+                        remaining: status.deposit_balance,
+                    });
+                }
+            }
+            Err(e) => {
+                log::warn!("[Engine] Cloud balance check failed, falling back to local: {}", e);
+            }
+        }
+
+        // Fallback: free tier daily limit (local SQLite)
         let quota = self.get_quota(user_id)?;
         let limit: i64 = self.db.get_config("free_daily_limit")?
             .unwrap_or_else(|| "50".to_string())
             .parse()
             .unwrap_or(50);
-        Ok(quota.calls_used < limit)
+        let remaining = (limit - quota.calls_used).max(0);
+        Ok(cloud::QuotaStatus {
+            allowed: remaining > 0,
+            source: "free".to_string(),
+            remaining,
+        })
     }
 }

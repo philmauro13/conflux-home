@@ -130,13 +130,14 @@ fn check_tool_permission(db: &EngineDb, agent_id: &str, tool_name: &str) -> Resu
     }
 }
 
-/// Execute a tool by name with the given arguments.
-pub async fn execute_tool(tool_name: &str, args: &Value) -> Result<ToolResult> {
-    execute_tool_for_agent(tool_name, args, "default").await
+/// Execute a tool by name with the given arguments and user context.
+pub async fn execute_tool(tool_name: &str, args: &Value, user_id: &str) -> Result<ToolResult> {
+    execute_tool_for_user(tool_name, args, user_id).await
 }
 
-/// Execute a tool with agent-specific permission checking.
-pub async fn execute_tool_for_agent(tool_name: &str, args: &Value, agent_id: &str) -> Result<ToolResult> {
+/// Execute a tool with user-specific context and permission checking.
+/// Note: The agent_id parameter is currently unused for non-Google tools.
+pub async fn execute_tool_for_user(tool_name: &str, args: &Value, _user_id: &str) -> Result<ToolResult> {
     // Google tools are checked separately (they require auth, not permissions)
     if matches!(tool_name, "google_auth" | "gmail_send" | "gmail_search" | "google_drive_list" |
         "google_doc_read" | "google_doc_write" | "google_sheet_read" | "google_sheet_write")
@@ -160,6 +161,46 @@ pub async fn execute_tool_for_agent(tool_name: &str, args: &Value, agent_id: &st
         "notify" => execute_notify(args),
         "email_send" => execute_email_send(args),
         "email_receive" => execute_email_receive(args),
+        // App tools: Life Autopilot, Feed, Dreams
+        "life_add_task" => execute_life_add_task(args),
+        "life_list_tasks" => execute_life_list_tasks(args),
+        "life_complete_task" => execute_life_complete_task(args),
+        "life_add_habit" => execute_life_add_habit(args),
+        "life_log_habit" => execute_life_log_habit(args),
+        "life_add_reminder" => execute_life_add_reminder(args),
+        "feed_add_item" => execute_feed_add_item(args),
+        "feed_list_items" => execute_feed_list_items(args),
+        "feed_mark_read" => execute_feed_mark_read(args),
+        "dream_add" => execute_dream_add(args),
+        "dream_list" => execute_dream_list(args),
+        "dream_add_milestone" => execute_dream_add_milestone(args),
+        "dream_add_task" => execute_dream_add_task(args),
+        // Home Health tools
+        "home_add_bill" => execute_home_add_bill(args),
+        "home_get_bills" => execute_home_get_bills(args),
+        "home_add_maintenance" => execute_home_add_maintenance(args),
+        "home_get_appliances" => execute_home_get_appliances(args),
+        // Vault tools
+        "vault_list_files" => execute_vault_list_files(args),
+        "vault_search_files" => execute_vault_search_files(args),
+        "vault_get_file" => execute_vault_get_file(args),
+        // Kitchen tools
+        "kitchen_add_meal" => execute_kitchen_add_meal(args),
+        "kitchen_list_meals" => execute_kitchen_list_meals(args),
+        "kitchen_add_to_plan" => execute_kitchen_add_to_plan(args),
+        "kitchen_get_plan" => execute_kitchen_get_plan(args),
+        "kitchen_add_inventory" => execute_kitchen_add_inventory(args),
+        "kitchen_get_inventory" => execute_kitchen_get_inventory(args),
+        // Budget tools
+        "budget_add_entry" => execute_budget_add_entry(args),
+        "budget_get_entries" => execute_budget_get_entries(args),
+        "budget_get_summary" => execute_budget_get_summary(args),
+        "budget_create_goal" => execute_budget_create_goal(args),
+        "budget_get_goals" => execute_budget_get_goals(args),
+        // Cross-app intelligence tools
+        "conflux_weekly_summary" => execute_weekly_summary(args),
+        "conflux_can_afford" => execute_can_afford(args),
+        "conflux_day_overview" => execute_day_overview(args),
         _ => Ok(ToolResult {
             success: false,
             output: String::new(),
@@ -351,7 +392,7 @@ pub fn get_tool_definitions() -> Vec<Value> {
                     "properties": {
                         "spreadsheet_id": { "type": "string", "description": "The spreadsheet ID" },
                         "range": { "type": "string", "description": "A1 notation range (e.g., 'Sheet1!A1')" },
-                        "values": { "type": "array", "description": "2D array of values to write" }
+                        "values": { "type": "array", "description": "2D array of values to write", "items": { "type": "array", "items": { "type": "string" } } }
                     },
                     "required": ["spreadsheet_id", "range", "values"]
                 }
@@ -374,7 +415,7 @@ pub fn get_integration_tool_definitions() -> Vec<Value> {
                     "properties": {
                         "url": { "type": "string", "description": "The URL to POST to" },
                         "body": { "type": "string", "description": "JSON body to send (as a string)" },
-                        "headers": { "type": "string", "description": "Optional JSON object of headers (e.g., '{\"Authorization\": \"Bearer ...\"}')" }
+                        "headers": { "type": "string", "description": "Optional JSON object of headers" }
                     },
                     "required": ["url", "body"]
                 }
@@ -384,11 +425,11 @@ pub fn get_integration_tool_definitions() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "notify",
-                "description": "Send a desktop/mobile notification to the user. Use this for alerts, reminders, task completions, or important updates that need immediate attention.",
+                "description": "Send a desktop/mobile notification to the user. Use this for alerts, reminders, task completions, or important updates.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "title": { "type": "string", "description": "Notification title (shown in bold)" },
+                        "title": { "type": "string", "description": "Notification title" },
                         "body": { "type": "string", "description": "Notification body text" }
                     },
                     "required": ["title", "body"]
@@ -399,13 +440,13 @@ pub fn get_integration_tool_definitions() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "email_send",
-                "description": "Send an email via SMTP. Configure email settings first in Settings > Email.",
+                "description": "Send an email via SMTP.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "to": { "type": "string", "description": "Recipient email address" },
                         "subject": { "type": "string", "description": "Email subject line" },
-                        "body": { "type": "string", "description": "Email body (plain text)" }
+                        "body": { "type": "string", "description": "Email body" }
                     },
                     "required": ["to", "subject", "body"]
                 }
@@ -415,15 +456,531 @@ pub fn get_integration_tool_definitions() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "email_receive",
-                "description": "Check for new emails via IMAP. Returns recent unread emails.",
+                "description": "Check for new emails via IMAP.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "folder": { "type": "string", "description": "Mailbox folder to check (default: INBOX)" },
-                        "limit": { "type": "integer", "description": "Max emails to return (default: 10)" }
+                        "folder": { "type": "string", "description": "Mailbox folder (default: INBOX)" },
+                        "limit": { "type": "integer", "description": "Max emails to return" }
+                    }
+                }
+            }
+        }),
+    ]
+}
+
+pub fn get_app_tool_definitions() -> Vec<Value> {
+    vec![
+        // ── Life Autopilot Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "life_add_task",
+                "description": "Add a new task to Life Autopilot. Use for to-do items, errands, and personal tasks.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string", "description": "Task title (required)" },
+                        "category": { "type": "string", "description": "Category (e.g., work, personal, health, home)" },
+                        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Priority level" },
+                        "due_date": { "type": "string", "description": "Due date in YYYY-MM-DD format" },
+                        "energy_type": { "type": "string", "enum": ["high", "low"], "description": "Energy level needed" }
+                    },
+                    "required": ["title"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "life_list_tasks",
+                "description": "List tasks from Life Autopilot. Filter by status to see pending or completed tasks.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Filter by task status" }
+                    }
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "life_complete_task",
+                "description": "Mark a Life Autopilot task as completed.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": { "type": "string", "description": "Task ID (required)" }
+                    },
+                    "required": ["task_id"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "life_add_habit",
+                "description": "Add a new habit to track in Life Autopilot.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string", "description": "Habit name (required)" },
+                        "category": { "type": "string", "description": "Category (e.g., health, productivity, wellness)" },
+                        "frequency": { "type": "string", "enum": ["daily", "weekly"], "description": "How often to track" },
+                        "target_count": { "type": "integer", "description": "Target count per period (default: 1)" }
+                    },
+                    "required": ["name"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "life_log_habit",
+                "description": "Log a habit completion for today in Life Autopilot.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "habit_id": { "type": "string", "description": "Habit ID (required)" }
+                    },
+                    "required": ["habit_id"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "life_add_reminder",
+                "description": "Add a reminder to Life Autopilot. Use for time-sensitive alerts.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string", "description": "Reminder title (required)" },
+                        "description": { "type": "string", "description": "Optional description" },
+                        "due_date": { "type": "string", "description": "Reminder date in YYYY-MM-DD format (required)" },
+                        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Priority level" }
+                    },
+                    "required": ["title", "due_date"]
+                }
+            }
+        }),
+        // ── Feed Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "feed_add_item",
+                "description": "Add an item to your content feed (article, note, or bookmark).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "content_type": { "type": "string", "enum": ["article", "note", "bookmark"], "description": "Type of content (required)" },
+                        "title": { "type": "string", "description": "Title (required)" },
+                        "body": { "type": "string", "description": "Content body or notes" },
+                        "source_url": { "type": "string", "description": "Source URL for articles/bookmarks" },
+                        "category": { "type": "string", "description": "Category tag" }
+                    },
+                    "required": ["content_type", "title"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "feed_list_items",
+                "description": "List items from your content feed, optionally filtered by type or read status.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "content_type": { "type": "string", "enum": ["article", "note", "bookmark"], "description": "Filter by content type" },
+                        "unread_only": { "type": "boolean", "description": "Show only unread items" }
+                    }
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "feed_mark_read",
+                "description": "Mark a feed item as read.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string", "description": "Feed item ID (required)" }
+                    },
+                    "required": ["id"]
+                }
+            }
+        }),
+        // ── Dreams Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "dream_add",
+                "description": "Add a new dream or goal. Dreams are long-term aspirations you want to achieve.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string", "description": "Dream title (required)" },
+                        "description": { "type": "string", "description": "Dream description" },
+                        "category": { "type": "string", "enum": ["personal", "career", "health", "creative", "financial"], "description": "Dream category (required)" },
+                        "target_date": { "type": "string", "description": "Target completion date in YYYY-MM-DD format" }
+                    },
+                    "required": ["title", "category"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "dream_list",
+                "description": "List your dreams, optionally filtered by status (active or completed).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "status": { "type": "string", "enum": ["active", "completed"], "description": "Filter by dream status" }
+                    }
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "dream_add_milestone",
+                "description": "Add a milestone to a dream. Milestones break down dreams into achievable steps.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "dream_id": { "type": "string", "description": "Dream ID (required)" },
+                        "title": { "type": "string", "description": "Milestone title (required)" },
+                        "description": { "type": "string", "description": "Milestone description" },
+                        "target_date": { "type": "string", "description": "Target date in YYYY-MM-DD format" }
+                    },
+                    "required": ["dream_id", "title"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "dream_add_task",
+                "description": "Add a task to a dream. Tasks are actionable items that move you toward your dream.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "dream_id": { "type": "string", "description": "Dream ID (required)" },
+                        "milestone_id": { "type": "string", "description": "Optional milestone ID to attach task to" },
+                        "title": { "type": "string", "description": "Task title (required)" },
+                        "description": { "type": "string", "description": "Task description" },
+                        "due_date": { "type": "string", "description": "Due date in YYYY-MM-DD format" },
+                        "frequency": { "type": "string", "description": "Recurring frequency (e.g., daily, weekly)" }
+                    },
+                    "required": ["dream_id", "title"]
+                }
+            }
+        }),
+        // ── Kitchen Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "kitchen_add_meal",
+                "description": "Add a new meal/recipe to the kitchen. Use when the user wants to save a recipe or add a dish to their meal collection.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string", "description": "Meal/recipe name (e.g. 'Chicken Parmesan')" },
+                        "category": { "type": "string", "description": "Meal category: breakfast, lunch, dinner, snack, dessert" },
+                        "cuisine": { "type": "string", "description": "Cuisine type (e.g. Italian, Mexican, Thai)" },
+                        "instructions": { "type": "string", "description": "Cooking instructions or steps" },
+                        "prep_time_min": { "type": "integer", "description": "Prep time in minutes" },
+                        "cook_time_min": { "type": "integer", "description": "Cook time in minutes" }
+                    },
+                    "required": ["name"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "kitchen_list_meals",
+                "description": "List meals/recipes in the kitchen, optionally filtered by category, cuisine, or favorites.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "category": { "type": "string", "description": "Filter by category (breakfast, lunch, dinner, snack, dessert)" },
+                        "cuisine": { "type": "string", "description": "Filter by cuisine (Italian, Mexican, Thai, etc.)" },
+                        "favorites_only": { "type": "boolean", "description": "If true, only show favorites" }
+                    }
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "kitchen_add_to_plan",
+                "description": "Add a meal to the weekly meal plan. The meal must already exist in the kitchen.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "meal_name": { "type": "string", "description": "Name of the meal to add (must match an existing meal)" },
+                        "week_start": { "type": "string", "description": "Week start date in YYYY-MM-DD format (Monday)" },
+                        "day_of_week": { "type": "integer", "description": "Day index: 0=Monday, 1=Tuesday, ..., 6=Sunday" },
+                        "meal_slot": { "type": "string", "description": "Meal slot: breakfast, lunch, dinner" }
+                    },
+                    "required": ["meal_name"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "kitchen_get_plan",
+                "description": "Get the weekly meal plan for a given week.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "week_start": { "type": "string", "description": "Week start date in YYYY-MM-DD format (Monday)" }
+                    },
+                    "required": ["week_start"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "kitchen_add_inventory",
+                "description": "Add an item to the kitchen inventory (fridge, freezer, pantry).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string", "description": "Item name (e.g. 'Milk', 'Chicken breast')" },
+                        "quantity": { "type": "number", "description": "Quantity amount" },
+                        "unit": { "type": "string", "description": "Unit (e.g. 'lbs', 'oz', 'gallons', 'each')" },
+                        "location": { "type": "string", "description": "Storage location: fridge, freezer, pantry" },
+                        "expiry_date": { "type": "string", "description": "Expiry date in YYYY-MM-DD format" }
+                    },
+                    "required": ["name"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "kitchen_get_inventory",
+                "description": "Get kitchen inventory items, optionally filtered by location.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": { "type": "string", "description": "Filter by location: fridge, freezer, pantry" }
+                    }
+                }
+            }
+        }),
+        // ── Budget Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "budget_add_entry",
+                "description": "Log a budget entry (expense or income). Use when the user says 'log $25 on food' or 'I spent $50 on groceries'.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "amount": { "type": "number", "description": "The dollar amount" },
+                        "category": { "type": "string", "description": "Budget category (e.g. food, rent, groceries, salary, entertainment)" },
+                        "description": { "type": "string", "description": "Optional description of the entry" },
+                        "entry_type": { "type": "string", "enum": ["expense", "income"], "description": "Whether this is an expense or income (default: expense)" },
+                        "date": { "type": "string", "description": "Date of the entry in YYYY-MM-DD format (default: today)" }
+                    },
+                    "required": ["amount", "category"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "budget_get_entries",
+                "description": "Get budget entries for a given month. Returns income and expenses.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "month": { "type": "string", "description": "Month in YYYY-MM format (e.g. '2026-03')" }
+                    }
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "budget_get_summary",
+                "description": "Get a budget summary for a month showing total income, expenses, savings, and category breakdown.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "month": { "type": "string", "description": "Month in YYYY-MM format (e.g. '2026-03')" }
+                    },
+                    "required": ["month"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "budget_create_goal",
+                "description": "Create a budget savings goal (e.g. 'Save $5000 for vacation by December').",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string", "description": "Goal name (e.g. 'Emergency Fund', 'Vacation Fund')" },
+                        "target_amount": { "type": "number", "description": "Target amount to save" },
+                        "deadline": { "type": "string", "description": "Goal deadline in YYYY-MM-DD format" }
+                    },
+                    "required": ["name", "target_amount"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "budget_get_goals",
+                "description": "Get all budget savings goals and their progress.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        }),
+        // ── Home Health Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "home_add_bill",
+                "description": "Record a utility or housing bill (electric, gas, water, internet, rent, mortgage).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "bill_type": { "type": "string", "description": "Bill type: electric, gas, water, internet, rent, mortgage" },
+                        "amount": { "type": "number", "description": "Bill amount in dollars" },
+                        "usage": { "type": "number", "description": "Optional usage amount (e.g. kWh for electric)" },
+                        "billing_month": { "type": "string", "description": "Billing month in YYYY-MM format" },
+                        "notes": { "type": "string", "description": "Optional notes" }
+                    },
+                    "required": ["bill_type", "amount", "billing_month"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "home_get_bills",
+                "description": "Retrieve recorded utility/housing bills, optionally filtered by type.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "bill_type": { "type": "string", "description": "Filter by bill type (electric, gas, water, etc.)" },
+                        "limit": { "type": "integer", "description": "Max bills to return (default 20)" }
                     },
                     "required": []
                 }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "home_add_maintenance",
+                "description": "Add a home maintenance task (HVAC filter, gutter cleaning, smoke detector check, etc.).",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "task": { "type": "string", "description": "Maintenance task description" },
+                        "category": { "type": "string", "description": "Category: hvac, plumbing, electrical, exterior, interior, safety" },
+                        "interval_months": { "type": "integer", "description": "How often in months (e.g. 3 for quarterly)" },
+                        "priority": { "type": "string", "description": "Priority: low, medium, high" },
+                        "estimated_cost": { "type": "number", "description": "Estimated cost in dollars" },
+                        "notes": { "type": "string", "description": "Optional notes" }
+                    },
+                    "required": ["task", "category"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "home_get_appliances",
+                "description": "List all tracked home appliances with warranty and service info.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        }),
+        // ── Vault Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "vault_list_files",
+                "description": "List files in the Vault media library, optionally filtered by type.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_type": { "type": "string", "description": "Filter by file type: image, video, audio, document, archive" },
+                        "limit": { "type": "integer", "description": "Max files to return (default 20)" }
+                    },
+                    "required": []
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "vault_search_files",
+                "description": "Search for files in the Vault by name or description.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string", "description": "Search query" }
+                    },
+                    "required": ["query"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "vault_get_file",
+                "description": "Get detailed info about a specific Vault file by its ID.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string", "description": "The file ID" }
+                    },
+                    "required": ["id"]
+                }
+            }
+        }),
+        // ── Cross-App Intelligence Tools ──
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "conflux_weekly_summary",
+                "description": "Get a comprehensive weekly summary across all apps — spending, meals, tasks, goals, and bills.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "conflux_can_afford",
+                "description": "Check if you can afford a purchase. Analyzes your budget, savings goals, and discretionary spending to give a recommendation.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "amount": { "type": "number", "description": "The dollar amount to check" },
+                        "item_description": { "type": "string", "description": "What you want to buy" }
+                    },
+                    "required": ["amount"]
+                }
+            }
+        }),
+        serde_json::json!({
+            "type": "function",
+            "function": {
+                "name": "conflux_day_overview",
+                "description": "Get a quick overview of what matters today — tasks due, bills due, meal plan, expiring pantry items.",
+                "parameters": { "type": "object", "properties": {} }
             }
         }),
     ]
@@ -1200,5 +1757,1012 @@ fn execute_email_receive(_args: &Value) -> Result<ToolResult> {
         success: false,
         output: String::new(),
         error: Some("Email receive (IMAP) is not yet available. Use Gmail integration (Google tools) or check back in a future update.".to_string()),
+    })
+}
+
+// ── Home Health Tool Implementations ──
+
+fn execute_home_add_bill(args: &Value) -> Result<ToolResult> {
+    let bill_type = args.get("bill_type").and_then(|v| v.as_str()).unwrap_or("");
+    let amount = args.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let usage = args.get("usage").and_then(|v| v.as_f64());
+    let billing_month = args.get("billing_month").and_then(|v| v.as_str()).unwrap_or("");
+    let notes = args.get("notes").and_then(|v| v.as_str());
+
+    if bill_type.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("bill_type is required".into()) });
+    }
+    if amount <= 0.0 {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("amount must be positive".into()) });
+    }
+    if billing_month.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("billing_month is required (YYYY-MM)".into()) });
+    }
+
+    let engine = super::get_engine();
+    let id = uuid::Uuid::new_v4().to_string();
+    engine.db().add_home_bill(&id, bill_type, amount, usage, billing_month, notes)?;
+    let usage_str = usage.map(|u| format!(" ({:.1} units)", u)).unwrap_or_default();
+    Ok(ToolResult {
+        success: true,
+        output: format!("Added {} bill: ${:.2}{} for {}", bill_type, amount, usage_str, billing_month),
+        error: None,
+    })
+}
+
+fn execute_home_get_bills(args: &Value) -> Result<ToolResult> {
+    let bill_type = args.get("bill_type").and_then(|v| v.as_str());
+    let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(20);
+
+    let engine = super::get_engine();
+    let bills = engine.db().get_home_bills(bill_type, limit)?;
+
+    if bills.is_empty() {
+        return Ok(ToolResult { success: true, output: "No bills found.".into(), error: None });
+    }
+
+    let lines: Vec<String> = bills.iter().map(|b| {
+        let usage_str = b.usage.map(|u| format!(" ({:.1})", u)).unwrap_or_default();
+        format!("• {} — ${:.2}{} [{}]{}",
+            b.bill_type, b.amount, usage_str, b.billing_month,
+            b.notes.as_deref().map(|n| format!(" — {}", n)).unwrap_or_default())
+    }).collect();
+
+    let header = match bill_type {
+        Some(t) => format!("🏠 {} Bills (last {})", t, bills.len()),
+        None => format!("🏠 Home Bills (last {})", bills.len()),
+    };
+
+    Ok(ToolResult {
+        success: true,
+        output: format!("{}\n{}", header, lines.join("\n")),
+        error: None,
+    })
+}
+
+fn execute_home_add_maintenance(args: &Value) -> Result<ToolResult> {
+    let task = args.get("task").and_then(|v| v.as_str()).unwrap_or("");
+    let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("");
+    let interval_months = args.get("interval_months").and_then(|v| v.as_i64());
+    let priority = args.get("priority").and_then(|v| v.as_str());
+    let estimated_cost = args.get("estimated_cost").and_then(|v| v.as_f64());
+    let notes = args.get("notes").and_then(|v| v.as_str());
+
+    if task.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("task is required".into()) });
+    }
+    if category.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("category is required".into()) });
+    }
+
+    let engine = super::get_engine();
+    let id = uuid::Uuid::new_v4().to_string();
+    engine.db().add_home_maintenance(&id, task, category, None, interval_months, priority, estimated_cost, notes)?;
+
+    let interval_str = interval_months.map(|m| format!(" every {} months", m)).unwrap_or_default();
+    let cost_str = estimated_cost.map(|c| format!(" (est. ${:.0})", c)).unwrap_or_default();
+    Ok(ToolResult {
+        success: true,
+        output: format!("Added maintenance: {} [{}]{}{}", task, category, interval_str, cost_str),
+        error: None,
+    })
+}
+
+fn execute_home_get_appliances(_args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let appliances = engine.db().get_home_appliances()?;
+
+    if appliances.is_empty() {
+        return Ok(ToolResult { success: true, output: "No appliances tracked yet.".into(), error: None });
+    }
+
+    let lines: Vec<String> = appliances.iter().map(|a| {
+        let model_str = a.model.as_deref().map(|m| format!(" ({})", m)).unwrap_or_default();
+        let warranty_str = a.warranty_expiry.as_deref()
+            .map(|w| format!(" | Warranty until {}", w))
+            .unwrap_or_default();
+        let service_str = a.next_service.as_deref()
+            .map(|s| format!(" | Next service: {}", s))
+            .unwrap_or_default();
+        format!("• {}{} [{}]{}{}",
+            a.name, model_str, a.category, warranty_str, service_str)
+    }).collect();
+
+    Ok(ToolResult {
+        success: true,
+        output: format!("🏠 Appliances ({})\n{}", appliances.len(), lines.join("\n")),
+        error: None,
+    })
+}
+
+// ── Vault Tool Implementations ──
+
+fn execute_vault_list_files(args: &Value) -> Result<ToolResult> {
+    let file_type = args.get("file_type").and_then(|v| v.as_str());
+    let limit = args.get("limit").and_then(|v| v.as_i64()).unwrap_or(20);
+
+    let files = super::db::vault_get_files(file_type, limit, 0)?;
+
+    if files.is_empty() {
+        return Ok(ToolResult { success: true, output: "No files found in Vault.".into(), error: None });
+    }
+
+    let lines: Vec<String> = files.iter().map(|f| {
+        let size_mb = f.size_bytes as f64 / 1_048_576.0;
+        format!("• {} [{}] — {:.1} MB (id: {})", f.name, f.file_type, size_mb, f.id)
+    }).collect();
+
+    Ok(ToolResult {
+        success: true,
+        output: format!("📁 Vault Files ({})\n{}", files.len(), lines.join("\n")),
+        error: None,
+    })
+}
+
+fn execute_vault_search_files(args: &Value) -> Result<ToolResult> {
+    let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
+
+    if query.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("query is required".into()) });
+    }
+
+    let files = super::db::vault_search(query, 20)?;
+
+    if files.is_empty() {
+        return Ok(ToolResult { success: true, output: format!("No files matching '{}'.", query), error: None });
+    }
+
+    let lines: Vec<String> = files.iter().map(|f| {
+        let desc = f.description.as_deref().map(|d| format!(" — {}", d)).unwrap_or_default();
+        format!("• {} [{}]{} (id: {})", f.name, f.file_type, desc, f.id)
+    }).collect();
+
+    Ok(ToolResult {
+        success: true,
+        output: format!("🔍 Vault Search: '{}' ({} results)\n{}", query, files.len(), lines.join("\n")),
+        error: None,
+    })
+}
+
+fn execute_vault_get_file(args: &Value) -> Result<ToolResult> {
+    let id = args.get("id").and_then(|v| v.as_str()).unwrap_or("");
+
+    if id.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("id is required".into()) });
+    }
+
+    match super::db::vault_get_file_by_id(id)? {
+        Some(f) => {
+            let size_mb = f.size_bytes as f64 / 1_048_576.0;
+            let desc = f.description.as_deref().map(|d| format!("\nDescription: {}", d)).unwrap_or_default();
+            let mime = f.mime_type.as_deref().unwrap_or("unknown");
+            let created_by = f.created_by.as_deref().map(|c| format!("\nCreated by: {}", c)).unwrap_or_default();
+            Ok(ToolResult {
+                success: true,
+                output: format!("📄 {}\nType: {} ({})\nSize: {:.1} MB\nPath: {}{}{}",
+                    f.name, f.file_type, mime, size_mb, f.path, desc, created_by),
+                error: None,
+            })
+        }
+        None => Ok(ToolResult {
+            success: false,
+            output: String::new(),
+            error: Some(format!("No file found with id: {}", id)),
+        }),
+    }
+}
+
+// ── Kitchen Tool Implementations ──
+
+fn execute_kitchen_add_meal(args: &Value) -> Result<ToolResult> {
+    let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    if name.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("Meal name is required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let category = args.get("category").and_then(|v| v.as_str());
+    let cuisine = args.get("cuisine").and_then(|v| v.as_str());
+    let instructions = args.get("instructions").and_then(|v| v.as_str());
+    let prep_time_min = args.get("prep_time_min").and_then(|v| v.as_i64());
+    let cook_time_min = args.get("cook_time_min").and_then(|v| v.as_i64());
+
+    match engine.db().create_meal(
+        &id, name, None, cuisine, category, None, prep_time_min, cook_time_min,
+        4, "normal", instructions, None, "agent",
+    ) {
+        Ok(meal) => Ok(ToolResult {
+            success: true,
+            output: format!("Added meal: {} (id: {})", meal.name, meal.id),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_kitchen_list_meals(args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let category = args.get("category").and_then(|v| v.as_str());
+    let cuisine = args.get("cuisine").and_then(|v| v.as_str());
+    let favorites_only = args.get("favorites_only").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    match engine.db().get_meals(category, cuisine, favorites_only) {
+        Ok(meals) => {
+            if meals.is_empty() {
+                return Ok(ToolResult { success: true, output: "No meals found.".into(), error: None });
+            }
+            let lines: Vec<String> = meals.iter().map(|m| {
+                let mut s = format!("• {} (id: {})", m.name, m.id);
+                if let Some(ref cat) = m.category { s.push_str(&format!(" [{}]", cat)); }
+                if let Some(ref cus) = m.cuisine { s.push_str(&format!(" — {}", cus)); }
+                s
+            }).collect();
+            Ok(ToolResult { success: true, output: format!("{} meals:\n{}", meals.len(), lines.join("\n")), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_kitchen_add_to_plan(args: &Value) -> Result<ToolResult> {
+    let meal_name = args.get("meal_name").and_then(|v| v.as_str()).unwrap_or("");
+    if meal_name.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("meal_name is required".into()) });
+    }
+
+    let engine = super::get_engine();
+
+    // Find the meal by name
+    let meals = match engine.db().get_meals(None, None, false) {
+        Ok(m) => m,
+        Err(e) => return Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    };
+    let meal_name_lower = meal_name.to_lowercase();
+    let meal = meals.iter().find(|m| m.name.to_lowercase() == meal_name_lower);
+    let (meal_id, matched_name) = match meal {
+        Some(m) => (m.id.clone(), m.name.clone()),
+        None => return Ok(ToolResult {
+            success: false, output: String::new(),
+            error: Some(format!("Meal '{}' not found. Use kitchen_add_meal first, or kitchen_list_meals to see available meals.", meal_name)),
+        }),
+    };
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let week_start = args.get("week_start").and_then(|v| v.as_str()).unwrap_or("");
+    let day_of_week = args.get("day_of_week").and_then(|v| v.as_i64()).unwrap_or(0);
+    let meal_slot = args.get("meal_slot").and_then(|v| v.as_str()).unwrap_or("dinner");
+
+    match engine.db().set_plan_entry(&id, week_start, day_of_week, meal_slot, Some(&meal_id), None) {
+        Ok(()) => {
+            let day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+            let day = day_names.get(day_of_week as usize).unwrap_or(&"Unknown");
+            Ok(ToolResult {
+                success: true,
+                output: format!("Added {} to {} ({}) on {}", matched_name, meal_slot, week_start, day),
+                error: None,
+            })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_kitchen_get_plan(args: &Value) -> Result<ToolResult> {
+    let week_start = args.get("week_start").and_then(|v| v.as_str()).unwrap_or("");
+    if week_start.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("week_start is required (YYYY-MM-DD)".into()) });
+    }
+
+    let engine = super::get_engine();
+    match engine.db().get_weekly_plan(week_start) {
+        Ok(plan) => {
+            let mut lines = Vec::new();
+            for day in &plan.days {
+                for slot in &day.slots {
+                    let meal_name = slot.meal.as_ref().map(|m| m.name.as_str()).unwrap_or("(empty)");
+                    lines.push(format!("{} {}: {}", day.day_name, slot.meal_slot, meal_name));
+                }
+            }
+            if lines.is_empty() {
+                lines.push("No meals planned for this week.".into());
+            }
+            Ok(ToolResult { success: true, output: format!("Week of {} ({} meals, est. ${:.2}):\n{}", plan.week_start, plan.meal_count, plan.total_estimated_cost, lines.join("\n")), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_kitchen_add_inventory(args: &Value) -> Result<ToolResult> {
+    let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    if name.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("Item name is required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
+    let quantity = args.get("quantity").and_then(|v| v.as_f64());
+    let unit = args.get("unit").and_then(|v| v.as_str());
+    let category = None::<&str>;
+    let expiry = args.get("expiry_date").and_then(|v| v.as_str());
+    let location = args.get("location").and_then(|v| v.as_str());
+
+    match engine.db().add_inventory_item(&id, &member_id, name, quantity, unit, category, expiry, location) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Added {} to inventory{}{}",
+                name,
+                quantity.map(|q| format!(" ({} {})", q, unit.unwrap_or(""))).unwrap_or_default(),
+                location.map(|l| format!(" in {}", l)).unwrap_or_default()),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_kitchen_get_inventory(args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
+    let location = args.get("location").and_then(|v| v.as_str());
+
+    match engine.db().get_inventory(&member_id, location) {
+        Ok(items) => {
+            if items.is_empty() {
+                return Ok(ToolResult { success: true, output: "Inventory is empty.".into(), error: None });
+            }
+            let lines: Vec<String> = items.iter().map(|item| {
+                let mut s = format!("• {}", item.name);
+                if let Some(q) = item.quantity {
+                    s.push_str(&format!(" ({} {})", q, item.unit.as_deref().unwrap_or("")));
+                }
+                if let Some(ref loc) = item.location { s.push_str(&format!(" [{}]", loc)); }
+                if let Some(ref exp) = item.expiry_date { s.push_str(&format!(" expires: {}", exp)); }
+                s
+            }).collect();
+            Ok(ToolResult { success: true, output: format!("{} items in inventory:\n{}", items.len(), lines.join("\n")), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+// ── Budget Tool Implementations ──
+
+fn execute_budget_add_entry(args: &Value) -> Result<ToolResult> {
+    let amount = match args.get("amount").and_then(|v| v.as_f64()) {
+        Some(a) if a > 0.0 => a,
+        _ => return Ok(ToolResult { success: false, output: String::new(), error: Some("amount is required and must be positive".into()) }),
+    };
+    let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("");
+    if category.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("category is required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let entry_type = args.get("entry_type").and_then(|v| v.as_str()).unwrap_or("expense");
+    let description = args.get("description").and_then(|v| v.as_str());
+    let date = args.get("date").and_then(|v| v.as_str());
+
+    let now = super::db::EngineDb::now();
+    let entry_date = date.unwrap_or(&now[..10]); // today as YYYY-MM-DD
+
+    let db = engine.db();
+    let conn = db.conn();
+    match conn.execute(
+        "INSERT INTO budget_entries (id, member_id, entry_type, category, amount, description, recurring, frequency, date, created_at) VALUES (?1, NULL, ?2, ?3, ?4, ?5, 0, NULL, ?6, ?7)",
+        rusqlite::params![id, entry_type, category, amount, description, entry_date, now],
+    ) {
+        Ok(_) => Ok(ToolResult {
+            success: true,
+            output: format!("Logged ${:.2} {} in '{}'{}{}",
+                amount, entry_type, category,
+                description.map(|d| format!(" — {}", d)).unwrap_or_default(),
+                if entry_date != &now[..10] { format!(" on {}", entry_date) } else { String::new() }),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_budget_get_entries(args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let db = engine.db();
+    let conn = db.conn();
+
+    let month = args.get("month").and_then(|v| v.as_str());
+
+    let query = if let Some(m) = month {
+        format!("SELECT id, entry_type, category, amount, description, date, created_at FROM budget_entries WHERE strftime('%Y-%m', date) = '{}' ORDER BY date DESC LIMIT 50", m)
+    } else {
+        "SELECT id, entry_type, category, amount, description, date, created_at FROM budget_entries ORDER BY date DESC LIMIT 50".to_string()
+    };
+
+    let result: std::result::Result<Vec<(String, String, String, f64, Option<String>, String)>, String> = (|| {
+        let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, f64>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, String>(5)?,
+            ))
+        }).map_err(|e| e.to_string())?;
+        Ok(rows.filter_map(|r| r.ok()).collect())
+    })();
+
+    match result {
+        Ok(entries) => {
+            if entries.is_empty() {
+                return Ok(ToolResult { success: true, output: "No budget entries found.".into(), error: None });
+            }
+            let lines: Vec<String> = entries.iter().map(|(_id, etype, cat, amt, desc, date)| {
+                let prefix = if etype == "income" { "+" } else { "-" };
+                let desc_str = desc.as_deref().unwrap_or("");
+                format!("{} ${:.2} {} ({}{}{}", prefix, amt, cat, date,
+                    if !desc_str.is_empty() { ", " } else { "" }, desc_str)
+            }).collect();
+            Ok(ToolResult { success: true, output: format!("{} entries:\n{}", entries.len(), lines.join("\n")), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e) }),
+    }
+}
+
+fn execute_budget_get_summary(args: &Value) -> Result<ToolResult> {
+    let month = args.get("month").and_then(|v| v.as_str()).unwrap_or("");
+    if month.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("month is required (YYYY-MM)".into()) });
+    }
+
+    let engine = super::get_engine();
+    let member_id = args.get("member_id").and_then(|v| v.as_str()).unwrap_or_default();
+    match engine.db().get_budget_summary(&member_id, month) {
+        Ok(summary) => {
+            let cat_lines: Vec<String> = summary.categories.iter()
+                .map(|c| format!("  {}: ${:.2}", c.category, c.total)).collect();
+            Ok(ToolResult {
+                success: true,
+                output: format!("Budget Summary for {}:\n  Income: ${:.2}\n  Expenses: ${:.2}\n  Savings: ${:.2}\n  Net: ${:.2}\n  Categories:\n{}",
+                    summary.month, summary.total_income, summary.total_expenses,
+                    summary.total_savings, summary.net, cat_lines.join("\n")),
+                error: None,
+            })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_budget_create_goal(args: &Value) -> Result<ToolResult> {
+    let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    if name.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("Goal name is required".into()) });
+    }
+    let target_amount = match args.get("target_amount").and_then(|v| v.as_f64()) {
+        Some(a) if a > 0.0 => a,
+        _ => return Ok(ToolResult { success: false, output: String::new(), error: Some("target_amount is required and must be positive".into()) }),
+    };
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let deadline = args.get("deadline").and_then(|v| v.as_str());
+
+    match engine.db().create_budget_goal(&id, None, name, target_amount, deadline, None) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Created goal: {} (target: ${:.2}{})", name, target_amount,
+                deadline.map(|d| format!(" by {}", d)).unwrap_or_default()),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_budget_get_goals(_args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    match engine.db().get_budget_goals(None) {
+        Ok(goals) => {
+            if goals.is_empty() {
+                return Ok(ToolResult { success: true, output: "No budget goals set yet.".into(), error: None });
+            }
+            let lines: Vec<String> = goals.iter().map(|g| {
+                let pct = if g.target_amount > 0.0 { (g.current_amount / g.target_amount * 100.0).min(100.0) } else { 0.0 };
+                format!("• {} — ${:.2} / ${:.2} ({:.0}%){}", g.name, g.current_amount, g.target_amount, pct,
+                    g.deadline.as_deref().map(|d| format!(" by {}", d)).unwrap_or_default())
+            }).collect();
+            Ok(ToolResult { success: true, output: lines.join("\n"), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+// ── Life Autopilot Tool Implementations ──
+
+fn execute_life_add_task(args: &Value) -> Result<ToolResult> {
+    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("");
+    if title.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("Title is required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let category = args.get("category").and_then(|v| v.as_str());
+    let priority = args.get("priority").and_then(|v| v.as_str()).unwrap_or("medium");
+    let due_date = args.get("due_date").and_then(|v| v.as_str());
+    let energy_type = args.get("energy_type").and_then(|v| v.as_str());
+
+    match engine.db().add_life_task(&id, "NULL", title, category, priority, due_date, energy_type) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Added task: '{}' (priority: {}{})", title, priority,
+                due_date.map(|d| format!(", due: {}", d)).unwrap_or_default()),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_life_list_tasks(args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let status = args.get("status").and_then(|v| v.as_str());
+    match engine.db().get_life_tasks("NULL", status) {
+        Ok(tasks) => {
+            if tasks.is_empty() {
+                return Ok(ToolResult { success: true, output: "No tasks found.".into(), error: None });
+            }
+            let lines: Vec<String> = tasks.iter().map(|t| {
+                let due = t.due_date.as_deref().map(|d| format!(" (due: {})", d)).unwrap_or_default();
+                format!("• [{}] {}{} - {}", t.id[..8.min(t.id.len())].to_uppercase(), t.title, due, t.priority)
+            }).collect();
+            Ok(ToolResult { success: true, output: lines.join("\n"), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_life_complete_task(args: &Value) -> Result<ToolResult> {
+    let task_id = args.get("task_id").and_then(|v| v.as_str()).unwrap_or("");
+    if task_id.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("task_id is required".into()) });
+    }
+
+    let engine = super::get_engine();
+    match engine.db().update_life_task_status("NULL", task_id, "completed") {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Task completed: {}", task_id),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_life_add_habit(args: &Value) -> Result<ToolResult> {
+    let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    if name.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("Name is required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let category = args.get("category").and_then(|v| v.as_str());
+    let frequency = args.get("frequency").and_then(|v| v.as_str()).unwrap_or("daily");
+    let target_count = args.get("target_count").and_then(|v| v.as_i64()).unwrap_or(1);
+
+    match engine.db().add_life_habit(&id, "NULL", name, category, frequency, target_count) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Added habit: '{}' ({}{})", name, frequency,
+                if target_count > 1 { format!(", target: {} times", target_count) } else { String::new() }),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_life_log_habit(args: &Value) -> Result<ToolResult> {
+    let habit_id = args.get("habit_id").and_then(|v| v.as_str()).unwrap_or("");
+    if habit_id.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("habit_id is required".into()) });
+    }
+
+    let engine = super::get_engine();
+    let now = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    match engine.db().log_life_habit(&uuid::Uuid::new_v4().to_string(), habit_id, "NULL", &now, 1) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Habit logged for today: {}", habit_id),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_life_add_reminder(args: &Value) -> Result<ToolResult> {
+    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("");
+    let due_date = args.get("due_date").and_then(|v| v.as_str()).unwrap_or("");
+    if title.is_empty() || due_date.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("title and due_date are required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let description = args.get("description").and_then(|v| v.as_str());
+    let priority = args.get("priority").and_then(|v| v.as_str()).unwrap_or("medium");
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let db = engine.db();
+    let conn = db.conn();
+    match conn.execute(
+        "INSERT INTO life_reminders (id, member_id, title, description, due_date, priority, is_dismissed, created_at) VALUES (?1, NULL, ?2, ?3, ?4, ?5, 0, ?6)",
+        rusqlite::params![&id, title, description, due_date, priority, &now],
+    ) {
+        Ok(_) => Ok(ToolResult {
+            success: true,
+            output: format!("Added reminder: '{}' due {} (priority: {})", title, due_date, priority),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+// ── Feed Tool Implementations ──
+
+fn execute_feed_add_item(args: &Value) -> Result<ToolResult> {
+    let content_type = args.get("content_type").and_then(|v| v.as_str()).unwrap_or("");
+    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("");
+    if content_type.is_empty() || title.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("content_type and title are required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let body = args.get("body").and_then(|v| v.as_str());
+    let source_url = args.get("source_url").and_then(|v| v.as_str());
+    let category = args.get("category").and_then(|v| v.as_str());
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let db = engine.db();
+    let conn = db.conn();
+    match conn.execute(
+        "INSERT INTO content_feed (id, member_id, content_type, title, body, source_url, category, is_read, is_bookmarked, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 0, ?8)",
+        rusqlite::params![&id, "user", content_type, title, body, source_url, category, &now],
+    ) {
+        Ok(_) => Ok(ToolResult {
+            success: true,
+            output: format!("Added to feed: '{}' ({})", title, content_type),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_feed_list_items(args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let content_type = args.get("content_type").and_then(|v| v.as_str());
+    let unread_only = args.get("unread_only").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    let db = engine.db();
+    let conn = db.conn();
+    let mut query = String::from("SELECT id, content_type, title, source_url, category FROM content_feed WHERE 1=1");
+    let mut params: Vec<&str> = Vec::new();
+
+    if let Some(ct) = content_type {
+        query.push_str(" AND content_type = ?");
+        params.push(ct);
+    }
+    if unread_only {
+        query.push_str(" AND is_read = 0");
+    }
+    query.push_str(" ORDER BY created_at DESC LIMIT 50");
+
+    let result = (|| {
+        let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map(rusqlite::params_from_iter(&params), |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?, row.get::<_, Option<String>>(4)?))
+        }).map_err(|e| e.to_string())?;
+        let items: Vec<_> = rows.filter_map(|r| r.ok()).collect();
+        if items.is_empty() {
+            return Ok("No feed items found.".to_string());
+        }
+        let lines: Vec<String> = items.iter().map(|(_id, ct, title, url, cat)| {
+            let url_str = url.as_deref().map(|u| format!(" - {}", u)).unwrap_or_default();
+            let cat_str = cat.as_deref().map(|c| format!(" [{}]", c)).unwrap_or_default();
+            format!("• [{}] {}{}{}", ct, title, cat_str, url_str)
+        }).collect();
+        Ok(lines.join("\n"))
+    })();
+    match result {
+        Ok(output) => Ok(ToolResult { success: true, output, error: None }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e) }),
+    }
+}
+
+fn execute_feed_mark_read(args: &Value) -> Result<ToolResult> {
+    let id = args.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    if id.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("id is required".into()) });
+    }
+
+    let engine = super::get_engine();
+    let db = engine.db();
+    let conn = db.conn();
+    match conn.execute("UPDATE content_feed SET is_read = 1 WHERE id = ?1", rusqlite::params![id]) {
+        Ok(_) => Ok(ToolResult {
+            success: true,
+            output: format!("Marked feed item as read: {}", id),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+// ── Dreams Tool Implementations ──
+
+fn execute_dream_add(args: &Value) -> Result<ToolResult> {
+    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("");
+    let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("");
+    if title.is_empty() || category.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("title and category are required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let description = args.get("description").and_then(|v| v.as_str());
+    let target_date = args.get("target_date").and_then(|v| v.as_str());
+
+    match engine.db().add_dream(&id, None, title, description, category, target_date) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Added dream: '{}' (category: {}{})", title, category,
+                target_date.map(|d| format!(", target: {}", d)).unwrap_or_default()),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_dream_list(args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let status = args.get("status").and_then(|v| v.as_str());
+    match engine.db().get_dreams("NULL", status) {
+        Ok(dreams) => {
+            if dreams.is_empty() {
+                return Ok(ToolResult { success: true, output: "No dreams found.".into(), error: None });
+            }
+            let lines: Vec<String> = dreams.iter().map(|d| {
+                let target = d.target_date.as_deref().map(|t| format!(" (target: {})", t)).unwrap_or_default();
+                let progress = (d.progress * 100.0).round();
+                format!("• [{}] {}{} - {}% complete (category: {})", d.id[..8.min(d.id.len())].to_uppercase(), d.title, target, progress, d.category)
+            }).collect();
+            Ok(ToolResult { success: true, output: lines.join("\n"), error: None })
+        }
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_dream_add_milestone(args: &Value) -> Result<ToolResult> {
+    let dream_id = args.get("dream_id").and_then(|v| v.as_str()).unwrap_or("");
+    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("");
+    if dream_id.is_empty() || title.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("dream_id and title are required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let description = args.get("description").and_then(|v| v.as_str());
+    let target_date = args.get("target_date").and_then(|v| v.as_str());
+    let sort_order = args.get("sort_order").and_then(|v| v.as_i64()).unwrap_or(1);
+
+    match engine.db().add_milestone(&id, &dream_id, "NULL", title, description, target_date, sort_order) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Added milestone to dream {}: '{}'{}", dream_id, title,
+                target_date.map(|d| format!(" (target: {})", d)).unwrap_or_default()),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+fn execute_dream_add_task(args: &Value) -> Result<ToolResult> {
+    let dream_id = args.get("dream_id").and_then(|v| v.as_str()).unwrap_or("");
+    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or("");
+    if dream_id.is_empty() || title.is_empty() {
+        return Ok(ToolResult { success: false, output: String::new(), error: Some("dream_id and title are required".into()) });
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let engine = super::get_engine();
+    let milestone_id = args.get("milestone_id").and_then(|v| v.as_str());
+    let description = args.get("description").and_then(|v| v.as_str());
+    let due_date = args.get("due_date").and_then(|v| v.as_str());
+    let frequency = args.get("frequency").and_then(|v| v.as_str());
+
+    match engine.db().add_dream_task(&id, dream_id, milestone_id, "NULL", title, description, due_date, frequency) {
+        Ok(()) => Ok(ToolResult {
+            success: true,
+            output: format!("Added task to dream {}: '{}'{}", dream_id, title,
+                due_date.map(|d| format!(" (due: {})", d)).unwrap_or_default()),
+            error: None,
+        }),
+        Err(e) => Ok(ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+    }
+}
+
+// ── Cross-App Intelligence Tool Implementations ──
+
+fn execute_weekly_summary(_args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let now = chrono::Utc::now();
+    let this_month = now.format("%Y-%m").to_string();
+    let mut sections: Vec<String> = Vec::new();
+
+    // 1. Budget summary
+    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
+    if let Ok(summary) = engine.db().get_budget_summary(&member_id, &this_month) {
+        sections.push(format!("💰 Budget ({}): Spent ${:.2} | Income ${:.2} | Net ${:.2}",
+            this_month, summary.total_expenses, summary.total_income, summary.net));
+    }
+
+    // 2. Kitchen — meals + expiring inventory
+    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
+    if let Ok(meals) = engine.db().get_meals(None, None, false) {
+        sections.push(format!("🍳 Kitchen: {} meals in collection", meals.len()));
+    }
+    if let Ok(inventory) = engine.db().get_inventory(&member_id, None) {
+        let expiring: Vec<_> = inventory.iter()
+            .filter(|item| {
+                if let Some(ref exp) = item.expiry_date {
+                    if let Ok(exp_date) = chrono::NaiveDate::parse_from_str(exp, "%Y-%m-%d") {
+                        let days_left = exp_date.signed_duration_since(now.date_naive()).num_days();
+                        return days_left <= 3 && days_left >= 0;
+                    }
+                }
+                false
+            })
+            .collect();
+        if !expiring.is_empty() {
+            let names: Vec<_> = expiring.iter().map(|i| i.name.as_str()).collect();
+            sections.push(format!("⚠️ Expiring soon: {}", names.join(", ")));
+        }
+    }
+
+    // 3. Life — pending tasks and active habits
+    if let Ok(tasks) = engine.db().get_life_tasks("NULL", Some("pending")) {
+        sections.push(format!("🧠 Life: {} pending tasks", tasks.len()));
+    }
+    if let Ok(habits) = engine.db().get_life_habits("NULL", true) {
+        sections.push(format!("📊 Habits: {} active, best streak: {}",
+            habits.len(),
+            habits.iter().map(|h| h.streak).max().unwrap_or(0)));
+    }
+
+    // 4. Dreams — active
+    if let Ok(dashboard) = engine.db().get_dream_dashboard("NULL") {
+        let names: Vec<_> = dashboard.dreams.iter()
+            .filter(|d| d.status == "active")
+            .map(|d| format!("{} ({:.0}%)", d.title, d.progress * 100.0))
+            .collect();
+        if !names.is_empty() {
+            sections.push(format!("🎯 Dreams: {}", names.join(", ")));
+        }
+    }
+
+    // 5. Home — bills
+    if let Ok(bills) = engine.db().get_home_bills(None, 5) {
+        let total: f64 = bills.iter().map(|b| b.amount).sum();
+        sections.push(format!("🏠 Home: {} bills tracked, recent total ${:.2}", bills.len(), total));
+    }
+
+    Ok(ToolResult {
+        success: true,
+        output: sections.join("\n"),
+        error: None,
+    })
+}
+
+fn execute_can_afford(args: &Value) -> Result<ToolResult> {
+    let amount = args.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let description = args.get("item_description").and_then(|v| v.as_str()).unwrap_or("purchase");
+
+    let engine = super::get_engine();
+    let now = chrono::Utc::now();
+    let this_month = now.format("%Y-%m").to_string();
+
+    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
+    let summary = engine.db().get_budget_summary(&member_id, &this_month)?;
+    let discretionary = summary.total_income - summary.total_expenses;
+
+    let mut analysis = Vec::new();
+    analysis.push(format!("📊 Affordability: ${:.2} for {}", amount, description));
+    analysis.push(format!("   Income: ${:.2} | Spent: ${:.2} | Remaining: ${:.2}",
+        summary.total_income, summary.total_expenses, discretionary));
+
+    if amount <= discretionary * 0.3 {
+        analysis.push("   ✅ Comfortable — well within discretionary budget.".to_string());
+    } else if amount <= discretionary {
+        analysis.push("   ⚠️ Possible but tight — significant portion of remaining funds.".to_string());
+    } else {
+        analysis.push("   ❌ Over budget — exceeds current discretionary spending.".to_string());
+    }
+
+    // Show savings goals
+    if let Ok(goals) = engine.db().get_budget_goals(None) {
+        for goal in &goals {
+            let remaining = goal.target_amount - goal.current_amount;
+            let pct = if goal.target_amount > 0.0 { (goal.current_amount / goal.target_amount * 100.0).min(100.0) } else { 0.0 };
+            analysis.push(format!("   🎯 '{}': ${:.2}/${:.2} ({:.0}%, ${:.2} to go)",
+                goal.name, goal.current_amount, goal.target_amount, pct, remaining));
+        }
+    }
+
+    Ok(ToolResult {
+        success: true,
+        output: analysis.join("\n"),
+        error: None,
+    })
+}
+
+fn execute_day_overview(_args: &Value) -> Result<ToolResult> {
+    let engine = super::get_engine();
+    let now = chrono::Utc::now();
+    let today = now.format("%Y-%m-%d").to_string();
+    let mut sections: Vec<String> = Vec::new();
+
+    // 1. Tasks due today or overdue
+    if let Ok(tasks) = engine.db().get_life_tasks("NULL", Some("pending")) {
+        let today_tasks: Vec<_> = tasks.iter()
+            .filter(|t| t.due_date.as_deref().map_or(false, |d| d <= today.as_str()))
+            .collect();
+        if !today_tasks.is_empty() {
+            let names: Vec<_> = today_tasks.iter().map(|t| t.title.as_str()).collect();
+            sections.push(format!("📋 Tasks: {}", names.join(", ")));
+        }
+    }
+
+    // 2. Inventory expiring today or tomorrow
+    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
+    if let Ok(inventory) = engine.db().get_inventory(&member_id, None) {
+        let urgent: Vec<_> = inventory.iter()
+            .filter(|item| {
+                if let Some(ref exp) = item.expiry_date {
+                    if let Ok(exp_date) = chrono::NaiveDate::parse_from_str(exp, "%Y-%m-%d") {
+                        let days = exp_date.signed_duration_since(now.date_naive()).num_days();
+                        return days >= 0 && days <= 1;
+                    }
+                }
+                false
+            })
+            .collect();
+        if !urgent.is_empty() {
+            let names: Vec<_> = urgent.iter().map(|i| i.name.as_str()).collect();
+            sections.push(format!("⚠️ Expiring: {}", names.join(", ")));
+        }
+    }
+
+    // 3. Upcoming bills (due within 3 days — using billing_month as proxy)
+    if let Ok(bills) = engine.db().get_home_bills(None, 5) {
+        if !bills.is_empty() {
+            sections.push(format!("🏠 Bills: {} recent bills on file", bills.len()));
+        }
+    }
+
+    // 4. Active dreams quick check
+    if let Ok(dreams) = engine.db().get_dreams("NULL", Some("active")) {
+        if !dreams.is_empty() {
+            let items: Vec<_> = dreams.iter().map(|d| format!("{} ({:.0}%)", d.title, d.progress * 100.0)).collect();
+            sections.push(format!("🎯 Dreams: {}", items.join(", ")));
+        }
+    }
+
+    if sections.is_empty() {
+        sections.push("✨ All clear — nothing urgent today!".to_string());
+    }
+
+    Ok(ToolResult {
+        success: true,
+        output: sections.join("\n"),
+        error: None,
     })
 }

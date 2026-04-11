@@ -45,6 +45,20 @@ export {
 } from './providers';
 
 export {
+  selectModelForTask,
+  getTierForTask,
+  getTaskTypes,
+  modelSupportsTools,
+  getReliableToolModels,
+  inferTaskType,
+  legacyAliasToTaskType,
+} from './deterministic-router';
+
+export type { TaskType, ToolReliability, ModelTier, RouteSelection } from './deterministic-router';
+
+export { useDeterministicRouter } from './useDeterministicRouter';
+
+export {
   loadQuota,
   saveQuota,
   hasQuota,

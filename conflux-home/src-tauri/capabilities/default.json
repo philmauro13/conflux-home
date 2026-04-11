@@ -2,17 +2,27 @@
   "identifier": "conflux-home-default",
   "description": "Default capabilities for Conflux Home",
   "windows": ["main"],
+  "platforms": ["linux", "macOS", "windows", "android", "iOS"],
   "permissions": [
     "core:default",
+    "core:window:default",
     "shell:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",
+    "dialog:allow-open",
     "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-read-file",
     "fs:allow-read-dir",
     "fs:allow-exists",
-    "fs:scope-home-recursive",
-    "log:default"
+    "fs:allow-write-text-file",
+    "fs:allow-write-file",
+    "fs:allow-create",
+    "fs:allow-mkdir",
+    "log:default",
+    "updater:default",
+    "process:default",
+    "deep-link:default",
+    "core:event:default"
   ]
 }

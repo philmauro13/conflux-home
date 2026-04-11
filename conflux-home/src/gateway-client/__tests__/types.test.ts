@@ -26,8 +26,8 @@ describe('types', () => {
   });
 
   it('exports GatewayAgent interface', () => {
-    const agent: GatewayAgent = { id: 'zigbot', name: 'ZigBot', status: 'online' };
-    expect(agent.id).toBe('zigbot');
+    const agent: GatewayAgent = { id: 'conflux', name: 'Conflux', status: 'online' };
+    expect(agent.id).toBe('conflux');
   });
 
   it('exports GatewaySessionStatus interface', () => {
@@ -49,7 +49,7 @@ describe('types', () => {
       id: 'chat-1',
       object: 'chat.completion',
       created: Date.now(),
-      model: 'openclaw:zigbot',
+      model: 'openclaw:conflux',
       choices: [{ index: 0, message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
     };
     expect(resp.choices[0].message.content).toBe('hi');
@@ -78,12 +78,12 @@ describe('types', () => {
 
   it('exports ChatSessionState interface', () => {
     const state: ChatSessionState = {
-      agentId: 'zigbot',
+      agentId: 'conflux',
       messages: [],
       isStreaming: false,
       error: null,
     };
-    expect(state.agentId).toBe('zigbot');
+    expect(state.agentId).toBe('conflux');
   });
 
   it('exports StreamCallbacks interface', () => {

@@ -1,0 +1,187 @@
+/* ============================================================
+   HOME HEALTH — Your House's Doctor
+   ============================================================ */
+
+/* Health Score */
+.home-health-score {
+  text-align: center;
+  padding: 20px;
+}
+
+.home-score-value {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.home-score-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Bill Chart */
+.bill-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 100px;
+}
+
+.bill-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bill-bar-stack {
+  position: relative;
+  width: 100%;
+  height: 80px;
+}
+
+.bill-bar {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  border-radius: 3px;
+}
+
+.bill-bar.electric { background: #f59e0b; }
+.bill-bar.gas { background: #f97316; }
+.bill-bar.water { background: #3b82f6; }
+
+.bill-bar-label {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* Appliance Health */
+.appliance-card {
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.appliance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.appliance-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.appliance-age {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.appliance-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.appliance-lifespan-bar {
+  margin-top: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+}
+
+.appliance-lifespan-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* Dream Builder */
+.dream-card {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.dream-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.dream-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dream-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.dream-progress-text {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dream-progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  margin-bottom: 8px;
+}
+
+.dream-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.dream-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dream-plan-section {
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.dream-plan-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.dream-plan-analysis {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.dream-habit {
+  margin-bottom: 12px;
+}
+
+.dream-habit-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dream-metric {
+  font-size: 13px;
+  margin-bottom: 4px;
+}

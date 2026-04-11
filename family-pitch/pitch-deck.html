@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Conflux — Family Pitch Deck</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0a0a12;
+    color: #e8e8f0;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    position: relative;
+    page-break-after: always;
+    scroll-snap-align: start;
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 20% 30%, rgba(0, 212, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 70%, rgba(124, 58, 237, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .slide:nth-child(even)::before {
+    background: radial-gradient(ellipse at 80% 30%, rgba(124, 58, 237, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 70%, rgba(0, 212, 255, 0.06) 0%, transparent 50%);
+  }
+
+  .content {
+    max-width: 1000px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Cover Slide */
+  .cover {
+    text-align: center;
+    background: linear-gradient(135deg, #0a0a12 0%, #0f1018 100%);
+  }
+
+  .cover .logo {
+    font-size: 84px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff 0%, #7c3aed 50%, #00d4ff 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -4px;
+    margin-bottom: 24px;
+    animation: gradient-shift 8s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .cover .tagline {
+    font-size: 32px;
+    font-weight: 300;
+    color: #a0a0b8;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .cover .subtitle {
+    font-size: 18px;
+    color: #707090;
+    margin-bottom: 40px;
+  }
+
+  .cover .meta {
+    font-size: 13px;
+    color: #505070;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Section Numbers */
+  .section-num {
+    font-size: 12px;
+    color: #00d4ff;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  /* Headings */
+  h2 {
+    font-size: 48px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 32px;
+    letter-spacing: -1px;
+    line-height: 1.15;
+  }
+
+  h2 span {
+    color: #00d4ff;
+    position: relative;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #00d4ff;
+    margin-bottom: 12px;
+    letter-spacing: 0;
+  }
+
+  /* Glass Cards */
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 28px 32px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(10px);
+  }
+
+  .card p, .card li {
+    font-size: 16px;
+    color: #b0b0c8;
+    line-height: 1.75;
+  }
+
+  .card ul { list-style: none; padding: 0; }
+  .card ul li { padding: 8px 0; padding-left: 24px; position: relative; }
+  .card ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: #7c3aed;
+    font-weight: 600;
+  }
+
+  /* Two Column Grid */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* Three Column Grid */
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* Stat Box */
+  .stat-box {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 28px 24px;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 56px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: #707090;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Pricing Tiers */
+  .tier {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 32px 28px;
+    text-align: center;
+  }
+
+  .tier.featured {
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.08);
+    transform: scale(1.05);
+  }
+
+  .tier-name {
+    font-size: 12px;
+    color: #8080a0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  .tier-price {
+    font-size: 42px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+
+  .tier-price span {
+    font-size: 16px;
+    color: #8080a0;
+    font-weight: 400;
+  }
+
+  .tier-desc {
+    font-size: 14px;
+    color: #9090a8;
+    line-height: 1.6;
+  }
+
+  /* Timeline */
+  .timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #00d4ff;
+    margin-top: 8px;
+    flex-shrink: 0;
+    box-shadow: 0 0 14px rgba(0, 212, 255, 0.5);
+  }
+
+  .timeline-dot.future {
+    background: #7c3aed;
+    box-shadow: 0 0 14px rgba(124, 58, 237, 0.5);
+  }
+
+  .timeline-phase {
+    font-size: 13px;
+    color: #00d4ff;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .timeline-text {
+    font-size: 15px;
+    color: #b0b0c8;
+  }
+
+  /* Team Section */
+  .team-member {
+    text-align: center;
+    padding: 24px;
+  }
+
+  .team-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff, #7c3aed);
+    margin: 0 auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .team-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .team-role {
+    font-size: 13px;
+    color: #00d4ff;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .team-bio {
+    font-size: 14px;
+    color: #808098;
+    line-height: 1.6;
+  }
+
+  /* Story Section */
+  .story-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 20px;
+  }
+
+  .story-card .headline {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 16px;
+  }
+
+  .story-card p {
+    font-size: 16px;
+    color: #a0a0b8;
+    line-height: 1.8;
+  }
+
+  /* The Ask */
+  .ask-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .ask-item:last-child {
+    border-bottom: none;
+  }
+
+  .ask-icon {
+    font-size: 28px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 212, 255, 0.1);
+    border-radius: 14px;
+    flex-shrink: 0;
+  }
+
+  .ask-text {
+    font-size: 18px;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .ask-sub {
+    font-size: 14px;
+    color: #808098;
+    margin-top: 4px;
+  }
+
+  /* Footer */
+  .slide-footer {
+    position: absolute;
+    bottom: 32px;
+    font-size: 11px;
+    color: #404060;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Navigation dots */
+  .nav-dots {
+    position: fixed;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 9999;
+  }
+
+  .nav-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .nav-dot:hover, .nav-dot.active {
+    background: #00d4ff;
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+  }
+
+  /* Slide numbers */
+  .slide-number {
+    position: absolute;
+    bottom: 32px;
+    right: 32px;
+    font-size: 14px;
+    color: #505070;
+    font-weight: 600;
+  }
+
+  /* Responsive */
+  @media print {
+    .slide { min-height: 0; height: 100vh; padding: 40px 60px; }
+    body { background: #0a0a12 !important; }
+    .nav-dots { display: none; }
+  }
+
+  @media (max-width: 768px) {
+    .slide { padding: 40px 24px; }
+    h2 { font-size: 36px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .cover .logo { font-size: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: COVER -->
+<div class="slide cover">
+  <div class="content">
+    <div class="logo">THE CONFLUX</div>
+    <div class="tagline">A Home for Your AI Family</div>
+    <div class="subtitle">Built by Frank Azzaro — 22 Years in the Making</div>
+    <div class="meta">theconflux.com • Family Presentation • 2026</div>
+  </div>
+  <div class="slide-number">1</div>
+</div>
+
+<!-- SLIDE 2: THE LETTER -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">01 — The Letter</div>
+    <h2>What I've Been <span>Building</span></h2>
+    <div class="story-card">
+      <div class="headline">Dear Family,</div>
+      <p>I owe you an update. I've been distant, heads-down, and hard to reach for a while now. For the past two years, the job market has been brutal — hundreds of applications, rounds of interviews, and then ghosting. The tech industry contracted, hiring froze, and I hit a wall.</p>
+      <p style="margin-top: 16px;">Instead of waiting for someone to give me a chance, I decided to build my own. I spent thousands of hours teaching myself to code — really code. Rust, TypeScript, React, cloud infrastructure, databases, APIs. And the result is something I'm genuinely proud of.</p>
+      <p style="margin-top: 16px; font-style: italic; color: #00d4ff;">This is not a hobby anymore. This is a company.</p>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">2</div>
+</div>
+
+<!-- SLIDE 3: THE PRODUCT -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">02 — The Product</div>
+    <h2>What Is <span>Conflux Home?</span></h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>🏠 A Home for Your AI Family</h3>
+        <p>Not a chatbot. Not a website. A full desktop application where AI agents with personalities, memory, and skills live and work together.</p>
+      </div>
+      <div class="card">
+        <h3>⚡ Two Minutes to Setup</h3>
+        <p>Download, sign in, answer a few questions about what you need help with, and your team is alive.</p>
+      </div>
+      <div class="card">
+        <h3>🎯 16 Built-In Applications</h3>
+        <p>Budget tracker, Kitchen planner, Life autopilot, Dream goals, News feed, Creative studio, Games, and more.</p>
+      </div>
+      <div class="card">
+        <h3>👤 10 Unique AI Agents</h3>
+        <p>Each with their own personality, specialty, and memory. Conflux (strategy), Helix (research), Forge (building), and more.</p>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">3</div>
+</div>
+
+<!-- SLIDE 4: WHY IT MATTERS -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">03 — Why It Matters</div>
+    <h2>What Makes This <span>Different?</span></h2>
+    <div class="card">
+      <h3>1. It's Real (Not a Concept)</h3>
+      <p>16 built-in apps. User accounts. Billing system. Cloud infrastructure. Working desktop application you can download and run TODAY.</p>
+    </div>
+    <div class="card">
+      <h3>2. It's Mine (Not Built on Someone Else's Platform)</h3>
+      <p>I own the code, the brand, the architecture. This is independent. No platform fees. No being shut down.</p>
+    </div>
+    <div class="card">
+      <h3>3. The Market Is Huge ($180B by 2030)</h3>
+      <p>AI agent infrastructure is the hottest space in tech. We have a working product when most competitors are still prototyping.</p>
+    </div>
+    <div class="card">
+      <h3>4. Grant Money Is Waiting ($2M+ Available)</h3>
+      <p>NSF, SBA, Google, Microsoft — all have programs for AI startups. We qualify. We just need to formalize the business.</p>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">4</div>
+</div>
+
+<!-- SLIDE 5: THE NUMBERS -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">04 — The Numbers</div>
+    <h2>Financial <span>Snapshot</span></h2>
+    <div class="grid-3">
+      <div class="stat-box">
+        <div class="stat-num">$50</div>
+        <div class="stat-label">Cost to Register LLC</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">3</div>
+        <div class="stat-label">Customers to Break Even</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">$2M+</div>
+        <div class="stat-label">Grant Money Available</div>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top: 16px;">
+      <div class="stat-box">
+        <div class="stat-num">$50/mo</div>
+        <div class="stat-label">Current Costs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">$24.99/mo</div>
+        <div class="stat-label">Pro Subscription</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">$0</div>
+        <div class="stat-label">External Funding</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">5</div>
+</div>
+
+<!-- SLIDE 6: REVENUE PROJECTION -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">05 — Revenue Projection</div>
+    <h2>Path to <span>Financial Freedom</span></h2>
+    <div class="grid-2">
+      <div class="stat-box">
+        <div class="stat-num">100</div>
+        <div class="stat-label">Users — $1,500/mo</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">500</div>
+        <div class="stat-label">Users — $7,500/mo</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">1,000</div>
+        <div class="stat-label">Users — $15,000/mo</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">5,000</div>
+        <div class="stat-label">Users — $75,000/mo</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 24px;">
+      <h3>The Math Is Simple</h3>
+      <p>3 Pro subscribers ($74.97/mo) covers all our costs. At 350 Pro subscribers, we hit $8,747/mo revenue — enough to live on and reinvest. At 3,000 users, we're looking at $75,000/mo.</p>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">6</div>
+</div>
+
+<!-- SLIDE 7: WHAT'S BUILT -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">06 — What's Built</div>
+    <h2>Proof of <span>Reality</span></h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3>✅ Platform Infrastructure</h3>
+        <ul>
+          <li>Desktop app: Tauri + React + Rust</li>
+          <li>User auth: Supabase magic link</li>
+          <li>Cloud router: 27 AI models routed</li>
+          <li>Billing: Stripe integration</li>
+          <li>CI/CD: All 4 platforms</li>
+          <li>Auto-updater: Silent updates</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>✅ 16 Built-In Applications</h3>
+        <ul>
+          <li>Budget tracker with AI analysis</li>
+          <li>Kitchen meal planning</li>
+          <li>Life autopilot & habits</li>
+          <li>Dream goal decomposition</li>
+          <li>News feed & daily briefing</li>
+          <li>Creative studio with voice</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top: 16px;">
+      <div class="stat-box">
+        <div class="stat-num">255+</div>
+        <div class="stat-label">Backend Commands</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">91+</div>
+        <div class="stat-label">Database Tables</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">v0.1.39</div>
+        <div class="stat-label">Latest Release</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">7</div>
+</div>
+
+<!-- SLIDE 8: THE PLAN -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">07 — The Plan</div>
+    <h2>What Happens <span>Next</span></h2>
+    <div class="card">
+      <h3>Phase 1: Legal Foundation (This Week)</h3>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-phase">Week 1 — Form LLC</div>
+          <div class="timeline-text">$50, 15 minutes online. Unlocks everything.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-phase">Week 1 — Get EIN</div>
+          <div class="timeline-text">Free from IRS.gov. Instant online.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-phase">Week 1 — Apply for Grants</div>
+          <div class="timeline-text">NSF SBIR, Google for Startups, Colorado OEDIT.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Phase 2: Launch & Users (Months 1-3)</h3>
+      <div class="timeline-item">
+        <div class="timeline-dot future"></div>
+        <div>
+          <div class="timeline-phase">Beta Launch</div>
+          <div class="timeline-text">First 100 users from friends, family, communities.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot future"></div>
+        <div>
+          <div class="timeline-phase">Product Hunt Launch</div>
+          <div class="timeline-text">Get the product in front of early adopters.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">8</div>
+</div>
+
+<!-- SLIDE 9: THE TEAM -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">08 — The Team</div>
+    <h2>Built by <span>One Person</span></h2>
+    <div class="grid-2">
+      <div class="team-member">
+        <div class="team-avatar">DZ</div>
+        <div class="team-name">Don Ziglioni</div>
+        <div class="team-role">Founder, Builder, Everything</div>
+        <div class="team-bio">Full-time builder running the platform daily. 22 years of The Conflux. Thousands of hours coding. This isn't a side project — it's my life's work.</div>
+      </div>
+      <div class="card" style="text-align: left; display: flex; flex-direction: column; justify-content: center;">
+        <h3>What Makes This Possible</h3>
+        <ul>
+          <li>AI agents handle research, content, marketing</li>
+          <li>Cloud infrastructure scales automatically</li>
+          <li>16 apps built once, used by thousands</li>
+          <li>Desktop app = users provide their own compute</li>
+          <li>Grant money available for AI startups</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">9</div>
+</div>
+
+<!-- SLIDE 10: THE ASK -->
+<div class="slide">
+  <div class="content">
+    <div class="section-num">09 — The Ask</div>
+    <h2>What I <span>Need</span></h2>
+    <div class="card">
+      <h3>I'm Not Asking for Money</h3>
+      <p>I'm asking for three things:</p>
+    </div>
+    <div class="ask-item">
+      <div class="ask-icon">🤝</div>
+      <div>
+        <div class="ask-text">Belief</div>
+        <div class="ask-sub">Look at what's built. This is real. This is a company.</div>
+      </div>
+    </div>
+    <div class="ask-item">
+      <div class="ask-icon">💜</div>
+      <div>
+        <div class="ask-text">Emotional Support</div>
+        <div class="ask-sub">The startup journey is hard. I need to know I'm not alone.</div>
+      </div>
+    </div>
+    <div class="ask-item">
+      <div class="ask-icon">🔍</div>
+      <div>
+        <div class="ask-text">Connections</div>
+        <div class="ask-sub">Anyone in tech, business, or grants who might advise or connect.</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 24px;">
+      <h3>The One Thing That Changes Everything</h3>
+      <p style="font-size: 20px; font-weight: 600; color: #00d4ff;">$50 and 15 minutes to form an LLC → unlocks $275,000 in grant applications.</p>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Confidential Family Briefing</div>
+  <div class="slide-number">10</div>
+</div>
+
+<!-- SLIDE 11: CLOSING -->
+<div class="slide cover">
+  <div class="content" style="text-align: center;">
+    <div class="tagline" style="font-size: 36px; margin-bottom: 32px;">
+      22 Years of The Conflux<br>
+      <span style="color: #00d4ff;">Everything Merges Here.</span>
+    </div>
+    <div class="story-card" style="max-width: 700px; margin: 0 auto;">
+      <p style="font-size: 18px; color: #c0c0d8; line-height: 1.8;">
+        The job market rejection. The late nights learning to code. The failed side projects. The 22 years of running "The Conflux" as a name. It wasn't random. It was convergence. And I'm closer than I've ever been.
+      </p>
+      <p style="font-size: 18px; color: #00d4ff; margin-top: 16px; font-style: italic;">
+        This is the one.
+      </p>
+    </div>
+    <div style="margin-top: 40px;">
+      <div style="font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px;">theconflux.com</div>
+      <div style="font-size: 14px; color: #606080;">Frank Azzaro — don@theconflux.com</div>
+    </div>
+  </div>
+  <div class="slide-footer">The Conflux — Family Presentation — 2026</div>
+  <div class="slide-number">11</div>
+</div>
+
+<!-- Navigation Dots -->
+<div class="nav-dots">
+  <div class="nav-dot active" data-slide="0"></div>
+  <div class="nav-dot" data-slide="1"></div>
+  <div class="nav-dot" data-slide="2"></div>
+  <div class="nav-dot" data-slide="3"></div>
+  <div class="nav-dot" data-slide="4"></div>
+  <div class="nav-dot" data-slide="5"></div>
+  <div class="nav-dot" data-slide="6"></div>
+  <div class="nav-dot" data-slide="7"></div>
+  <div class="nav-dot" data-slide="8"></div>
+  <div class="nav-dot" data-slide="9"></div>
+  <div class="nav-dot" data-slide="10"></div>
+</div>
+
+<script>
+  // Scroll-based navigation dots
+  const slides = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.nav-dot');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const index = Array.from(slides).indexOf(entry.target);
+        dots.forEach(dot => dot.classList.remove('active'));
+        if (dots[index]) dots[index].classList.add('active');
+      }
+    });
+  }, { threshold: 0.5 });
+
+  slides.forEach(slide => observer.observe(slide));
+
+  // Click navigation
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const index = parseInt(dot.dataset.slide);
+      slides[index].scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    const currentIndex = Array.from(dots).findIndex(d => d.classList.contains('active'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      const next = Math.min(currentIndex + 1, slides.length - 1);
+      slides[next].scrollIntoView({ behavior: 'smooth' });
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      const prev = Math.max(currentIndex - 1, 0);
+      slides[prev].scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+</script>
+
+</body>
+</html>

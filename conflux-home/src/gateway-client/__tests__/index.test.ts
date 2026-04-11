@@ -80,7 +80,7 @@ describe('GatewayClient', () => {
       ok: true,
       json: async () => ({
         ok: true,
-        result: { details: { agents: [{ id: 'zigbot', name: 'ZigBot' }] } },
+        result: { details: { agents: [{ id: 'conflux', name: 'Conflux' }] } },
       }),
     }));
 
@@ -121,14 +121,14 @@ describe('GatewayClient', () => {
     }));
 
     const client = new GatewayClient(config);
-    const result = await client.sendMessage('zigbot', [{ role: 'user', content: 'hello' }]);
+    const result = await client.sendMessage('conflux', [{ role: 'user', content: 'hello' }]);
     expect(result).toBe('hi');
   });
 
   it('createChatSession returns a ChatSession', async () => {
     const client = new GatewayClient(config);
-    const session = client.createChatSession('zigbot');
-    expect(session.agentId).toBe('zigbot');
+    const session = client.createChatSession('conflux');
+    expect(session.agentId).toBe('conflux');
     expect(session.messages).toEqual([]);
   });
 

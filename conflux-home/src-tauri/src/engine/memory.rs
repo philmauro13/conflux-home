@@ -3,7 +3,7 @@
 // Uses a lightweight LLM call to extract structured memories.
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::db::EngineDb;
 use super::router;

@@ -1,0 +1,1005 @@
+/* ============================================================
+   CONFLUX HOME — SNAKE DESIGN SYSTEM
+   "Emerald Serpent" — neon emerald on dark/black with gold
+   The kind of game people screenshot
+   ============================================================ */
+
+/* ── JSX Alignment Fixes — classes used by SnakeGame.tsx ── */
+
+/* The outer wrapper — JSX uses .minesweeper-container */
+.minesweeper-container {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+  z-index: 0;
+}
+
+/* Ambient emerald gradient drift (duplicate of .snake-container::before) */
+.minesweeper-container::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 25% 35%, rgba(52, 211, 153, 0.045), transparent 45%),
+    radial-gradient(circle at 75% 65%, rgba(52, 211, 153, 0.025), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(251, 191, 36, 0.015), transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+  animation: serpent-drift 18s ease-in-out infinite;
+}
+
+/* Difficulty tile — JSX uses .difficulty-tile (not .snake-diff-tile) */
+.difficulty-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.difficulty-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 120%, rgba(52, 211, 153, 0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.difficulty-tile:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 24px rgba(52, 211, 153, 0.15),
+    0 0 0 1px rgba(52, 211, 153, 0.1);
+}
+
+.difficulty-tile:hover::after {
+  opacity: 1;
+}
+
+.difficulty-tile.active {
+  border-color: var(--accent-primary);
+  background: rgba(52, 211, 153, 0.06);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.12);
+}
+
+.difficulty-tile.active::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+}
+
+/* Difficulty tile sub-elements — JSX uses .diff-icon, .diff-label, .diff-meta */
+.diff-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.diff-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.diff-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* Game Over sub-elements — JSX uses snake-go-* not snake-game-over-* */
+.snake-go-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.snake-go-score {
+  font-size: 48px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-primary);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+}
+
+.snake-go-newbest {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  animation: new-best-burst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             gold-glow 3s ease-in-out 0.6s infinite;
+}
+
+.snake-go-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* D-pad positional grid placement — JSX uses snake-dpad-up/down/left/right */
+.snake-dpad-up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.snake-dpad-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.snake-dpad-right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.snake-dpad-down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* snake-canvas on the canvas element itself */
+canvas.snake-canvas {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1;
+  border-radius: 0;
+}
+
+/* ── Back Button (self-contained duplicate) ── */
+
+.back-to-hub {
+  display: block;
+  margin: 20px auto 0;
+  padding: 10px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-to-hub:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   SNAKE CONTAINER — THE STAGE
+   ============================================================ */
+
+.snake-container {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+  z-index: 0;
+}
+
+/* Ambient emerald gradient drift */
+.snake-container::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 25% 35%, rgba(52, 211, 153, 0.045), transparent 45%),
+    radial-gradient(circle at 75% 65%, rgba(52, 211, 153, 0.025), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(251, 191, 36, 0.015), transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+  animation: serpent-drift 18s ease-in-out infinite;
+}
+
+@keyframes serpent-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(1.5%, -1%) rotate(0.5deg); }
+  50% { transform: translate(-1%, 1.5%) rotate(-0.5deg); }
+  75% { transform: translate(0.5%, 0.5%) rotate(0.3deg); }
+}
+
+/* ============================================================
+   CANVAS WRAPPER — THE FRAME
+   ============================================================ */
+
+.snake-canvas-wrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  box-shadow:
+    0 0 20px rgba(52, 211, 153, 0.08),
+    0 0 60px rgba(52, 211, 153, 0.04),
+    inset 0 0 30px rgba(0, 0, 0, 0.15);
+  background: #000;
+  transition: box-shadow 0.4s ease;
+}
+
+.snake-canvas-wrapper:hover {
+  box-shadow:
+    0 0 25px rgba(52, 211, 153, 0.12),
+    0 0 80px rgba(52, 211, 153, 0.06),
+    inset 0 0 30px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   SCORE HUD — GLASSMORPHISM DASHBOARD
+   ============================================================ */
+
+.snake-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(52, 211, 153, 0.12);
+  border-radius: 14px;
+  gap: 12px;
+}
+
+.snake-hud-score,
+.snake-hud-best {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 80px;
+}
+
+.snake-hud-best {
+  align-items: flex-end;
+}
+
+.snake-hud-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.snake-hud-value {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.snake-hud-best .snake-hud-value {
+  color: #fbbf24;
+}
+
+.snake-hud-mode {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 4px 12px;
+  background: rgba(52, 211, 153, 0.08);
+  border-radius: 8px;
+}
+
+/* Score pop animation */
+.snake-hud-value.score-pop {
+  animation: score-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes score-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.3); color: var(--accent-primary); }
+  100% { transform: scale(1); }
+}
+
+/* Best value glow */
+.snake-hud-best .snake-hud-value {
+  animation: gold-glow 3s ease-in-out infinite;
+}
+
+@keyframes gold-glow {
+  0%, 100% { text-shadow: 0 0 4px rgba(251, 191, 36, 0.3); }
+  50% { text-shadow: 0 0 14px rgba(251, 191, 36, 0.6); }
+}
+
+/* ============================================================
+   DIFFICULTY SELECTOR — MODE TILES
+   ============================================================ */
+
+.snake-difficulty {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.snake-diff-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.snake-diff-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 120%, rgba(52, 211, 153, 0.08), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.snake-diff-tile:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-3px);
+  box-shadow:
+    0 8px 24px rgba(52, 211, 153, 0.15),
+    0 0 0 1px rgba(52, 211, 153, 0.1);
+}
+
+.snake-diff-tile:hover::after {
+  opacity: 1;
+}
+
+.snake-diff-tile.active {
+  border-color: var(--accent-primary);
+  background: rgba(52, 211, 153, 0.06);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.12);
+}
+
+.snake-diff-tile.active::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: var(--accent-primary);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+}
+
+.snake-diff-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.snake-diff-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.snake-diff-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* ============================================================
+   GAME CANVAS — THE ARENA
+   ============================================================ */
+
+.snake-canvas {
+  position: relative;
+  background: #000;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+}
+
+.snake-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+}
+
+/* ============================================================
+   GAME OVER OVERLAY — THE END SCREEN
+   ============================================================ */
+
+.snake-game-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
+  border-radius: 16px;
+  animation: game-over-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes game-over-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.snake-game-over-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: card-scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(52, 211, 153, 0.08);
+}
+
+@keyframes card-scale-in {
+  0% { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.snake-game-over-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.snake-game-over-score {
+  font-size: 48px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-primary);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+}
+
+.snake-game-over-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* New Best badge */
+.snake-new-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  animation: new-best-burst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             gold-glow 3s ease-in-out 0.6s infinite;
+}
+
+@keyframes new-best-burst {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.snake-new-best-star {
+  animation: star-spin 1.5s linear infinite;
+  display: inline-block;
+}
+
+@keyframes star-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Game over buttons */
+.snake-game-over-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.snake-retry-btn,
+.snake-back-btn {
+  padding: 10px 28px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.snake-retry-btn {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.3);
+}
+
+.snake-retry-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(52, 211, 153, 0.4);
+}
+
+.snake-back-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.snake-back-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   MOBILE D-PAD — TOUCH CONTROLS
+   ============================================================ */
+
+.snake-dpad {
+  display: none;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 6px;
+  justify-content: center;
+  margin-top: 16px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.snake-dpad-btn {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 14px;
+  color: var(--accent-primary);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.snake-dpad-btn:active {
+  background: rgba(52, 211, 153, 0.28);
+  transform: scale(0.92);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.25);
+}
+
+.snake-dpad-blank {
+  visibility: hidden;
+}
+
+/* Show d-pad on touch devices */
+@media (pointer: coarse) and (max-width: 640px) {
+  .snake-dpad {
+    display: grid;
+  }
+}
+
+/* Also show on narrow screens regardless of pointer */
+@media (max-width: 480px) {
+  .snake-dpad {
+    display: grid;
+  }
+}
+
+/* ============================================================
+   CONTROL HINTS
+   ============================================================ */
+
+.snake-controls {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+.snake-controls kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 1px;
+}
+
+/* ============================================================
+   BEST SCORE BADGE
+   ============================================================ */
+
+.snake-best-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  animation: gold-glow 3s ease-in-out infinite;
+}
+
+/* ============================================================
+   PAUSE OVERLAY
+   ============================================================ */
+
+.snake-paused {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 8;
+  border-radius: 16px;
+}
+
+.snake-paused-text {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent-primary);
+  text-shadow: 0 0 20px rgba(52, 211, 153, 0.4);
+  animation: paused-pulse 2s ease-in-out infinite;
+}
+
+@keyframes paused-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* ============================================================
+   RESPONSIVE — TABLET (640px)
+   ============================================================ */
+
+@media (max-width: 640px) {
+  .snake-container,
+  .minesweeper-container {
+    padding: 16px;
+  }
+
+  .snake-difficulty {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .snake-hud {
+    padding: 12px 16px;
+  }
+
+  .snake-hud-value {
+    font-size: 18px;
+  }
+
+  .snake-hud-mode {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .snake-game-over-card {
+    padding: 24px 28px;
+  }
+
+  .snake-game-over-score,
+  .snake-go-score {
+    font-size: 40px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — PHONE (480px)
+   ============================================================ */
+
+@media (max-width: 480px) {
+  .snake-container,
+  .minesweeper-container {
+    padding: 12px;
+  }
+
+  .snake-difficulty {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .snake-diff-tile,
+  .difficulty-tile {
+    padding: 14px 8px;
+    border-radius: 12px;
+  }
+
+  .snake-diff-icon,
+  .diff-icon {
+    font-size: 22px;
+  }
+
+  .snake-diff-label,
+  .diff-label {
+    font-size: 12px;
+  }
+
+  .snake-diff-desc,
+  .diff-meta {
+    font-size: 10px;
+  }
+
+  .snake-hud {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    align-items: stretch;
+  }
+
+  .snake-hud-score,
+  .snake-hud-best {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .snake-hud-mode {
+    order: -1;
+    text-align: center;
+  }
+
+  .snake-hud-value {
+    font-size: 16px;
+  }
+
+  .snake-canvas {
+    border-radius: 12px;
+  }
+
+  .snake-canvas-wrapper {
+    border-radius: 12px;
+  }
+
+  .snake-game-over {
+    border-radius: 12px;
+  }
+
+  .snake-paused {
+    border-radius: 12px;
+  }
+
+  .snake-game-over-card {
+    padding: 20px 24px;
+    border-radius: 16px;
+    gap: 10px;
+  }
+
+  .snake-game-over-title,
+  .snake-go-title {
+    font-size: 20px;
+  }
+
+  .snake-game-over-score,
+  .snake-go-score {
+    font-size: 36px;
+  }
+
+  .snake-game-over-actions,
+  .snake-go-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .snake-retry-btn,
+  .snake-back-btn {
+    width: 100%;
+    text-align: center;
+    padding: 12px 24px;
+  }
+
+  .snake-controls {
+    font-size: 11px;
+  }
+
+  .snake-dpad {
+    grid-template-columns: repeat(3, 50px);
+    grid-template-rows: repeat(3, 50px);
+    gap: 5px;
+  }
+
+  .snake-dpad-btn {
+    font-size: 18px;
+    border-radius: 12px;
+  }
+}
+
+/* ============================================================
+   LIGHT MODE ADAPTATIONS
+   ============================================================ */
+
+@media (prefers-color-scheme: light) {
+  .snake-canvas-wrapper {
+    border-color: rgba(52, 211, 153, 0.3);
+    box-shadow:
+      0 2px 12px rgba(0, 0, 0, 0.08),
+      0 0 30px rgba(52, 211, 153, 0.06);
+  }
+
+  .snake-canvas-wrapper:hover {
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.1),
+      0 0 40px rgba(52, 211, 153, 0.08);
+  }
+
+  .snake-hud {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(52, 211, 153, 0.15);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  }
+
+  .snake-hud-value {
+    color: #1f2937;
+  }
+
+  .snake-diff-tile,
+  .difficulty-tile {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+
+  .snake-diff-tile:hover,
+  .difficulty-tile:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .snake-game-over {
+    background: rgba(255, 255, 255, 0.75);
+  }
+
+  .snake-game-over-card {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.12),
+      0 0 20px rgba(52, 211, 153, 0.06);
+  }
+
+  .snake-game-over-title,
+  .snake-go-title {
+    color: #1f2937;
+  }
+
+  .snake-paused {
+    background: rgba(255, 255, 255, 0.6);
+  }
+
+  .snake-dpad-btn {
+    background: rgba(52, 211, 153, 0.08);
+    border-color: rgba(52, 211, 153, 0.15);
+  }
+
+  .snake-dpad-btn:active {
+    background: rgba(52, 211, 153, 0.2);
+  }
+
+  .snake-controls kbd {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .back-to-hub {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  .snake-container::before,
+  .minesweeper-container::before {
+    background:
+      radial-gradient(circle at 25% 35%, rgba(52, 211, 153, 0.03), transparent 45%),
+      radial-gradient(circle at 75% 65%, rgba(52, 211, 153, 0.015), transparent 50%),
+      radial-gradient(circle at 50% 80%, rgba(251, 191, 36, 0.01), transparent 40%);
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY — REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .snake-container::before,
+  .minesweeper-container::before {
+    animation: none;
+  }
+
+  .snake-hud-value.score-pop {
+    animation: none;
+    transform: scale(1.05);
+  }
+
+  .snake-new-best,
+  .snake-go-newbest {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .snake-new-best-star {
+    animation: none;
+  }
+
+  .snake-best-badge,
+  .snake-hud-best .snake-hud-value {
+    animation: none;
+  }
+
+  .snake-paused-text {
+    animation: none;
+  }
+
+  .snake-game-over {
+    animation: none;
+    opacity: 1;
+  }
+
+  .snake-game-over-card {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+  }
+}

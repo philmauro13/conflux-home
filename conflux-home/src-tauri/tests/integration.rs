@@ -73,8 +73,8 @@ mod integration_tests {
     fn test_openai_direct() {
         rt().block_on(async {
             // Set key and test OpenAI directly
-            router::set_provider_key("openai-gpt4o-mini",
-                "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");
+            let key = std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "test-key-not-set".to_string());
+            router::set_provider_key("openai-gpt4o-mini", &key);
 
             let messages = vec![router::OpenAIMessage {
                 role: "user".to_string(),
@@ -105,8 +105,8 @@ mod integration_tests {
             match mimo {
                 Some(mut provider) => {
                     // Inject the key
-                    router::set_provider_key("xiaomi-mimo-flash",
-                        "sk-siu1za75os16yehaw7lx0xrmixmrrhvcj60njzox0mdlle72");
+                    let key = std::env::var("TEST_OPENROUTER_KEY").expect("TEST_OPENROUTER_KEY env var required");
+                    router::set_provider_key("xiaomi-mimo-flash", &key);
                     provider.is_enabled = true;
 
                     let messages = vec![router::OpenAIMessage {
@@ -139,8 +139,8 @@ mod integration_tests {
 
             match mimo {
                 Some(mut provider) => {
-                    router::set_provider_key("xiaomi-mimo-pro",
-                        "sk-siu1za75os16yehaw7lx0xrmixmrrhvcj60njzox0mdlle72");
+                    let key = std::env::var("TEST_OPENROUTER_KEY").expect("TEST_OPENROUTER_KEY env var required");
+                    router::set_provider_key("xiaomi-mimo-pro", &key);
                     provider.is_enabled = true;
 
                     let messages = vec![router::OpenAIMessage {
@@ -169,8 +169,8 @@ mod integration_tests {
     fn test_anthropic_key_valid() {
         // Test that Anthropic key is accepted (even if credits are 0)
         rt().block_on(async {
-            router::set_provider_key("anthropic-claude-sonnet",
-                "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");
+            let anthropic_key = std::env::var("TEST_ANTHROPIC_KEY").expect("TEST_ANTHROPIC_KEY env var required");
+            router::set_provider_key("anthropic-claude-sonnet", &anthropic_key);
 
             let mut providers = router::get_all_providers();
             let claude = providers.drain(..).find(|p| p.id == "anthropic-claude-sonnet");

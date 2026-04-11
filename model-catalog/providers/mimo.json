@@ -1,0 +1,34 @@
+[
+  {
+    "model_id": "xiaomi/mimo-v2-flash",
+    "display_name": "MiMo-V2-Flash",
+    "total_parameters": "309B MoE (30B active)",
+    "context_window": 262144,
+    "max_output_tokens": 65536,
+    "input_price_per_1m": 0.09,
+    "output_price_per_1m": 0.29,
+    "capabilities": ["text", "chat", "reasoning", "coding", "agentic"],
+    "best_use_case": "Ultra-efficient open-source MoE model; strong on SWE-Bench and coding; best cost/performance ratio"
+  },
+  {
+    "model_id": "xiaomi/mimo-v2-pro",
+    "display_name": "MiMo-V2-Pro",
+    "total_parameters": "1T+",
+    "context_window": 1048576,
+    "max_output_tokens": 65536,
+    "input_price_per_1m": 1.00,
+    "output_price_per_1m": 3.00,
+    "capabilities": ["text", "chat", "reasoning", "coding", "agentic", "tool_calling"],
+    "best_use_case": "Xiaomi's flagship model with 1M context; deeply optimized for agentic scenarios and complex reasoning"
+  },
+  {
+    "model_id": "xiaomi/mimo-v2-omni",
+    "display_name": "MiMo-V2-Omni",
+    "context_window": 262144,
+    "max_output_tokens": 65536,
+    "input_price_per_1m": 0.40,
+    "output_price_per_1m": 2.00,
+    "capabilities": ["text", "chat", "reasoning", "vision", "audio", "video", "multimodal"],
+    "best_use_case": "Omni-modal model natively processing image, video, and audio inputs in a unified architecture"
+  }
+]

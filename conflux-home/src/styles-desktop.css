@@ -1,0 +1,647 @@
+/* ── Desktop Widget Grid ── */
+
+.desktop-widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Widget Card ── */
+
+.desktop-widget {
+  position: relative;
+  border-radius: 16px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  overflow: hidden;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-widget:hover {
+  transform: scale(1.03);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.desktop-widget:active {
+  transform: scale(0.98);
+}
+
+/* ── Widget Accent Line ── */
+
+.widget-accent {
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ── Widget Inner Content ── */
+
+.widget-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.widget-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.widget-label {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary, #f0f0f5);
+  line-height: 1.2;
+}
+
+.widget-preview {
+  font-size: 13px;
+  color: var(--text-muted, #8888aa);
+  line-height: 1.4;
+  margin-top: auto;
+}
+
+/* ── Immersive Overlay ── */
+
+@keyframes immersive-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes immersive-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.immersive-overlay {
+  position: fixed;
+  top: 48px; /* below TopBar */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  animation: immersive-enter 0.3s ease-out forwards;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.immersive-overlay.immersive-exiting {
+  animation: immersive-exit 0.2s ease-in forwards;
+}
+
+.immersive-bg {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+.immersive-gradient {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.2) 40%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
+  z-index: 1;
+}
+
+.immersive-back-btn {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 110;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  font-family: inherit;
+}
+
+.immersive-back-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.03);
+}
+
+.immersive-back-btn:active {
+  transform: scale(0.97);
+}
+
+.immersive-content {
+  position: fixed;
+  top: 48px; /* Match overlay top */
+  left: 0;
+  right: 0;
+  bottom: 56px; /* Match ConfluxBar height */
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  /* Seamless app fill */
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  overflow-y: auto;
+}
+
+/* ── Agents Bottom Bar ── */
+
+.agents-bottom-bar {
+  position: fixed;
+  bottom: 56px; /* above taskbar */
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.agents-bottom-bar .agent-avatar-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 12px;
+  color: var(--text-secondary, #c0c0d0);
+  white-space: nowrap;
+}
+
+.agents-bottom-bar .agent-avatar-mini:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.agents-bottom-bar .agent-avatar-mini .avatar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Immersive text overrides — force light text ── */
+.immersive-overlay h1,
+.immersive-overlay h2,
+.immersive-overlay h3,
+.immersive-overlay h4,
+.immersive-overlay h5,
+.immersive-overlay h6 {
+  color: #fff !important;
+}
+
+.immersive-overlay p,
+.immersive-overlay span,
+.immersive-overlay li,
+.immersive-overlay td,
+.immersive-overlay th {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.immersive-overlay label,
+.immersive-overlay small,
+.immersive-overlay .text-muted,
+.immersive-overlay input::placeholder {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* Immersive cards — frosted glass instead of opaque */
+.immersive-overlay .content-overlay,
+.immersive-overlay [style*="background: var(--bg-card)"],
+.immersive-overlay [style*="background:var(--bg-card)"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Immersive background overrides for inline styles */
+.immersive-overlay [style*="background: var(--bg-primary)"],
+.immersive-overlay [style*="background:var(--bg-primary)"] {
+  background: transparent !important;
+}
+
+.immersive-overlay [style*="background: var(--bg-secondary)"],
+.immersive-overlay [style*="background:var(--bg-secondary)"] {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.immersive-overlay [style*="border: 1px solid var(--border)"],
+.immersive-overlay [style*="border:1px solid var(--border)"],
+.immersive-overlay [style*="border: 1px solid var(--border);"],
+.immersive-overlay [style*="border:1px solid var(--border);"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.immersive-overlay [style*="color: var(--text-muted)"],
+.immersive-overlay [style*="color:var(--text-muted)"] {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ══════════════════════════════════════
+   Conflux Bar — Unified Bottom Bar
+   ══════════════════════════════════════ */
+
+.conflux-bar-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── The Bar ── */
+
+.conflux-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px 6px 6px;
+  background: rgba(12, 12, 22, 0.88);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.3);
+  min-width: 360px;
+  transition: border-color 0.2s;
+}
+
+/* ── Home Button ── */
+
+.conflux-bar-home {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.conflux-bar-home:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.1);
+}
+
+.conflux-bar-home.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.conflux-bar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── Pinned Apps ── */
+
+.conflux-bar-apps {
+  display: flex;
+  gap: 2px;
+}
+
+.conflux-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  min-width: 48px;
+}
+
+.conflux-bar-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.15) translateY(-6px);
+}
+
+.conflux-bar-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.conflux-bar-item.active::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-primary, #6366f1);
+  margin-top: -2px;
+}
+
+.conflux-bar-item-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.conflux-bar-item-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.conflux-bar-spacer {
+  flex: 1;
+  min-width: 20px;
+}
+
+/* ── Search Button ── */
+
+.conflux-bar-search {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.conflux-bar-search:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.1);
+}
+
+.conflux-bar-search.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* ══════════════════════════════════════
+   Conflux Menu — Rises from Bar
+   ══════════════════════════════════════ */
+
+.conflux-menu {
+  width: 480px;
+  max-height: 65vh;
+  background: rgba(12, 12, 22, 0.94);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -12px 50px rgba(0, 0, 0, 0.4);
+  animation: conflux-menu-enter 0.25s ease-out;
+}
+
+@keyframes conflux-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Hero Section ── */
+
+.conflux-menu-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.08));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.conflux-menu-hero-icon {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.conflux-menu-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conflux-menu-hero-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.conflux-menu-hero-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Search ── */
+
+.conflux-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.conflux-menu-search-icon {
+  font-size: 16px;
+  opacity: 0.4;
+}
+
+.conflux-menu-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.conflux-menu-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ── Categories ── */
+
+.conflux-menu-categories {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.conflux-menu-cat {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.conflux-menu-cat:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.conflux-menu-cat.active {
+  background: rgba(99, 102, 241, 0.2);
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* ── App Grid ── */
+
+.conflux-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.conflux-menu-app {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.conflux-menu-app:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.conflux-menu-app.active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.conflux-menu-app-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.conflux-menu-app-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.conflux-menu-app-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.conflux-menu-app-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conflux-menu-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 13px;
+}

@@ -1,8 +1,13 @@
 // Conflux Router — Provider Registry v4
 // All providers aggregated by Conflux Router. Direct API calls, no middlemen.
 // Free tier first. Paid providers require key configuration.
+// API keys come from environment variables — NEVER hardcode secrets.
 
 import type { Provider } from './types';
+
+function env(key: string, fallback = ''): string {
+  return import.meta.env[key] ?? fallback;
+}
 
 // ── Core Tier — Free providers, $0 marginal cost ──
 
@@ -13,7 +18,7 @@ export const CORE_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.cerebras.ai/v1',
-    apiKey: 'csk-2kpn9eycky4ycj2dd82n6jvmhc4tjnm4ykt2vxjfvkvv9fcf',
+    apiKey: env('VITE_CEREBRAS_API_KEY'),
     models: [
       {
         id: 'llama3.1-8b',
@@ -34,7 +39,7 @@ export const CORE_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.groq.com/openai/v1',
-    apiKey: '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',
+    apiKey: env('VITE_GROQ_API_KEY'),
     models: [
       {
         id: 'llama-3.1-8b-instant',
@@ -55,7 +60,7 @@ export const CORE_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.mistral.ai/v1',
-    apiKey: 'H24a3cJs3bTsWkYiVgmrYPr8Xs8T4ERE',
+    apiKey: env('VITE_MISTRAL_API_KEY'),
     models: [
       {
         id: 'mistral-small-latest',
@@ -76,7 +81,7 @@ export const CORE_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.deepseek.com/v1',
-    apiKey: 'sk-7e96dffa53324307b11da82b6ca4b934',
+    apiKey: env('VITE_DEEPSEEK_API_KEY'),
     models: [
       {
         id: 'deepseek-chat',
@@ -96,8 +101,8 @@ export const CORE_PROVIDERS: Provider[] = [
     name: 'Cloudflare Llama 3.1 8B',
     tier: 'free',
     apiFormat: 'openai',
-    baseUrl: 'https://api.cloudflare.com/client/v4/accounts/36d37d313aa8598b2735b28b4211862b/ai/v1',
-    apiKey: 'cfut_Ufhi1mcDzbLxwSNYZguzSlYsXy1GtAwzzo3mCir7fa5f5dab',
+    baseUrl: `https://api.cloudflare.com/client/v4/accounts/${env('VITE_CLOUDFLARE_ACCOUNT_ID')}/ai/v1`,
+    apiKey: env('VITE_CLOUDFLARE_API_KEY'),
     models: [
       {
         id: '@cf/meta/llama-3.1-8b-instruct',
@@ -123,7 +128,7 @@ export const PRO_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.cerebras.ai/v1',
-    apiKey: 'csk-2kpn9eycky4ycj2dd82n6jvmhc4tjnm4ykt2vxjfvkvv9fcf',
+    apiKey: env('VITE_CEREBRAS_API_KEY'),
     models: [
       {
         id: 'qwen-3-235b-a22b-instruct-2507',
@@ -144,7 +149,7 @@ export const PRO_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.groq.com/openai/v1',
-    apiKey: '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',
+    apiKey: env('VITE_GROQ_API_KEY'),
     models: [
       {
         id: 'llama-3.3-70b-versatile',
@@ -165,7 +170,7 @@ export const PRO_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.mistral.ai/v1',
-    apiKey: 'H24a3cJs3bTsWkYiVgmrYPr8Xs8T4ERE',
+    apiKey: env('VITE_MISTRAL_API_KEY'),
     models: [
       {
         id: 'mistral-medium-latest',
@@ -186,7 +191,7 @@ export const PRO_PROVIDERS: Provider[] = [
     tier: 'free',
     apiFormat: 'openai',
     baseUrl: 'https://api.groq.com/openai/v1',
-    apiKey: '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',
+    apiKey: env('VITE_GROQ_API_KEY'),
     models: [
       {
         id: 'deepseek-r1-distill-llama-70b',
@@ -301,8 +306,8 @@ export const IMAGE_PROVIDERS: Provider[] = [
     name: 'Cloudflare Workers AI',
     tier: 'free',
     apiFormat: 'openai',
-    baseUrl: 'https://api.cloudflare.com/client/v4/accounts/36d37d313aa8598b2735b28b4211862b/ai/v1',
-    apiKey: 'cfut_Ufhi1mcDzbLxwSNYZguzSlYsXy1GtAwzzo3mCir7fa5f5dab',
+    baseUrl: `https://api.cloudflare.com/client/v4/accounts/${env('VITE_CLOUDFLARE_ACCOUNT_ID')}/ai/v1`,
+    apiKey: env('VITE_CLOUDFLARE_API_KEY'),
     models: [
       { id: '@cf/stabilityai/stable-diffusion-xl-base-1.0', alias: 'conflux-imagine', maxTokens: 0, costPer1kTokens: 0, quality: 'good' },
     ],
