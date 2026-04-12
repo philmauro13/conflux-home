@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { useCredits, useUsageStats, useUsageHistory } from '../hooks/useCredits';
 import { useAuth } from '../hooks/useAuth';
+import PulseKnob from './PulseKnob';
 
 import { View, Agent } from '../types';
 
@@ -152,11 +155,44 @@ function IntelDashboard({ agents }: IntelDashboardProps) {
   const { stats, loading: statsLoading } = useUsageStats(7);
   const { entries, loading: historyLoading } = useUsageHistory(10);
 
-  const allLoading = creditsLoading || statsLoading || historyLoading;
+  // Heartbeat interval — default 30m (1_800_000 ms)
+  const [heartbeatInterval, setHeartbeatInterval] = useState(1_800_000);
+  const [lastBeat, setLastBeat] = useState(Date.now());
 
+  const allLoading = creditsLoading || statsLoading || historyLoading;
   const activeAgents = agents.filter(a => a.status !== 'offline');
   const workingCount = agents.filter(a => a.status === 'working' || a.status === 'thinking').length;
   const onlinePct = agents.length > 0 ? Math.round((activeAgents.length / agents.length) * 100) : 0;
+
+  // Load persisted interval from Rust backend
+  useEffect(() => {
+    invoke<number>('engine_get_heartbeat_interval')
+      .then(ms => { if (ms > 0) setHeartbeatInterval(ms); })
+      .catch(() => {});
+  }, []);
+
+  // Listen for real beat events from Rust scheduler
+  useEffect(() => {
+    let cancelled = false;
+    listen<null>('conflux:heartbeat-beat', () => {
+      if (cancelled) return;
+      setLastBeat(Date.now());
+    }).then(unlisten => {
+      if (cancelled) { unlisten(); return; }
+      return unlisten;
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleHeartbeatChange = useCallback(async (ms: number) => {
+    setHeartbeatInterval(ms);
+    setLastBeat(Date.now());
+    try {
+      await invoke('engine_set_heartbeat_interval', { ms });
+    } catch (err) {
+      console.error('[IntelDashboard] Failed to save heartbeat interval:', err);
+    }
+  }, []);
 
   return (
     <div className="intel-dashboard" data-tour-id="intel">
@@ -169,13 +205,23 @@ function IntelDashboard({ agents }: IntelDashboardProps) {
       </div>
 
       <div className="intel-body">
-        {/* Ring Gauges — overview */}
+        {/* System Overview — PulseKnob hero + flanking ring gauges */}
         <div className="intel-section">
           <div className="intel-section-title">SYSTEM OVERVIEW</div>
-          <div className="intel-rings">
-            <RingGauge value={activeAgents.length} max={Math.max(agents.length, 1)} color="#6366f1" label={`${activeAgents.length}`} sublabel="online" />
-            <RingGauge value={workingCount} max={Math.max(agents.length, 1)} color="#22c55e" label={`${workingCount}`} sublabel="working" />
-            <RingGauge value={onlinePct} max={100} color="#f59e0b" label={`${onlinePct}%`} sublabel="health" />
+          <div className="intel-overview-row">
+            <div className="intel-overview-gauge">
+              <RingGauge value={activeAgents.length} max={Math.max(agents.length, 1)} color="#6366f1" label={`${activeAgents.length}`} sublabel="online" />
+            </div>
+            <div className="intel-overview-knob">
+              <PulseKnob
+                value={heartbeatInterval}
+                onChange={handleHeartbeatChange}
+                lastBeat={lastBeat}
+              />
+            </div>
+            <div className="intel-overview-gauge">
+              <RingGauge value={onlinePct} max={100} color="#22c55e" label={`${onlinePct}%`} sublabel="health" />
+            </div>
           </div>
         </div>
 

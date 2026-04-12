@@ -750,6 +750,26 @@ pub fn engine_delete_cron(id: String) -> Result<(), String> {
     engine.delete_cron_job(&id).map_err(|e| e.to_string())
 }
 
+// ── Heartbeat Interval ──
+
+#[tauri::command]
+pub fn engine_get_heartbeat_interval() -> Result<i64, String> {
+    let engine = engine::get_engine();
+    let ms = engine.db().get_config("heartbeat_interval_ms")
+        .map_err(|e| e.to_string())?
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(1_800_000);
+    Ok(ms)
+}
+
+#[tauri::command]
+pub fn engine_set_heartbeat_interval(ms: i64) -> Result<(), String> {
+    let engine = engine::get_engine();
+    engine.db().set_config("heartbeat_interval_ms", &ms.to_string())
+        .map_err(|e| e.to_string())
+}
+
+
 #[tauri::command]
 pub async fn engine_tick_cron() -> Result<i64, String> {
     let engine = engine::get_engine();

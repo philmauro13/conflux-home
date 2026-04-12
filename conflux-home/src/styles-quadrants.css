@@ -811,3 +811,136 @@
     font-size: 22px;
   }
 }
+
+/* ══════════════════════════════════════
+   Pulse Knob — Heartbeat Control
+   ══════════════════════════════════════ */
+
+.intel-pulse-knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0 12px;
+  gap: 4px;
+  user-select: none;
+  position: relative;
+}
+
+.intel-pulse-knob.dragging {
+  cursor: grabbing;
+}
+
+.intel-pulse-knob.snapped .intel-knob-svg {
+  animation: knob-snap-flash 0.4s ease-out;
+}
+
+@keyframes knob-snap-flash {
+  0%   { filter: drop-shadow(0 0 12px rgba(99,102,241,0.9)); }
+  100% { filter: drop-shadow(0 0 4px rgba(99,102,241,0.3)); }
+}
+
+.intel-pulse-knob.off .intel-knob-svg {
+  opacity: 0.7;
+}
+
+.intel-knob-label {
+  font-family: var(--radar-font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.25);
+  margin-bottom: 2px;
+}
+
+.intel-knob-svg {
+  width: 108px;
+  height: 108px;
+  filter: drop-shadow(0 0 4px rgba(99,102,241,0.3));
+  transition: filter 0.2s ease;
+}
+
+.intel-pulse-knob.dragging .intel-knob-svg {
+  filter: drop-shadow(0 0 8px rgba(99,102,241,0.7));
+}
+
+.intel-pulse-knob.off .intel-knob-svg {
+  filter: drop-shadow(0 0 2px rgba(75,85,99,0.4));
+}
+
+.intel-knob-value {
+  font-family: var(--radar-font-mono, monospace);
+  font-size: 16px;
+  font-weight: 800;
+  color: #6366f1;
+  letter-spacing: 1px;
+  transition: color 0.3s ease;
+  margin-top: 4px;
+}
+
+.intel-knob-interval-label {
+  font-family: var(--radar-font-mono, monospace);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.intel-knob-drag-hint {
+  position: absolute;
+  bottom: 2px;
+  font-family: var(--radar-font-mono, monospace);
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  animation: hint-pulse 1s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* ══════════════════════════════════════
+   Intel Overview Row — Hero Layout
+   Knob centered, ring gauges flanking
+   ══════════════════════════════════════ */
+
+.intel-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 8px 0 4px;
+}
+
+.intel-overview-gauge {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.intel-overview-knob {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Extra breathing room around the knob */
+  padding: 0 8px;
+}
+
+.intel-overview-knob .intel-pulse-knob {
+  padding: 8px 0 4px;
+}
+
+@media (max-width: 480px) {
+  .intel-overview-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .intel-overview-knob {
+    order: -1;
+  }
+}
