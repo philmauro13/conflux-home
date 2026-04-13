@@ -36,18 +36,9 @@
 
 ## Recent Releases (Lean)
 
-- **v0.1.66** (2026-04-11): Echo rename (Mirror → Echo), warm emoji 🤗 refresh
-- **v0.1.65** (2026-04-10): Conflux Fairy Drag-and-Move
-- **v0.1.64** (2026-04-10): Narrative Onboarding Redesign
-- **v0.1.63** (2026-04-10): Onboarding Bug Fixes
-- **v0.1.56** (2026-04-09): STT + Android graceful init
-- **v0.1.55** (2026-04-09): Launch Readiness (Android fix, bundle reduction)
-- **v0.1.54** (2026-04-09): Home Health Redesign
-- **v0.1.53** (2026-04-07): Sync & Release Prep
-- **v0.1.52** (2026-04-06): Conflux Presence (Fairy)
-- **v0.1.50** (2026-04-06): Inter-Agent Communication Layer
-- **v0.1.49** (2026-04-05): Auth Wiring Complete (Multi-user isolation)
-- **v0.1.41** (2026-04-02): Agent Intelligence Layer (51 tools)
+- **v0.1.69** (2026-04-13): Full onboarding sprint — 4 apps redesigned with cinematic boot sequences
+- **v0.1.68** (2026-04-13): Deep Budget redesign, Horizon/Foundation/Echo full onboarding + tours
+- **v0.1.67** (2026-04-12): Horizon/Dreams onboarding + tour, Budget spotlight fix, target_date param fix
 
 ## Archived Dream Cycles
 
@@ -55,46 +46,27 @@ Full dream cycles (2026-04-02 through 2026-04-10) archived in `MEMORY_ARCHIVE.md
 
 ## Current Status
 
-**🎯 FINAL_AUDIT.md Created** (2026-04-12)
-- Dependency-ordered structure (Run → Interact → Save → Persist → Isolate → Auth → Soul)
-- 7 phases, 16 apps with soul checkpoints
-- Replaces conflux-home-audit.md as canonical reference
-- Designed to be the LAST audit before launch
+**🎯 v0.1.69 Released (2026-04-13) — Full Onboarding Sprint**
+- 4 apps redesigned with cinematic Boot + Onboarding flows, each with a unique visual identity
+- **Kitchen → Hearth**: heat shimmer + floating embers + flame SVG, one question "What would you like to cook?" → recipe card
+- **Budget → Pulse**: emerald particles + breathing heart SVG, one question "What's your monthly income?" → budget preview
+- **Life → Orbit**: CRT terminal boot + countdown, 4-card mission briefing (no data required)
+- **Feed → Radar**: rotating SVG radar sweep + blips, 4-card intelligence briefing
+- Build clean, all 5 commits pushed to origin/main
+- Don wired Feed/Radar backend (feed_get_ripples, feed_signal_threads, feed_get_questions)
 
-**🎯 v0.1.67 Pending** — Heartbeat redesign commit (2026-04-12 early AM)
-- 3D red heart replaces blue dot — neumorphic SVG (gradient, highlight, shadow), slow 2.4s breathing animation
-- Heart ripple ring fires on each Rust beat event
-- Notch labels visible at each detent: OFF / 15m / 1hr / 4hr / 8hr / 12hr
-- 'PULSE' label renamed to 'HEARTBEAT'
-- Default interval changed: 30m → 1hr
-- Ring color unified to red (#ef4444) throughout
-- RingGauge: neumorphic redesign — larger circles (r=34), gradient arcs, glow filters, specular highlights, text inside ring
-- Scheduler: tokio::select! mpsc channel — interval changes apply instantly (no waiting for old timer)
-- Listen bugfix: proper cleanup (unlisten in useEffect return, not immediately after promise)
-- `engine_set_heartbeat_interval` emits `conflux:heartbeat-interval-changed` to frontend
-- Commit: `6e33b32`
-- Spec: `SPEC_HEARTBEAT_KNOB.md` v0.3
-
-**🎯 INTEL Heartbeat Section — Audit Checklist COMPLETE (2026-04-12)**
-- All Phase 0.1 heartbeat items verified ✅
-- Remaining: Phase 0.5 deferred polish (sound, fairy pulse, morning brief overlay, boot cards, nudge system)
+**🎯 Feed/Radar Backend Wired by Don**
+- feed_get_ripples — reads ripples from DB by category (finance/dreams/creative/general)
+- feed_signal_threads — tracked topics with predictions and confidence scores
+- feed_get_questions — Q&A history from intelligence layer
+- UI-accessible LLM commands: current_detect_ripples, current_daily_briefing, current_cognitive_patterns, current_ask
 
 **🎯 v0.1.66 Released (2026-04-11)**
 - Echo renamed from Mirror (counselor agent identity)
 - Warm emoji 🤗 replaces mirror emoji in Echo counselor UI
-- Commit: 9ed1071
-
-**🎯 Narrative Onboarding Complete**
-- 4-step narrative flow: Name → Meet Team → Ice Breaker → Build World
-- Aegis & Viper registered as protectors
-
-**🎯 Audit Checklist Started (2026-04-11)**
-- 15-phase, ~175-item audit in `conflux-home-audit.md`
-- Phase 0 (Infrastructure) broken into app vs studio
-- Phase 0.5 (Autonomous Mode) deferred post-audit
 
 **🎯 Active Project:** Conflux Home (mission-1223)
-- Version: v0.1.67-pending
+- Version: v0.1.69
 - Status: Launch_ready
 - Build: clean (Rust + TypeScript)
 
@@ -128,6 +100,9 @@ Full dream cycles (2026-04-02 through 2026-04-10) archived in `MEMORY_ARCHIVE.md
 7. **Phase 4 (App audit)** — all 16 apps individually audited
 8. **Phase 0.5 (Autonomous Mode polish)** — heartbeat sound, fairy pulse, morning brief overlay, boot cards, nudge system
 9. **Phase 9 (Security)** — Aegis/Viper implementation
+10. **Feed/Radar intelligence** — cross-app signal detection backend (Rust commands)
+11. **Life/Orbit clarity** — sharpen unique value proposition vs generic task manager
+12. Remaining onboarding: Studio, Vault, Games Hub, Agents/Marketplace
 
 ## Echo Features (Built 2026-04-11)
 
