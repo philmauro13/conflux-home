@@ -16,7 +16,7 @@
 **The Conflux** — AI Agent Infrastructure Company.
 **The Product:** Conflux Home — "A home for your AI family."
 **Vision:** Download → Onboard → Team is Alive.
-**Status:** Launch_ready (v0.1.66)
+**Status:** Launch_ready (v0.1.70)
 
 ## Venture Studio Architecture
 
@@ -46,7 +46,20 @@ Full dream cycles (2026-04-02 through 2026-04-10) archived in `MEMORY_ARCHIVE.md
 
 ## Current Status
 
-**🎯 v0.1.69 Released (2026-04-13) — Full Onboarding Sprint**
+**🎯 v0.1.70 Released (2026-04-13) — Kitchen Audit + Fix Sprint**
+- Kitchen (Hearth) tested interactively with Don — full audit walkthrough
+- 4 bugs fixed during session: onboarding meal creation, Chef's Specials refresh, pantry FK, TS Unicode errors
+- **Hearth 2.0 brainstorming queued** — receipt/barcode/photo capture, visual polish, onboarding wallpaper fix
+- App binary stable (no panics), async migration holding
+
+**📋 FINAL_AUDIT.md Phase 1 Progress:** Kitchen ✅ | Budget ✅ | Echo ✅ | Horizon ✅ | Foundation ✅ | All others pending
+
+**🔥 Hearth 2.0 Known Issues (pending redesign):**
+- Weekly Plan meal picker hardcoded to meals[0] — no dropdown UI
+- Post-onboarding UI "bland" vs cinematic onboarding
+- Onboarding wallpaper shows village not kitchen
+- No receipt/barcode/photo capture for real-world items
+- No way to photograph cooked meals and have AI recognize them
 - 4 apps redesigned with cinematic Boot + Onboarding flows, each with a unique visual identity
 - **Kitchen → Hearth**: heat shimmer + floating embers + flame SVG, one question "What would you like to cook?" → recipe card
 - **Budget → Pulse**: emerald particles + breathing heart SVG, one question "What's your monthly income?" → budget preview
@@ -541,6 +554,8 @@ The same standard (boot → onboarding → tour) needs to be applied to:
 ---
 
 **Recent Releases (Lean):**
-- **v0.1.68-pending** (2026-04-13): Full onboarding experience for Horizon, Foundation, Echo. Deep Budget redesign. 8,471 lines added.
-- **v0.1.67** (2026-04-12): Horizon/Dreams onboarding + tour, Budget spotlight fix (-50px), target_date param fix
+- **v0.1.70** (2026-04-13): Kitchen fixes — onboarding meal creation (createdMeal passthrough), Chef's Specials refresh (useEffect), Add Pantry Item modal + FK fix (get_or_create_family_member_id), Unicode TS errors fixed, FoundationOnboarding type conflict resolved.
+- **v0.1.69** (2026-04-13): Full onboarding sprint — 4 apps redesigned with cinematic boot sequences
+- **v0.1.68** (2026-04-13): Deep Budget redesign, Horizon/Foundation/Echo full onboarding + tours
+- **v0.1.67** (2026-04-12): Horizon/Dreams onboarding + tour, Budget spotlight fix, target_date param fix
 
