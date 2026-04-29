@@ -1,10 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
-import { playTourBlip, playWelcomeChime } from '../lib/sound';
+import {
+  playWelcomeChime,
+  playBootUp,
+  playTourBlip,
+  playTeamAlive,
+} from '../lib/sound';
+import {
+  playNarrationSignal,
+  playAgentAppear,
+  playBrainActivate,
+  playLogoReveal,
+  playBuildComplete,
+  playVoiceClick,
+} from '../lib/onboarding-sounds';
 import { NeuralBrainScene } from './NeuralBrainScene';
 import { COMMANDS } from '../lib/neuralBrain';
 import { useAuth } from '../hooks/useAuth';
+import type { AgentProfile } from '../data/agent-descriptions';
 
 import '../styles/animations.css';
 
@@ -14,6 +28,19 @@ interface OnboardingProps {
   onComplete: (goals: string[], selectedApps: string[]) => void;
 }
 
+// ── Agent Voice ID Map (ElevenLabs) ──
+// Don configured these on 2026-04-29
+// Conflux voice = ELEVENLABS_VOICE_ID from .env (TvxTBL9RtGW6tVhl4NoI)
+const AGENT_VOICE_IDS: Record<string, string> = {
+  conflux: 'TvxTBL9RtGW6tVhl4NoI', // From .env ELEVENLABS_VOICE_ID
+  helix:   'USEXQnsXRJlw2k9LUzG4',
+  pulse:   'auq43ws1oslv0tO4BDa7',
+  hearth:  'W7iR5kTNHozpIl2Jqq15',
+  echo:    'EST9Ui6982FZPSi7gCHi',
+  aegis:   'WtA85syCrJwasGeHGH2p',
+  viper:   'Mtmp3KhFIjYpWYRycDe3',
+};
+
 // ── Key Players for the intro sequence ──
 
 interface KeyPlayer {
@@ -22,31 +49,100 @@ interface KeyPlayer {
   emoji: string;
   color: string;
   tagline: string;
-  delay: number; // ms after step start
+  voiceLine: string;        // short 5-8 word line for voice button
+  delay: number;             // ms after step start for card appearance
+  narrative?: string;         // Conflux's intro line for this agent
 }
 
 const KEY_PLAYERS: KeyPlayer[] = [
-  { id: 'conflux', name: 'Conflux', emoji: '🤖', color: '#00d4ff', tagline: 'Your co-founder who never sleeps.', delay: 600 },
-  { id: 'helix', name: 'Helix', emoji: '🔬', color: '#00cc88', tagline: 'Research at the speed of thought.', delay: 1800 },
-  { id: 'pulse', name: 'pulse', emoji: '💚', color: '#10b981', tagline: 'Your financial heartbeat.', delay: 3000 },
+  {
+    id: 'conflux',
+    name: 'Conflux',
+    emoji: '🤖',
+    color: '#00d4ff',
+    tagline: 'Your co-founder who never sleeps.',
+    voiceLine: 'Online. Ready to build.',
+    delay: 600,
+    narrative: 'I\'m the one who brought us all together.',
+  },
+  {
+    id: 'helix',
+    name: 'Helix',
+    emoji: '🔬',
+    color: '#00cc88',
+    tagline: 'Research at the speed of thought.',
+    voiceLine: 'I find the signal in the noise.',
+    delay: 2200,
+    narrative: 'Helix — my research powerhouse. Dives deeper than you thought possible.',
+  },
+  {
+    id: 'pulse',
+    name: 'Pulse',
+    emoji: '💚',
+    color: '#10b981',
+    tagline: 'Your financial heartbeat.',
+    voiceLine: 'Let\'s make your money move smarter.',
+    delay: 3800,
+    narrative: 'Pulse — your financial heartbeat. Knows your numbers better than you do.',
+  },
+  {
+    id: 'hearth',
+    name: 'Hearth',
+    emoji: '🍳',
+    color: '#f59e0b',
+    tagline: 'Your personal nutritionist.',
+    voiceLine: 'Good food. Good fuel. Let\'s cook.',
+    delay: 5400,
+    narrative: 'Hearth — your personal nutritionist. Turns "what\'s for dinner" into a plan.',
+  },
+  {
+    id: 'echo',
+    name: 'Echo',
+    emoji: '🫂',
+    color: '#a78bfa',
+    tagline: 'Your wellbeing coach.',
+    voiceLine: 'I\'m here. However you\'re doing.',
+    delay: 7000,
+    narrative: 'Echo — your wellbeing coach. Checks in on the human behind the screen.',
+  },
 ];
 
 // Aegis + Viper appear together as "the protectors"
 const PROTECTORS: KeyPlayer[] = [
-  { id: 'aegis', name: 'Aegis', emoji: '🛡️', color: '#6366f1', tagline: 'I watch the walls.', delay: 4400 },
-  { id: 'viper', name: 'Viper', emoji: '🐍', color: '#22c55e', tagline: 'I find the cracks.', delay: 4400 },
+  {
+    id: 'aegis',
+    name: 'Aegis',
+    emoji: '🛡️',
+    color: '#6366f1',
+    tagline: 'I watch the walls.',
+    voiceLine: 'Your fortress is my responsibility.',
+    delay: 8800,
+    narrative: 'And these two? They protect everything.',
+  },
+  {
+    id: 'viper',
+    name: 'Viper',
+    emoji: '🐍',
+    color: '#22c55e',
+    tagline: 'I find the cracks.',
+    voiceLine: 'I break things so nothing breaks you.',
+    delay: 8800,
+    narrative: 'Aegis watches the walls. Viper finds the cracks before anyone else does.',
+  },
 ];
 
-// Conflux's narration script (synced with card appearances)
+// Conflux's full narration script (synced with card appearances)
 function getNarrationScript(name: string): string {
-  return `Hey ${name || 'there'}. I'm Conflux. Let me introduce you to the team. ` +
-    `This is Helix — your research powerhouse. ` +
-    `And Pulse — your financial heartbeat. ` +
-    `Now these two? They protect everything. ` +
+  return `Hey ${name || 'there'}. Welcome to Conflux Home. ` +
+    `I'm the one who brought us all together. ` +
+    `This is Helix — my research powerhouse. ` +
+    `Pulse — your financial heartbeat. ` +
+    `Hearth — your personal nutritionist. ` +
+    `And Echo — your wellbeing coach. ` +
+    `Oh, and these two? They protect everything. ` +
     `Aegis watches the walls. Viper finds the cracks before anyone else does. ` +
-    `Brother and sister. ` +
-    `Together, they've got your back. ` +
-    `So — what brought you here?`;
+    `Brother and sister. They've got your back. ` +
+    `So — what brought you here? What's the first thing you need help with?`;
 }
 
 // ── Apps for auto-selection ──
@@ -71,50 +167,31 @@ function suggestApps(answer: string): string[] {
   const picks: string[] = [];
 
   if (/money|budget|save|spend|financ|income|expense|invest|debt|bill|pay/.test(lower)) picks.push('budget');
-  if (/cook|food|meal|recipe|kitchen|diet|eat|grocer|pantry/.test(lower)) picks.push('kitchen');
+  if (/cook|food|meal|recipe|kitchen|diet|eat|grocer|pantry|nutrit/.test(lower)) picks.push('kitchen');
   if (/goal|dream|learn|want|aspir|plan|build|start|achieve/.test(lower)) picks.push('dreams');
   if (/habit|routine|organiz|task|daily|schedul|time|focus/.test(lower)) picks.push('life');
 
-  // Default: if nothing matched, suggest budget + dreams (everyone needs those)
-  if (picks.length === 0) return ['budget', 'dreams'];
-  return picks.slice(0, 3); // max 3
+  // Default: if nothing matched, suggest budget + kitchen + dreams
+  if (picks.length === 0) return ['budget', 'kitchen', 'dreams'];
+  return picks.slice(0, 3);
 }
 
-// ── Heartbeat SVG Component ──
+// ── Particles Component (Conflux-themed: cyan + purple) ──
 
-function HeartbeatSVG({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 400 80" style={{ width: '100%', maxWidth: 400, height: 80 }}>
-      <path
-        d="M0,40 L60,40 L70,40 L80,20 L90,60 L100,10 L110,70 L120,40 L130,40 L200,40 L210,40 L220,20 L230,60 L240,10 L250,70 L260,40 L270,40 L340,40 L350,40 L360,20 L370,60 L380,10 L390,70 L400,40"
-        fill="none"
-        stroke="var(--accent-primary)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{
-          strokeDasharray: 800,
-          filter: `drop-shadow(0 0 6px var(--accent-primary))`,
-          animation: active ? 'heartbeat-draw 2s linear infinite' : 'none',
-        }}
-      />
-    </svg>
+function Particles({ count = 18, color = '#00d4ff' }: { count?: number; color?: string }) {
+  const particles = useMemo(() =>
+    Array.from({ length: count }, () => ({
+      left: `${3 + Math.random() * 94}%`,
+      size: 1.5 + Math.random() * 2.5,
+      duration: 5 + Math.random() * 6,
+      delay: Math.random() * 4,
+      opacity: 0.1 + Math.random() * 0.3,
+      drift: (Math.random() - 0.5) * 40,
+    })), [count]
   );
-}
-
-// ── Particles Component ──
-
-function Particles({ count = 15 }: { count?: number }) {
-  const particles = Array.from({ length: count }, (_, i) => ({
-    left: `${5 + Math.random() * 90}%`,
-    size: 2 + Math.random() * 2,
-    duration: 4 + Math.random() * 4,
-    delay: Math.random() * 3,
-    opacity: 0.15 + Math.random() * 0.25,
-  }));
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
       {particles.map((p, i) => (
         <div
           key={i}
@@ -125,13 +202,136 @@ function Particles({ count = 15 }: { count?: number }) {
             width: p.size,
             height: p.size,
             borderRadius: '50%',
-            background: 'var(--accent-primary)',
+            background: color,
             opacity: p.opacity,
             animation: `float ${p.duration}s ease-in-out ${p.delay}s infinite`,
-          }}
+            '--dx': `${p.drift}px`,
+          } as React.CSSProperties}
         />
       ))}
     </div>
+  );
+}
+
+// ── Conflux Logo Reveal Component ──
+
+function LogoReveal({ visible }: { visible: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.3, filter: 'blur(12px)' }}
+      animate={visible
+        ? { opacity: 1, scale: 1, filter: 'blur(0px)' }
+        : { opacity: 0, scale: 0.3, filter: 'blur(12px)' }
+      }
+      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+      }}
+    >
+      <img
+        src="/logo.png"
+        alt="Conflux Home"
+        style={{
+          width: 120,
+          height: 120,
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 0 32px rgba(0,212,255,0.6)) drop-shadow(0 0 64px rgba(99,102,241,0.3))',
+        }}
+      />
+    </motion.div>
+  );
+}
+
+// ── Boot Sequence Component ──
+
+function BootSequence({ onComplete }: { onComplete: () => void }) {
+  const [phase, setPhase] = useState<'dark' | 'logo' | 'brain' | 'done'>('dark');
+
+  useEffect(() => {
+    // Phase 1: Dark screen (400ms) — gives SplashScreen time to finish its 1500ms run
+    const t1 = setTimeout(() => {
+      setPhase('logo');
+      playLogoReveal();
+    }, 400);
+
+    // Phase 2: Logo visible (1000ms)
+    const t2 = setTimeout(() => {
+      setPhase('brain');
+      playBrainActivate();
+    }, 1400);
+
+    // Phase 3: Brain activates (600ms), then done
+    const t3 = setTimeout(() => {
+      setPhase('done');
+      playWelcomeChime();
+      onComplete();
+    }, 2000);
+
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [onComplete]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: phase === 'dark' ? '#000' : 'var(--bg-primary)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Particles during boot */}
+      {phase !== 'dark' && <Particles count={20} />}
+
+      {/* Neural Brain Scene - appears after logo */}
+      {phase === 'brain' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          style={{ width: 200, height: 200, position: 'relative', zIndex: 1 }}
+        >
+          <NeuralBrainScene command={COMMANDS[0]} pulseImpulse={5} transparent={true} />
+        </motion.div>
+      )}
+
+      {/* Logo - appears after dark phase */}
+      {(phase === 'logo' || phase === 'brain') && (
+        <LogoReveal visible={true} />
+      )}
+
+      {/* "Conflux Home" text fade-in */}
+      {phase === 'brain' && (
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            background: 'linear-gradient(135deg, #00d4ff, #6366f1)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.5px',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          Conflux Home
+        </motion.h1>
+      )}
+    </motion.div>
   );
 }
 
@@ -173,9 +373,19 @@ function ProgressBar({ step }: { step: number }) {
   );
 }
 
-// ── Agent Card (for key player intros) ──
+// ── Agent Card (for team intro — with voice play button) ──
 
-function AgentIntroCard({ player, visible }: { player: KeyPlayer; visible: boolean }) {
+function AgentIntroCard({
+  player,
+  visible,
+  isPlaying,
+  onPlayVoice,
+}: {
+  player: KeyPlayer;
+  visible: boolean;
+  isPlaying: boolean;
+  onPlayVoice: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24, scale: 0.85 }}
@@ -185,53 +395,108 @@ function AgentIntroCard({ player, visible }: { player: KeyPlayer; visible: boole
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 10,
-        width: 120,
+        gap: 8,
+        width: 110,
+        cursor: 'pointer',
       }}
+      onClick={() => onPlayVoice()}
     >
-      <div style={{
-        width: 64,
-        height: 64,
-        borderRadius: 20,
-        background: `${player.color}15`,
-        border: `2px solid ${player.color}33`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 32,
-        filter: `drop-shadow(0 0 12px ${player.color}44)`,
-        transition: 'all 0.3s ease',
-      }}>
+      {/* Avatar circle */}
+      <motion.div
+        animate={isPlaying ? {
+          boxShadow: [
+            `0 0 12px ${player.color}44`,
+            `0 0 24px ${player.color}66`,
+            `0 0 12px ${player.color}44`,
+          ],
+          scale: [1, 1.08, 1],
+        } : {}}
+        transition={isPlaying ? { duration: 1.2, repeat: Infinity } : {}}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 18,
+          background: `${player.color}15`,
+          border: `2px solid ${player.color}33`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 28,
+          filter: `drop-shadow(0 0 10px ${player.color}33)`,
+          transition: 'all 0.3s ease',
+          position: 'relative',
+        }}
+      >
         {player.emoji}
-      </div>
-      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: player.color }}>
+
+        {/* Voice playing indicator */}
+        {isPlaying && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            style={{
+              position: 'absolute',
+              bottom: -6,
+              right: -6,
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: player.color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 10,
+              color: 'white',
+            }}
+          >
+            ♪
+          </motion.div>
+        )}
+      </motion.div>
+
+      <div style={{ fontWeight: 700, fontSize: '0.82rem', color: player.color }}>
         {player.name}
       </div>
-      <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', lineHeight: 1.3, textAlign: 'center' }}>
+
+      <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', lineHeight: 1.3, textAlign: 'center', maxWidth: 100 }}>
         {player.tagline}
       </div>
+
+      {/* ▶ Play Intro button */}
+      <motion.button
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={(e) => { e.stopPropagation(); onPlayVoice(); }}
+        style={{
+          background: 'transparent',
+          border: `1px solid ${player.color}44`,
+          borderRadius: 6,
+          padding: '3px 8px',
+          fontSize: '0.6rem',
+          color: player.color,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          opacity: 0.75,
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderColor = player.color; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.borderColor = `${player.color}44`; }}
+      >
+        {isPlaying ? '⏹ Stop' : '▶ Intro'}
+      </motion.button>
     </motion.div>
   );
 }
 
 // ── Main Component ──
 
-/**
- * Onboarding Component — Narrative Flow
- *
- * Steps:
- * 0. "Who Are You?" — Name input + heartbeat + neural brain
- * 1. "Conflux Speaks" — Conflux introduces the team via TTS
- * 2. "Meet the Key Players" — Agents appear sequentially (Conflux, Helix, Pulse, Aegis+Viper)
- * 3. "What Do You Need?" — Ice breaker question, answer persists to profile
- * 4. "Building Your World" — Auto-select apps, animate setup, done
- *
- * @param onComplete - Callback with selected apps when flow completes
- */
 export default function Onboarding({ onComplete }: OnboardingProps) {
   const { user } = useAuth();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(-1); // -1 = boot sequence, 0+ = normal steps
   const [animating, setAnimating] = useState(false);
+  const [bootDone, setBootDone] = useState(false);
 
   // Step 0: Name
   const [userName, setUserName] = useState('');
@@ -239,29 +504,60 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [heartbeatActive, setHeartbeatActive] = useState(false);
 
   // Step 1-2: Agent intro
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [visibleAgents, setVisibleAgents] = useState<Set<string>>(new Set());
   const [showProtectors, setShowProtectors] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const narrationTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Step 3: Ice breaker
+  // Step 2: Ice breaker
   const [iceBreakerInput, setIceBreakerInput] = useState('');
 
-  // Step 4: Building world
+  // Step 3: Building world
   const [buildProgress, setBuildProgress] = useState(0);
   const [buildPhase, setBuildPhase] = useState<'selecting' | 'building' | 'done'>('selecting');
   const [suggestedApps, setSuggestedApps] = useState<string[]>([]);
 
   // Audio
   const audioContextRef = useRef<AudioContext | null>(null);
+  const activeSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  // Play base64 MP3 audio via Web Audio API
+  // Pre-warm AudioContext on mount (saves ~200ms on first play)
+  useEffect(() => {
+    const warm = () => {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+    };
+    warm();
+  }, []);
+
+  // ── Stop any currently playing audio ──
+  const stopAudio = useCallback(() => {
+    try {
+      activeSourceRef.current?.stop();
+    } catch (_) { /* ignore if already stopped */ }
+    activeSourceRef.current = null;
+    setPlayingVoiceId(null);
+  }, []);
+
+  // ── Boot sequence complete ──
+  const handleBootComplete = useCallback(() => {
+    setBootDone(true);
+    setStep(0);
+    stopAudio(); // clean up any in-progress audio
+  }, [stopAudio]);
+
+  // ── Play base64 MP3 audio via Web Audio API ──
   const playBase64Audio = useCallback((base64: string): Promise<void> => {
+    stopAudio(); // stop any existing playback
     return new Promise((resolve, reject) => {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
       const binaryString = atob(base64);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
@@ -269,18 +565,45 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(ctx.destination);
-        source.onended = () => resolve();
+        activeSourceRef.current = source;
+        source.onended = () => {
+          activeSourceRef.current = null;
+          resolve();
+        };
         source.start(0);
       }).catch(reject);
     });
-  }, []);
+  }, [stopAudio]);
 
-  // TTS narration
+  // ── TTS via ElevenLabs (Rust backend) ──
+  const speakWithVoice = useCallback(async (text: string, agentId: string): Promise<void> => {
+    const voiceId = AGENT_VOICE_IDS[agentId] || AGENT_VOICE_IDS.conflux;
+    stopAudio(); // stop any currently playing audio first
+    setPlayingVoiceId(agentId);
+    playVoiceClick();
+
+    try {
+      const result = await invoke<{ audio_base64: string }>('tts_speak', {
+        text,
+        voice: voiceId, // Pass the ElevenLabs voice ID directly
+      });
+      await playBase64Audio(result.audio_base64);
+    } catch (err) {
+      console.warn(`[Onboarding] TTS failed for ${agentId} (non-fatal):`, err);
+    } finally {
+      setPlayingVoiceId(null);
+    }
+  }, [stopAudio, playBase64Audio]);
+
+  // ── Conflux narration (uses Conflux voice) ──
   const speakNarration = useCallback(async () => {
     const text = getNarrationScript(userName);
     setIsSpeaking(true);
     try {
-      const result = await invoke<{ audio_base64: string }>('tts_speak', { text, voice: 'Conflux' });
+      const result = await invoke<{ audio_base64: string }>('tts_speak', {
+        text,
+        voice: AGENT_VOICE_IDS.conflux,
+      });
       await playBase64Audio(result.audio_base64);
     } catch (err) {
       console.warn('[Onboarding] TTS failed (non-fatal):', err);
@@ -289,55 +612,48 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }
   }, [userName, playBase64Audio]);
 
-  // TTS for ice breaker question
+  // ── Ice breaker TTS ──
   const speakIceBreaker = useCallback(async () => {
     const text = `So — what brought you here? What's the first thing you need help with?`;
     try {
-      const result = await invoke<{ audio_base64: string }>('tts_speak', { text, voice: 'Conflux' });
+      const result = await invoke<{ audio_base64: string }>('tts_speak', {
+        text,
+        voice: AGENT_VOICE_IDS.conflux,
+      });
       await playBase64Audio(result.audio_base64);
     } catch (err) {
       console.warn('[Onboarding] Ice breaker TTS failed (non-fatal):', err);
     }
   }, [playBase64Audio]);
 
-  // Load persisted name
+  // ── Load persisted name ──
   useEffect(() => {
     const savedName = localStorage.getItem('conflux-name');
     if (savedName) setUserName(savedName);
   }, []);
 
-  // Play welcome chime on mount
-  useEffect(() => {
-    playWelcomeChime();
-  }, []);
-
-  // Always dark mode
-  useEffect(() => {
-    document.body.classList.add('dark');
-  }, []);
-
-  // Step 1: Start narration + staggered agent appearances
+  // ── Step 1: Start narration + staggered agent appearances ──
   useEffect(() => {
     if (step !== 1) return;
 
+    playNarrationSignal();
     // Start TTS narration
     speakNarration();
 
     // Stagger agent card appearances
-    KEY_PLAYERS.forEach(player => {
+    const allPlayers = [...KEY_PLAYERS, ...PROTECTORS];
+    allPlayers.forEach(player => {
       const timer = setTimeout(() => {
         setVisibleAgents(prev => new Set([...prev, player.id]));
+        playAgentAppear(player.id);
       }, player.delay);
       narrationTimerRef.current.push(timer);
     });
 
-    // Show protectors (Aegis + Viper) after the main three
+    // Show protectors label after main agents
     const protectorTimer = setTimeout(() => {
       setShowProtectors(true);
-      PROTECTORS.forEach(p => {
-        setVisibleAgents(prev => new Set([...prev, p.id]));
-      });
-    }, 4200);
+    }, 8600);
     narrationTimerRef.current.push(protectorTimer);
 
     return () => {
@@ -346,14 +662,15 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     };
   }, [step, speakNarration]);
 
-  // Step 3: Speak ice breaker prompt
+  // ── Step 2: Speak ice breaker prompt ──
   useEffect(() => {
-    if (step === 3) {
-      speakIceBreaker();
+    if (step === 2) {
+      const t = setTimeout(() => speakIceBreaker(), 400);
+      return () => clearTimeout(t);
     }
   }, [step, speakIceBreaker]);
 
-  // Navigation
+  // ── Navigation ──
   const goToStep = useCallback((nextStep: number) => {
     playTourBlip();
     setAnimating(true);
@@ -379,7 +696,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }
   };
 
-  // Finish onboarding — auto-select apps and build
+  // Finish onboarding
   const handleFinish = useCallback(async () => {
     const apps = suggestApps(iceBreakerInput);
     setSuggestedApps(apps);
@@ -393,6 +710,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }
 
     setBuildPhase('done');
+    playBuildComplete();
     await delay(600);
 
     // Save and complete
@@ -400,7 +718,23 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     localStorage.setItem('conflux-name', userName.trim() || 'there');
     localStorage.setItem('conflux-setup-apps', JSON.stringify(apps));
 
-    // Persist ice breaker answer to profile if user is logged in
+    try {
+      await invoke('save_user_profile', {
+        profile: {
+          name: userName.trim() || 'there',
+          onboarded: true,
+          goals: iceBreakerInput.trim() ? [iceBreakerInput.trim()] : null,
+          selected_apps: apps,
+        },
+      });
+    } catch (e: any) {
+      console.warn('[Onboarding] Failed to save profile to backend:', e);
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`Profile save failed: ${e?.message || String(e)}`);
+      }
+    }
+
+    // Persist ice breaker answer
     if (user && iceBreakerInput.trim()) {
       try {
         await import('../lib/supabase').then(({ supabase }) => {
@@ -419,24 +753,31 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   // ── Render Steps ──
 
-  // Step 0: "Who Are You?"
+  // Step -1: Boot Sequence
+  if (step === -1 && !bootDone) {
+    return <BootSequence onComplete={handleBootComplete} />;
+  }
+
+  // Step 0: "Who Are You?" — Name input + heartbeat + neural brain
   const renderNameStep = () => (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -16 }}
       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-      style={{ textAlign: 'center', maxWidth: 420, width: '100%', margin: '0 auto', position: 'relative' }}
+      style={{ textAlign: 'center', maxWidth: 420, width: '100%', margin: '0 auto', position: 'relative', zIndex: 1 }}
     >
       <Particles count={15} />
 
       <div style={{ marginBottom: 24 }}>
-        <img src="/logo.png" alt="Conflux Home" style={{ width: 96, height: 96, objectFit: 'contain' }} />
+        <LogoReveal visible={true} />
       </div>
 
       <h1 style={{
         fontSize: 32, fontWeight: 700, letterSpacing: '-0.5px',
-        color: 'var(--text-primary)', marginBottom: 12,
+        background: 'linear-gradient(135deg, #00d4ff, #6366f1)',
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        marginBottom: 12,
       }}>
         Welcome to Conflux Home
       </h1>
@@ -445,7 +786,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         Your AI family is about to come alive.
       </p>
 
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 24, opacity: 0.8 }}>
         <NeuralBrainScene command={COMMANDS[0]} pulseImpulse={5} transparent={true} />
       </div>
 
@@ -482,7 +823,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     </motion.div>
   );
 
-  // Step 1: "Conflux Speaks" + Step 2: "Meet the Key Players" (combined into one screen)
+  // Step 1: "Meet Your Team" — Cinematic intro with all agents
   const renderTeamIntroStep = () => (
     <motion.div
       key="step-team-intro"
@@ -492,11 +833,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       transition={{ duration: 0.5 }}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        maxWidth: 800, width: '100%', textAlign: 'center', position: 'relative',
+        maxWidth: 900, width: '100%', textAlign: 'center', position: 'relative',
+        zIndex: 1,
       }}
     >
       {/* Neural brain pulsing during narration */}
-      <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)' }}>
+      <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)', zIndex: 0 }}>
         <NeuralBrainScene
           command={isSpeaking ? COMMANDS[3] : COMMANDS[1]}
           pulseImpulse={isSpeaking ? 20 : 8}
@@ -510,9 +852,9 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         transition={{ delay: 0.2 }}
         style={{
           fontSize: '2rem', fontWeight: 700,
-          background: 'linear-gradient(135deg, #00d4ff, #6366f1, #22c55e)',
+          background: 'linear-gradient(135deg, #00d4ff, #6366f1, #a78bfa)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          marginBottom: 8, marginTop: 60,
+          marginBottom: 8, marginTop: 40,
         }}
       >
         Meet Your Team
@@ -522,20 +864,22 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, maxWidth: 500 }}
+        style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 32, maxWidth: 500 }}
       >
         {userName ? `${userName},` : ''} each one has a specialty. Together, they're unstoppable.
       </motion.p>
 
-      {/* Main agents row */}
+      {/* All Agents Grid (KEY_PLAYERS + PROTECTORS) */}
       <div style={{
-        display: 'flex', justifyContent: 'center', gap: 28, marginBottom: 24, flexWrap: 'wrap',
+        display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 20, flexWrap: 'wrap',
       }}>
         {KEY_PLAYERS.map(player => (
           <AgentIntroCard
             key={player.id}
             player={player}
             visible={visibleAgents.has(player.id)}
+            isPlaying={playingVoiceId === player.id}
+            onPlayVoice={() => speakWithVoice(player.voiceLine, player.id)}
           />
         ))}
       </div>
@@ -547,7 +891,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 8 }}
           >
             <div style={{
               display: 'flex', alignItems: 'center', gap: 12,
@@ -559,12 +903,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               <div style={{ width: 40, height: 1, background: 'var(--border)' }} />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 24 }}>
               {PROTECTORS.map(player => (
                 <AgentIntroCard
                   key={player.id}
                   player={player}
                   visible={visibleAgents.has(player.id)}
+                  isPlaying={playingVoiceId === player.id}
+                  onPlayVoice={() => speakWithVoice(player.voiceLine, player.id)}
                 />
               ))}
             </div>
@@ -587,33 +933,36 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: isSpeaking ? 0 : 1 }}
         transition={{ duration: 0.4 }}
-        style={{ marginTop: 40 }}
+        style={{ marginTop: 36 }}
       >
-        <button
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96, opacity: 0.8 }}
+          transition={{ duration: 0.15 }}
           onClick={nextStep}
           style={{
             padding: '12px 32px', borderRadius: 12,
-            background: 'var(--accent-primary)', color: 'white',
-            border: 'none', fontSize: 16, fontWeight: 600, cursor: 'pointer',
+            background: 'linear-gradient(135deg, #00d4ff, #6366f1)',
+            color: 'white', border: 'none', fontSize: 16, fontWeight: 600, cursor: 'pointer',
           }}
         >
           {isSpeaking ? '🎙️ Conflux is speaking...' : 'What do you need? →'}
-        </button>
+        </motion.button>
       </motion.div>
     </motion.div>
   );
 
-  // Step 3: "What Do You Need?" — Ice Breaker
+  // Step 2: "What Do You Need?" — Ice Breaker
   const renderIceBreakerStep = () => (
     <motion.div
       initial={{ opacity: 0, x: 30 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-      style={{ textAlign: 'center', maxWidth: 520, width: '100%', margin: '0 auto', position: 'relative' }}
+      style={{ textAlign: 'center', maxWidth: 520, width: '100%', margin: '0 auto', position: 'relative', zIndex: 1 }}
     >
       {/* Conflux brain in background */}
-      <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)' }}>
+      <div style={{ position: 'absolute', top: -120, left: '50%', transform: 'translateX(-50%)' }}>
         <NeuralBrainScene command={COMMANDS[1]} pulseImpulse={6} transparent={true} />
       </div>
 
@@ -654,11 +1003,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       </div>
 
       <div style={{ marginTop: 32 }}>
-        <button
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96, opacity: 0.8 }}
+          transition={{ duration: 0.15 }}
           onClick={handleFinish}
           style={{
             padding: '12px 32px', borderRadius: 12,
-            background: iceBreakerInput.trim() ? 'var(--accent-primary)' : 'var(--bg-card)',
+            background: iceBreakerInput.trim() ? 'linear-gradient(135deg, #00d4ff, #6366f1)' : 'var(--bg-card)',
             color: iceBreakerInput.trim() ? 'white' : 'var(--text-secondary)',
             border: iceBreakerInput.trim() ? 'none' : '1px solid var(--border)',
             fontSize: 16, fontWeight: 600, cursor: 'pointer',
@@ -667,12 +1019,12 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           }}
         >
           Let's Build →
-        </button>
+        </motion.button>
       </div>
     </motion.div>
   );
 
-  // Step 4: "Building Your World"
+  // Step 3: "Building Your World"
   const renderBuildStep = () => {
     const buildLabels: Record<string, string> = {
       budget: 'Setting up your Budget',
@@ -689,7 +1041,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         transition={{ duration: 0.5 }}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          maxWidth: 480, width: '100%', textAlign: 'center',
+          maxWidth: 480, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1,
         }}
       >
         {/* Neural brain active during build */}
@@ -768,7 +1120,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   transition={{ duration: 0.15 }}
                   style={{
                     height: 8, borderRadius: 16,
-                    background: 'linear-gradient(90deg, var(--accent-primary), #22c55e)',
+                    background: 'linear-gradient(90deg, #00d4ff, #6366f1)',
                     width: `${buildProgress}%`,
                   }}
                 />
@@ -815,14 +1167,19 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     <div style={{
       display: 'flex', flexDirection: 'column',
       height: '100vh', width: '100%', background: 'var(--bg-primary)',
+      position: 'relative', overflow: 'hidden',
     }}>
+      {/* Global particles background */}
+      <Particles count={12} color="#6366f1" />
+
       {/* Progress Bar — only show during name + team intro + ice breaker */}
-      {step < 3 && <ProgressBar step={step} />}
+      {step >= 0 && step < 3 && <ProgressBar step={step} />}
 
       {/* Content Area */}
       <div style={{
         flex: 1, display: 'flex', alignItems: 'center',
         justifyContent: 'center', padding: '24px', overflow: 'auto',
+        position: 'relative', zIndex: 1,
       }}>
         <AnimatePresence mode="wait">
           {renderStep()}
@@ -830,39 +1187,71 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       </div>
 
       {/* Bottom Navigation — only for steps 0 and 1 */}
-      {step < 2 && (
+      {step >= 0 && step < 2 && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '12px 24px 28px', flexShrink: 0,
+          padding: '12px 24px 28px', flexShrink: 0, position: 'relative', zIndex: 1,
         }}>
           <div>
             {step > 0 && (
-              <button onClick={prevStep} style={{
-                background: 'none', border: '1px solid var(--border)', borderRadius: 10,
-                padding: '10px 20px', color: 'var(--text-secondary)', fontSize: 14,
-                fontWeight: 500, cursor: 'pointer',
-              }}>
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ duration: 0.15 }}
+                onClick={prevStep} style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: 10,
+                  padding: '10px 20px', color: 'var(--text-secondary)', fontSize: 14,
+                  fontWeight: 500, cursor: 'pointer',
+                }}
+              >
                 ← Back
-              </button>
+              </motion.button>
             )}
           </div>
 
           {step === 0 && (
-            <button
-              className="next-btn"
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96, opacity: 0.8 }}
+              transition={{ duration: 0.15 }}
               onClick={nextStep}
               disabled={userName.trim().length === 0}
               style={{
                 width: 'auto', padding: '10px 28px',
                 opacity: userName.trim().length === 0 ? 0.5 : 1,
                 cursor: userName.trim().length === 0 ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg, #00d4ff, #6366f1)',
+                color: 'white', border: 'none', borderRadius: 10,
+                fontSize: 15, fontWeight: 600,
               }}
             >
               Get Started
-            </button>
+            </motion.button>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Heartbeat SVG Component ──
+
+function HeartbeatSVG({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 400 80" style={{ width: '100%', maxWidth: 400, height: 80 }}>
+      <path
+        d="M0,40 L60,40 L70,40 L80,20 L90,60 L100,10 L110,70 L120,40 L130,40 L200,40 L210,40 L220,20 L230,60 L240,10 L250,70 L260,40 L270,40 L340,40 L350,40 L360,20 L370,60 L380,10 L390,70 L400,40"
+        fill="none"
+        stroke="var(--accent-primary)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          strokeDasharray: 800,
+          filter: `drop-shadow(0 0 6px var(--accent-primary))`,
+          animation: active ? 'heartbeat-draw 2s linear infinite' : 'none',
+        }}
+      />
+    </svg>
   );
 }

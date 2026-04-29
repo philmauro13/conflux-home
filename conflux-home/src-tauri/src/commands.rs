@@ -1,14 +1,14 @@
 // Conflux Engine — Tauri Commands
 // All invoke() handlers live here. Lib.rs stays clean.
 
-use tauri::{Manager, Emitter};
-use serde::{Deserialize, Serialize};
-use chrono::{Datelike, Timelike};
-use uuid::Uuid;
 use super::engine;
 use super::engine::cloud;
-use super::engine::router::{self, OpenAIMessage};
 use super::engine::commands::voice_commands;
+use super::engine::router::{self, OpenAIMessage};
+use chrono::{Datelike, Timelike};
+use serde::{Deserialize, Serialize};
+use tauri::{Emitter, Manager};
+use uuid::Uuid;
 
 // ── Request/Response Types ──
 
@@ -54,6 +54,7 @@ pub struct AgentUpdateRequest {
     pub soul: Option<String>,
     pub instructions: Option<String>,
     pub model_alias: Option<String>,
+    pub is_active: Option<bool>,
 }
 
 // ── Echo Types ──
@@ -120,43 +121,64 @@ pub async fn engine_chat(window: tauri::Window, req: ChatRequest) -> Result<Chat
     let user_id = get_supabase_user_id();
 
     // Check quota (cloud-aware)
-    let quota = engine.has_quota(&user_id).await.map_err(|e| e.to_string())?;
+    let quota = engine
+        .has_quota(&user_id)
+        .await
+        .map_err(|e| e.to_string())?;
     if !quota.allowed {
-        return Err(format!("{} limit reached. Upgrade for more credits.", quota.source));
+        return Err(format!(
+            "{} limit reached. Upgrade for more credits.",
+            quota.source
+        ));
     }
 
     let _ = window.emit("engine:thinking", ());
 
-    let response = engine.chat(
-        &req.session_id,
-        &req.agent_id,
-        &req.message,
-        req.max_tokens,
-    ).await.map_err(|e| e.to_string())?;
+    let response = engine
+        .chat(&req.session_id, &req.agent_id, &req.message, req.max_tokens)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let calls = engine.increment_quota(&user_id, response.tokens_used, &response.provider_id)
+    let calls = engine
+        .increment_quota(&user_id, response.tokens_used, &response.provider_id)
         .map_err(|e| e.to_string())?;
 
     let limit = get_daily_limit(engine);
 
     // Log to cloud and charge credits (fire and forget)
-    let credit_costs = super::engine::cloud::get_credit_costs().await.unwrap_or_default();
-    let credits = super::engine::cloud::credit_cost_for_model(&response.model, &response.provider_id, "core", &credit_costs);
+    let credit_costs = super::engine::cloud::get_credit_costs()
+        .await
+        .unwrap_or_default();
+    let credits = super::engine::cloud::credit_cost_for_model(
+        &response.model,
+        &response.provider_id,
+        "core",
+        &credit_costs,
+    );
 
     let _ = super::engine::cloud::log_usage_to_cloud(
-        &user_id, &req.session_id, &req.agent_id,
-        &response.model, &response.provider_id, "core",
-        response.tokens_used, response.latency_ms, "success", credits,
-    ).await;
+        &user_id,
+        &req.session_id,
+        &req.agent_id,
+        &response.model,
+        &response.provider_id,
+        "core",
+        response.tokens_used,
+        response.latency_ms,
+        "success",
+        credits,
+    )
+    .await;
 
     // Charge credits (don't fail the response if this fails for free users)
-    let (credits_remaining, credit_source) = match super::engine::cloud::charge_credits(&user_id, credits, "").await {
-        Ok(new_balance) => (Some(new_balance), Some(quota.source.clone())),
-        Err(e) => {
-            log::warn!("[Engine] Credit charge failed: {}", e);
-            (None, None)
-        }
-    };
+    let (credits_remaining, credit_source) =
+        match super::engine::cloud::charge_credits(&user_id, credits, "").await {
+            Ok(new_balance) => (Some(new_balance), Some(quota.source.clone())),
+            Err(e) => {
+                log::warn!("[Engine] Credit charge failed: {}", e);
+                (None, None)
+            }
+        };
 
     Ok(ChatResponse {
         content: response.content,
@@ -178,7 +200,7 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
     log::info!("[engine_chat_stream] Session ID: {}", req.session_id);
     log::info!("[engine_chat_stream] Agent ID: {}", req.agent_id);
     log::info!("[engine_chat_stream] Message: {}", req.message);
-    
+
     let engine = engine::get_engine();
     log::info!("[engine_chat_stream] ✅ Engine instance obtained");
 
@@ -188,11 +210,20 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
 
     // Check quota (cloud-aware)
     log::info!("[engine_chat_stream] Checking quota for user: {}", user_id);
-    let quota = engine.has_quota(&user_id).await.map_err(|e| e.to_string())?;
-    log::info!("[engine_chat_stream] Quota check result: allowed={}, source={}", quota.allowed, quota.source);
+    let quota = engine
+        .has_quota(&user_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    log::info!(
+        "[engine_chat_stream] Quota check result: allowed={}, source={}",
+        quota.allowed,
+        quota.source
+    );
     if !quota.allowed {
         let msg = format!("{} limit reached. Upgrade for more credits.", quota.source);
-        window.emit("engine:error", &msg).map_err(|e| e.to_string())?;
+        window
+            .emit("engine:error", &msg)
+            .map_err(|e| e.to_string())?;
         return Err(msg);
     }
 
@@ -200,51 +231,80 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
     log::info!("[engine_chat_stream] ✅ Sent engine:thinking event");
 
     log::info!("[engine_chat_stream] Calling engine.chat()...");
-    let result = engine.chat(
-        &req.session_id,
-        &req.agent_id,
-        &req.message,
-        req.max_tokens,
-    ).await;
+    let result = engine
+        .chat(&req.session_id, &req.agent_id, &req.message, req.max_tokens)
+        .await;
     log::info!("[engine_chat_stream] engine.chat() returned");
 
     match result {
         Ok(response) => {
             log::info!("[engine_chat_stream] ✅ engine.chat() SUCCESS");
             log::info!("[engine_chat_stream] Response model: {}", response.model);
-            log::info!("[engine_chat_stream] Response provider: {}", response.provider_id);
-            log::info!("[engine_chat_stream] Response content length: {}", response.content.len());
-            
-            let calls = engine.increment_quota(&user_id, response.tokens_used, &response.provider_id)
+            log::info!(
+                "[engine_chat_stream] Response provider: {}",
+                response.provider_id
+            );
+            log::info!(
+                "[engine_chat_stream] Response content length: {}",
+                response.content.len()
+            );
+
+            let calls = engine
+                .increment_quota(&user_id, response.tokens_used, &response.provider_id)
                 .map_err(|e| e.to_string())?;
             log::info!("[engine_chat_stream] Quota incremented: {} calls", calls);
 
             let limit = get_daily_limit(engine);
 
             // Log to cloud and charge credits (fire and forget)
-            let credit_costs = super::engine::cloud::get_credit_costs().await.unwrap_or_default();
-            let credits = super::engine::cloud::credit_cost_for_model(&response.model, &response.provider_id, "core", &credit_costs);
-            log::info!("[engine_chat_stream] Credit cost for this request: {}", credits);
+            let credit_costs = super::engine::cloud::get_credit_costs()
+                .await
+                .unwrap_or_default();
+            let credits = super::engine::cloud::credit_cost_for_model(
+                &response.model,
+                &response.provider_id,
+                "core",
+                &credit_costs,
+            );
+            log::info!(
+                "[engine_chat_stream] Credit cost for this request: {}",
+                credits
+            );
 
             let _ = super::engine::cloud::log_usage_to_cloud(
-                &user_id, &req.session_id, &req.agent_id,
-                &response.model, &response.provider_id, "core",
-                response.tokens_used, response.latency_ms, "success", credits,
-            ).await;
+                &user_id,
+                &req.session_id,
+                &req.agent_id,
+                &response.model,
+                &response.provider_id,
+                "core",
+                response.tokens_used,
+                response.latency_ms,
+                "success",
+                credits,
+            )
+            .await;
             log::info!("[engine_chat_stream] ✅ Logged usage to cloud");
 
-            let credits_remaining = match super::engine::cloud::charge_credits(&user_id, credits, "").await {
-                Ok(new_balance) => Some(new_balance),
-                Err(e) => {
-                    log::warn!("[Engine] Credit charge failed: {}", e);
-                    None
-                }
-            };
-            log::info!("[engine_chat_stream] Credits remaining: {:?}", credits_remaining);
+            let credits_remaining =
+                match super::engine::cloud::charge_credits(&user_id, credits, "").await {
+                    Ok(new_balance) => Some(new_balance),
+                    Err(e) => {
+                        log::warn!("[Engine] Credit charge failed: {}", e);
+                        None
+                    }
+                };
+            log::info!(
+                "[engine_chat_stream] Credits remaining: {:?}",
+                credits_remaining
+            );
 
             // Emit response in word-chunks for streaming feel
             let words: Vec<&str> = response.content.split_whitespace().collect();
-            log::info!("[engine_chat_stream] Emitting {} word chunks...", words.len());
+            log::info!(
+                "[engine_chat_stream] Emitting {} word chunks...",
+                words.len()
+            );
             for chunk in words.chunks(4) {
                 let chunk_text = chunk.join(" ") + " ";
                 let _ = window.emit("engine:chunk", serde_json::json!({ "text": chunk_text }));
@@ -252,17 +312,22 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
             }
 
             log::info!("[engine_chat_stream] Sending engine:done event...");
-            window.emit("engine:done", serde_json::json!({
-                "content": response.content,
-                "model": response.model,
-                "provider_id": response.provider_id,
-                "provider_name": response.provider_name,
-                "tokens_used": response.tokens_used,
-                "latency_ms": response.latency_ms,
-                "calls_remaining": (limit - calls).max(0),
-                "credits_remaining": credits_remaining,
-                "credit_source": quota.source,
-            })).map_err(|e| e.to_string())?;
+            window
+                .emit(
+                    "engine:done",
+                    serde_json::json!({
+                        "content": response.content,
+                        "model": response.model,
+                        "provider_id": response.provider_id,
+                        "provider_name": response.provider_name,
+                        "tokens_used": response.tokens_used,
+                        "latency_ms": response.latency_ms,
+                        "calls_remaining": (limit - calls).max(0),
+                        "credits_remaining": credits_remaining,
+                        "credit_source": quota.source,
+                    }),
+                )
+                .map_err(|e| e.to_string())?;
             log::info!("[engine_chat_stream] ✅ engine:done event sent");
             log::info!("[engine_chat_stream] ══════════════════════════════════════════");
 
@@ -271,7 +336,9 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
         Err(e) => {
             log::info!("[engine_chat_stream] ❌ engine.chat() FAILED: {}", e);
             let msg = e.to_string();
-            window.emit("engine:error", &msg).map_err(|e| e.to_string())?;
+            window
+                .emit("engine:error", &msg)
+                .map_err(|e| e.to_string())?;
             log::info!("[engine_chat_stream] ❌ Sent engine:error event to UI");
             Err(msg)
         }
@@ -280,27 +347,34 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
 
 // ── Session Commands ──
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn engine_create_session(agent_id: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let user_id = get_supabase_user_id();
-    let session = engine.create_session(&agent_id, &user_id).map_err(|e| e.to_string())?;
+    let session = engine
+        .create_session(&agent_id, &user_id)
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(session).map_err(|e| e.to_string())?)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn engine_get_sessions(limit: Option<i64>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let user_id = get_supabase_user_id();
-    let sessions = engine.get_sessions(&user_id, limit.unwrap_or(20)).map_err(|e| e.to_string())?;
+    let sessions = engine
+        .get_sessions(&user_id, limit.unwrap_or(20))
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(sessions).map_err(|e| e.to_string())?)
 }
 
-#[tauri::command]
-pub fn engine_get_messages(session_id: String, limit: Option<i64>) -> Result<serde_json::Value, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn engine_get_messages(
+    session_id: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let user_id = get_supabase_user_id();
-    
+
     // Verify the session belongs to the current user
     let session = engine.get_session(&session_id).map_err(|e| e.to_string())?;
     match session {
@@ -311,8 +385,10 @@ pub fn engine_get_messages(session_id: String, limit: Option<i64>) -> Result<ser
         }
         None => return Err("Session not found".to_string()),
     }
-    
-    let messages = engine.get_messages(&session_id, limit.unwrap_or(50)).map_err(|e| e.to_string())?;
+
+    let messages = engine
+        .get_messages(&session_id, limit.unwrap_or(50))
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(messages).map_err(|e| e.to_string())?)
 }
 
@@ -328,15 +404,81 @@ pub fn engine_get_agents() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn engine_update_agent(req: AgentUpdateRequest) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.update_agent(
-        &req.id,
-        req.name.as_deref(),
-        req.emoji.as_deref(),
-        req.role.as_deref(),
-        req.soul.as_deref(),
-        req.instructions.as_deref(),
-        req.model_alias.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .update_agent(
+            &req.id,
+            req.name.as_deref(),
+            req.emoji.as_deref(),
+            req.role.as_deref(),
+            req.soul.as_deref(),
+            req.instructions.as_deref(),
+            req.model_alias.as_deref(),
+            req.is_active,
+        )
+        .map_err(|e| e.to_string())
+}
+
+// ── User Profile Commands ──
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct UserProfile {
+    pub name: Option<String>,
+    pub onboarded: Option<bool>,
+    pub goals: Option<Vec<String>>,
+    pub selected_apps: Option<Vec<String>>,
+}
+
+#[tauri::command]
+pub fn save_user_profile(profile: UserProfile) -> Result<(), String> {
+    let engine = engine::try_get_engine()
+        .ok_or("Conflux Engine not initialized yet — please retry in a moment")?;
+    let db = engine.db();
+    if let Some(name) = &profile.name {
+        db.set_config("user_name", name).map_err(|e| e.to_string())?;
+    }
+    if let Some(onboarded) = profile.onboarded {
+        db.set_config("user_onboarded", if onboarded { "true" } else { "false" })
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(goals) = &profile.goals {
+        db.set_config("user_goals", &serde_json::to_string(goals).unwrap_or_default())
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(apps) = &profile.selected_apps {
+        db.set_config("user_selected_apps", &serde_json::to_string(apps).unwrap_or_default())
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_user_profile() -> Result<UserProfile, String> {
+    let engine = engine::try_get_engine()
+        .ok_or("Conflux Engine not initialized yet — please retry in a moment")?;
+    let db = engine.db();
+    let name = db.get_config("user_name").ok().flatten();
+    let onboarded = db
+        .get_config("user_onboarded")
+        .ok()
+        .flatten()
+        .map(|v| v == "true");
+    let goals = db
+        .get_config("user_goals")
+        .ok()
+        .flatten()
+        .and_then(|v| serde_json::from_str(&v).ok());
+    let selected_apps = db
+        .get_config("user_selected_apps")
+        .ok()
+        .flatten()
+        .and_then(|v| serde_json::from_str(&v).ok());
+    Ok(UserProfile {
+        name,
+        onboarded,
+        goals,
+        selected_apps,
+    })
 }
 
 // ── Quota Commands ──
@@ -360,26 +502,39 @@ pub fn engine_store_memory(
     source: Option<String>,
 ) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.store_memory(
-        &agent_id,
-        &memory_type,
-        key.as_deref(),
-        &content,
-        source.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .store_memory(
+            &agent_id,
+            &memory_type,
+            key.as_deref(),
+            &content,
+            source.as_deref(),
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn engine_search_memory(agent_id: String, query: String, limit: Option<i64>) -> Result<serde_json::Value, String> {
+pub fn engine_search_memory(
+    agent_id: String,
+    query: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let memories = engine.search_memory(&agent_id, &query, limit.unwrap_or(5)).map_err(|e| e.to_string())?;
+    let memories = engine
+        .search_memory(&agent_id, &query, limit.unwrap_or(5))
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(memories).map_err(|e| e.to_string())?)
 }
 
 #[tauri::command]
-pub fn engine_get_memories(agent_id: String, limit: Option<i64>) -> Result<serde_json::Value, String> {
+pub fn engine_get_memories(
+    agent_id: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let memories = engine.get_all_memories(&agent_id, limit.unwrap_or(50)).map_err(|e| e.to_string())?;
+    let memories = engine
+        .get_all_memories(&agent_id, limit.unwrap_or(50))
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(memories).map_err(|e| e.to_string())?)
 }
 
@@ -400,16 +555,18 @@ pub fn engine_get_providers() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn engine_update_provider(req: ProviderConfig) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.update_provider(
-        &req.id,
-        &req.name,
-        &req.base_url,
-        &req.api_key,
-        &req.model_id,
-        &req.model_alias,
-        req.priority,
-        req.is_enabled,
-    ).map_err(|e| e.to_string())
+    engine
+        .update_provider(
+            &req.id,
+            &req.name,
+            &req.base_url,
+            &req.api_key,
+            &req.model_id,
+            &req.model_alias,
+            req.priority,
+            req.is_enabled,
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -450,23 +607,26 @@ pub fn engine_get_provider_templates() -> Result<serde_json::Value, String> {
     let templates = engine.get_provider_templates().map_err(|e| e.to_string())?;
 
     // Add installed status to each template
-    let result: Vec<serde_json::Value> = templates.into_iter().map(|t| {
-        let installed = engine.is_template_installed(&t.id).unwrap_or(false);
-        serde_json::json!({
-            "id": t.id,
-            "name": t.name,
-            "emoji": t.emoji,
-            "description": t.description,
-            "base_url": t.base_url,
-            "models": t.models,
-            "default_model": t.default_model,
-            "model_alias": t.model_alias,
-            "category": t.category,
-            "docs_url": t.docs_url,
-            "is_free": t.is_free,
-            "is_installed": installed,
+    let result: Vec<serde_json::Value> = templates
+        .into_iter()
+        .map(|t| {
+            let installed = engine.is_template_installed(&t.id).unwrap_or(false);
+            serde_json::json!({
+                "id": t.id,
+                "name": t.name,
+                "emoji": t.emoji,
+                "description": t.description,
+                "base_url": t.base_url,
+                "models": t.models,
+                "default_model": t.default_model,
+                "model_alias": t.model_alias,
+                "category": t.category,
+                "docs_url": t.docs_url,
+                "is_free": t.is_free,
+                "is_installed": installed,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(serde_json::to_value(result).map_err(|e| e.to_string())?)
 }
@@ -474,11 +634,13 @@ pub fn engine_get_provider_templates() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn engine_install_template(req: InstallTemplateRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.install_provider_template(
-        &req.template_id,
-        req.api_key.as_deref(),
-        req.model.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .install_provider_template(
+            &req.template_id,
+            req.api_key.as_deref(),
+            req.model.as_deref(),
+        )
+        .map_err(|e| e.to_string())
 }
 
 // ── Provider API Key Config ──
@@ -499,7 +661,9 @@ pub fn engine_get_openai_key_masked() -> Result<String, String> {
 #[tauri::command]
 pub fn engine_set_anthropic_key(api_key: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.set_anthropic_key(&api_key).map_err(|e| e.to_string())
+    engine
+        .set_anthropic_key(&api_key)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -525,7 +689,10 @@ pub async fn engine_get_router_providers() -> Result<serde_json::Value, String> 
     // Provider configuration is now handled server-side by the cloud router.
     // Return available models from the cloud router instead.
     let engine = engine::get_engine();
-    let models = engine.get_available_models().await.map_err(|e| e.to_string())?;
+    let models = engine
+        .get_available_models()
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(models).map_err(|e| e.to_string())?)
 }
 
@@ -534,20 +701,26 @@ pub async fn engine_get_router_providers() -> Result<serde_json::Value, String> 
 #[tauri::command]
 pub fn engine_get_agent_capabilities(agent_id: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let caps = engine.get_agent_capabilities(&agent_id).map_err(|e| e.to_string())?;
+    let caps = engine
+        .get_agent_capabilities(&agent_id)
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(caps).map_err(|e| e.to_string())?)
 }
 
 #[tauri::command]
 pub fn engine_find_agents_by_capability(capability: String) -> Result<Vec<String>, String> {
     let engine = engine::get_engine();
-    engine.find_agents_by_capability(&capability).map_err(|e| e.to_string())
+    engine
+        .find_agents_by_capability(&capability)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn engine_get_agent_permissions(agent_id: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let perms = engine.get_agent_permissions(&agent_id).map_err(|e| e.to_string())?;
+    let perms = engine
+        .get_agent_permissions(&agent_id)
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(perms).map_err(|e| e.to_string())?)
 }
 
@@ -564,18 +737,27 @@ pub struct AgentAskRequest {
 #[tauri::command]
 pub async fn engine_agent_ask(req: AgentAskRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.agent_ask(
-        &req.from_agent,
-        &req.to_agent,
-        &req.question,
-        req.session_id.as_deref(),
-    ).await.map_err(|e| e.to_string())
+    engine
+        .agent_ask(
+            &req.from_agent,
+            &req.to_agent,
+            &req.question,
+            req.session_id.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn engine_get_communications(agent_id: String, limit: Option<i64>) -> Result<serde_json::Value, String> {
+pub fn engine_get_communications(
+    agent_id: String,
+    limit: Option<i64>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let comms = engine.db().get_communications(&agent_id, limit.unwrap_or(20)).map_err(|e| e.to_string())?;
+    let comms = engine
+        .db()
+        .get_communications(&agent_id, limit.unwrap_or(20))
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(comms).map_err(|e| e.to_string())?)
 }
 
@@ -594,14 +776,16 @@ pub struct CreateTaskRequest {
 #[tauri::command]
 pub fn engine_create_task(req: CreateTaskRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.create_task(
-        &req.title,
-        req.description.as_deref(),
-        &req.agent_id,
-        &req.created_by,
-        &req.priority.unwrap_or_else(|| "normal".to_string()),
-        req.requires_verify.unwrap_or(false),
-    ).map_err(|e| e.to_string())
+    engine
+        .create_task(
+            &req.title,
+            req.description.as_deref(),
+            &req.agent_id,
+            &req.created_by,
+            &req.priority.unwrap_or_else(|| "normal".to_string()),
+            req.requires_verify.unwrap_or(false),
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -614,7 +798,9 @@ pub struct UpdateTaskRequest {
 #[tauri::command]
 pub fn engine_update_task(req: UpdateTaskRequest) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.update_task_status(&req.task_id, &req.status, req.result.as_deref()).map_err(|e| e.to_string())
+    engine
+        .update_task_status(&req.task_id, &req.status, req.result.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -625,9 +811,14 @@ pub fn engine_get_task(task_id: String) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub fn engine_get_tasks_for_agent(agent_id: String, status: Option<String>) -> Result<serde_json::Value, String> {
+pub fn engine_get_tasks_for_agent(
+    agent_id: String,
+    status: Option<String>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let tasks = engine.get_tasks_for_agent(&agent_id, status.as_deref()).map_err(|e| e.to_string())?;
+    let tasks = engine
+        .get_tasks_for_agent(&agent_id, status.as_deref())
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(tasks).map_err(|e| e.to_string())?)
 }
 
@@ -644,7 +835,13 @@ pub struct CreateVerificationRequest {
 #[tauri::command]
 pub fn engine_create_verification(req: CreateVerificationRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.create_verification_claim(&req.agent_id, req.session_id.as_deref(), &req.claim_type, &req.claim)
+    engine
+        .create_verification_claim(
+            &req.agent_id,
+            req.session_id.as_deref(),
+            &req.claim_type,
+            &req.claim,
+        )
         .map_err(|e| e.to_string())
 }
 
@@ -659,14 +856,22 @@ pub struct CompleteVerificationRequest {
 #[tauri::command]
 pub fn engine_complete_verification(req: CompleteVerificationRequest) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.complete_verification_claim(&req.id, &req.verified_by, &req.result, req.evidence.as_deref())
+    engine
+        .complete_verification_claim(
+            &req.id,
+            &req.verified_by,
+            &req.result,
+            req.evidence.as_deref(),
+        )
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn engine_get_unverified_claims(agent_id: Option<String>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let claims = engine.get_unverified_claims(agent_id.as_deref()).map_err(|e| e.to_string())?;
+    let claims = engine
+        .get_unverified_claims(agent_id.as_deref())
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(claims).map_err(|e| e.to_string())?)
 }
 
@@ -684,14 +889,23 @@ pub struct AddLessonRequest {
 #[tauri::command]
 pub fn engine_add_lesson(req: AddLessonRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.add_lesson(req.agent_id.as_deref(), &req.category, &req.lesson, req.evidence.as_deref(), req.action.as_deref())
+    engine
+        .add_lesson(
+            req.agent_id.as_deref(),
+            &req.category,
+            &req.lesson,
+            req.evidence.as_deref(),
+            req.action.as_deref(),
+        )
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn engine_get_lessons(category: Option<String>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let lessons = engine.get_active_lessons(category.as_deref()).map_err(|e| e.to_string())?;
+    let lessons = engine
+        .get_active_lessons(category.as_deref())
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(lessons).map_err(|e| e.to_string())?)
 }
 
@@ -709,31 +923,40 @@ pub struct CreateCronRequest {
 #[tauri::command]
 pub fn engine_create_cron(req: CreateCronRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.create_cron_job(
-        &req.name, &req.agent_id, &req.schedule,
-        &req.timezone.unwrap_or_else(|| "UTC".to_string()),
-        &req.task_message,
-    ).map_err(|e| e.to_string())
+    engine
+        .create_cron_job(
+            &req.name,
+            &req.agent_id,
+            &req.schedule,
+            &req.timezone.unwrap_or_else(|| "UTC".to_string()),
+            &req.task_message,
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn engine_get_crons(enabled_only: Option<bool>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let jobs = engine.get_cron_jobs(enabled_only.unwrap_or(false)).map_err(|e| e.to_string())?;
+    let jobs = engine
+        .get_cron_jobs(enabled_only.unwrap_or(false))
+        .map_err(|e| e.to_string())?;
 
     // Enrich with human-readable schedule descriptions
-    let enriched: Vec<serde_json::Value> = jobs.into_iter().map(|j| {
-        serde_json::json!({
-            "id": j.id, "name": j.name, "agent_id": j.agent_id,
-            "schedule": j.schedule,
-            "schedule_description": engine::cron::describe(&j.schedule),
-            "timezone": j.timezone, "task_message": j.task_message,
-            "is_enabled": j.is_enabled,
-            "last_run_at": j.last_run_at, "next_run_at": j.next_run_at,
-            "run_count": j.run_count, "error_count": j.error_count,
-            "created_at": j.created_at, "updated_at": j.updated_at,
+    let enriched: Vec<serde_json::Value> = jobs
+        .into_iter()
+        .map(|j| {
+            serde_json::json!({
+                "id": j.id, "name": j.name, "agent_id": j.agent_id,
+                "schedule": j.schedule,
+                "schedule_description": engine::cron::describe(&j.schedule),
+                "timezone": j.timezone, "task_message": j.task_message,
+                "is_enabled": j.is_enabled,
+                "last_run_at": j.last_run_at, "next_run_at": j.next_run_at,
+                "run_count": j.run_count, "error_count": j.error_count,
+                "created_at": j.created_at, "updated_at": j.updated_at,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(serde_json::to_value(enriched).map_err(|e| e.to_string())?)
 }
@@ -741,7 +964,9 @@ pub fn engine_get_crons(enabled_only: Option<bool>) -> Result<serde_json::Value,
 #[tauri::command]
 pub fn engine_toggle_cron(id: String, enabled: bool) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.toggle_cron_job(&id, enabled).map_err(|e| e.to_string())
+    engine
+        .toggle_cron_job(&id, enabled)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -755,7 +980,9 @@ pub fn engine_delete_cron(id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn engine_get_heartbeat_interval() -> Result<i64, String> {
     let engine = engine::get_engine();
-    let ms = engine.db().get_config("heartbeat_interval_ms")
+    let ms = engine
+        .db()
+        .get_config("heartbeat_interval_ms")
         .map_err(|e| e.to_string())?
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(1_800_000);
@@ -763,12 +990,42 @@ pub fn engine_get_heartbeat_interval() -> Result<i64, String> {
 }
 
 #[tauri::command]
-pub fn engine_set_heartbeat_interval(ms: i64) -> Result<(), String> {
+pub fn engine_set_heartbeat_interval(ms: i64, app_handle: tauri::AppHandle) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().set_config("heartbeat_interval_ms", &ms.to_string())
-        .map_err(|e| e.to_string())
+    engine
+        .db()
+        .set_config("heartbeat_interval_ms", &ms.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Send to scheduler channel so it applies the new interval IMMEDIATELY (not on next tick)
+    if let Some(tx) = crate::HEARTBEAT_CMD_TX.get() {
+        let _ = tx.try_send(ms as u64);
+    }
+    // Emit event so frontend can sync animation immediately
+    let _ = app_handle.emit("conflux:heartbeat-interval-changed", ms);
+    Ok(())
 }
 
+#[tauri::command]
+pub fn engine_get_heartbeat_last_beat() -> Result<String, String> {
+    let engine = engine::get_engine();
+    let last_beat = engine
+        .db()
+        .get_config("heartbeat_last_beat_ms")
+        .map_err(|e| e.to_string())?
+        .unwrap_or_else(|| chrono::Utc::now().timestamp_millis().to_string());
+    Ok(last_beat)
+}
+
+#[tauri::command]
+pub fn engine_set_heartbeat_last_beat(ms: i64) -> Result<(), String> {
+    let engine = engine::get_engine();
+    engine
+        .db()
+        .set_config("heartbeat_last_beat_ms", &ms.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn engine_tick_cron() -> Result<i64, String> {
@@ -790,10 +1047,15 @@ pub struct CreateWebhookRequest {
 #[tauri::command]
 pub fn engine_create_webhook(req: CreateWebhookRequest) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.create_webhook(
-        &req.name, &req.agent_id, &req.path,
-        req.secret.as_deref(), &req.task_template,
-    ).map_err(|e| e.to_string())
+    engine
+        .create_webhook(
+            &req.name,
+            &req.agent_id,
+            &req.path,
+            req.secret.as_deref(),
+            &req.task_template,
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -810,9 +1072,16 @@ pub fn engine_delete_webhook(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn engine_handle_webhook(path: String, body: String, auth: Option<String>) -> Result<String, String> {
+pub async fn engine_handle_webhook(
+    path: String,
+    body: String,
+    auth: Option<String>,
+) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.handle_webhook(&path, &body, auth.as_deref()).await.map_err(|e| e.to_string())
+    engine
+        .handle_webhook(&path, &body, auth.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Events ──
@@ -820,7 +1089,9 @@ pub async fn engine_handle_webhook(path: String, body: String, auth: Option<Stri
 #[tauri::command]
 pub fn engine_get_events(target_agent: Option<String>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let events = engine.get_unprocessed_events(target_agent.as_deref()).map_err(|e| e.to_string())?;
+    let events = engine
+        .get_unprocessed_events(target_agent.as_deref())
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(events).map_err(|e| e.to_string())?)
 }
 
@@ -850,7 +1121,9 @@ pub fn engine_get_heartbeats() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn engine_get_skills(active_only: Option<bool>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let skills = engine.get_skills(active_only.unwrap_or(false)).map_err(|e| e.to_string())?;
+    let skills = engine
+        .get_skills(active_only.unwrap_or(false))
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(skills).map_err(|e| e.to_string())?)
 }
 
@@ -864,14 +1137,18 @@ pub fn engine_get_skill(id: String) -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub fn engine_get_skills_for_agent(agent_id: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let skills = engine.get_skills_for_agent(&agent_id).map_err(|e| e.to_string())?;
+    let skills = engine
+        .get_skills_for_agent(&agent_id)
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(skills).map_err(|e| e.to_string())?)
 }
 
 #[tauri::command]
 pub fn engine_install_skill(manifest_json: String) -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.install_skill_from_json(&manifest_json).map_err(|e| e.to_string())
+    engine
+        .install_skill_from_json(&manifest_json)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -895,11 +1172,38 @@ pub struct NotificationRequest {
 }
 
 #[tauri::command]
-pub fn engine_send_notification(req: NotificationRequest) -> Result<(), String> {
+pub fn engine_send_notification(
+    app_handle: tauri::AppHandle,
+    req: NotificationRequest,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().emit_event("agent_notification", None, None,
-        Some(&serde_json::json!({"title": req.title, "body": req.body}).to_string()))
+    // Emit internal event for logging/UI reactivity + frontend badge update
+    engine
+        .db()
+        .emit_event(
+            "agent_notification",
+            None,
+            None,
+            Some(&serde_json::json!({"title": req.title, "body": req.body}).to_string()),
+        )
         .map_err(|e| e.to_string())?;
+
+    // Fire real OS desktop notification via tauri_plugin_notification
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_notification::NotificationExt;
+        let _ = app_handle
+            .notification()
+            .builder()
+            .title(&req.title)
+            .body(&req.body)
+            .show();
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = req;
+    }
+
     Ok(())
 }
 
@@ -917,14 +1221,54 @@ pub fn engine_set_email_config(
     imap_pass: Option<String>,
 ) -> Result<(), String> {
     let engine = engine::get_engine();
-    if let Some(v) = smtp_host { engine.db().set_config("smtp_host", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = smtp_user { engine.db().set_config("smtp_user", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = smtp_pass { engine.db().set_config("smtp_pass", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = smtp_from { engine.db().set_config("smtp_from", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = imap_host { engine.db().set_config("imap_host", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = imap_port { engine.db().set_config("imap_port", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = imap_user { engine.db().set_config("imap_user", &v).map_err(|e| e.to_string())?; }
-    if let Some(v) = imap_pass { engine.db().set_config("imap_pass", &v).map_err(|e| e.to_string())?; }
+    if let Some(v) = smtp_host {
+        engine
+            .db()
+            .set_config("smtp_host", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = smtp_user {
+        engine
+            .db()
+            .set_config("smtp_user", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = smtp_pass {
+        engine
+            .db()
+            .set_config("smtp_pass", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = smtp_from {
+        engine
+            .db()
+            .set_config("smtp_from", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = imap_host {
+        engine
+            .db()
+            .set_config("imap_host", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = imap_port {
+        engine
+            .db()
+            .set_config("imap_port", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = imap_user {
+        engine
+            .db()
+            .set_config("imap_user", &v)
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = imap_pass {
+        engine
+            .db()
+            .set_config("imap_pass", &v)
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -953,7 +1297,9 @@ pub fn engine_google_is_connected() -> Result<bool, String> {
 #[tauri::command]
 pub fn engine_google_get_email() -> Result<String, String> {
     let engine = engine::get_engine();
-    engine.db().get_config("google_email")
+    engine
+        .db()
+        .get_config("google_email")
         .map_err(|e| e.to_string())
         .map(|v| v.unwrap_or_default())
 }
@@ -984,18 +1330,35 @@ pub fn engine_google_disconnect() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn engine_google_set_credentials(client_id: String, client_secret: String) -> Result<(), String> {
+pub fn engine_google_set_credentials(
+    client_id: String,
+    client_secret: String,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().set_config("google_client_id", &client_id).map_err(|e| e.to_string())?;
-    engine.db().set_config("google_client_secret", &client_secret).map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .set_config("google_client_id", &client_id)
+        .map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .set_config("google_client_secret", &client_secret)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn engine_google_get_credentials() -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let client_id = engine.db().get_config("google_client_id").map_err(|e| e.to_string())?.unwrap_or_default();
-    let client_secret = engine.db().get_config("google_client_secret").map_err(|e| e.to_string())?.unwrap_or_default();
+    let client_id = engine
+        .db()
+        .get_config("google_client_id")
+        .map_err(|e| e.to_string())?
+        .unwrap_or_default();
+    let client_secret = engine
+        .db()
+        .get_config("google_client_secret")
+        .map_err(|e| e.to_string())?
+        .unwrap_or_default();
     // Always has_credentials — built-in defaults are used if user hasn't set custom ones
     let has_custom = !client_id.is_empty() && !client_secret.is_empty();
     Ok(serde_json::json!({
@@ -1026,7 +1389,9 @@ pub fn engine_health() -> Result<serde_json::Value, String> {
 // ── Helpers ──
 
 fn get_daily_limit(engine: &engine::ConfluxEngine) -> i64 {
-    engine.db().get_config("free_daily_limit")
+    engine
+        .db()
+        .get_config("free_daily_limit")
         .ok()
         .flatten()
         .unwrap_or_else(|| "50".to_string())
@@ -1051,40 +1416,68 @@ pub struct CreateFamilyMemberRequest {
 pub fn family_list() -> Result<Vec<engine::types::FamilyMember>, String> {
     let engine = engine::get_engine();
     let user_id = get_supabase_user_id();
-    engine.db().get_family_members(&user_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_family_members(&user_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn family_create(req: CreateFamilyMemberRequest) -> Result<engine::types::FamilyMember, String> {
+pub fn family_create(
+    req: CreateFamilyMemberRequest,
+) -> Result<engine::types::FamilyMember, String> {
     let engine = engine::get_engine();
     let user_id = get_supabase_user_id();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().create_family_member(
-        &id, &user_id, &req.name, req.age, &req.age_group,
-        req.avatar.as_deref(), req.color.as_deref(),
-        req.default_agent_id.as_deref(), req.parent_id.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .create_family_member(
+            &id,
+            &user_id,
+            &req.name,
+            req.age,
+            &req.age_group,
+            req.avatar.as_deref(),
+            req.color.as_deref(),
+            req.default_agent_id.as_deref(),
+            req.parent_id.as_deref(),
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn family_delete(id: String) -> Result<(), String> {
     let engine = engine::get_engine();
     let user_id = get_supabase_user_id();
-    engine.db().delete_family_member(&id, &user_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .delete_family_member(&id, &user_id)
+        .map_err(|e| e.to_string())
 }
 
 // ── Agent Templates ──
 
 #[tauri::command]
-pub fn agent_templates_list(age_group: Option<String>) -> Result<Vec<engine::types::AgentTemplate>, String> {
+pub fn agent_templates_list(
+    age_group: Option<String>,
+) -> Result<Vec<engine::types::AgentTemplate>, String> {
     let engine = engine::get_engine();
-    engine.db().get_agent_templates(age_group.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_agent_templates(age_group.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn agent_template_install(template_id: String, member_id: Option<String>) -> Result<Option<engine::types::Agent>, String> {
+pub fn agent_template_install(
+    template_id: String,
+    member_id: Option<String>,
+) -> Result<Option<engine::types::Agent>, String> {
     let engine = engine::get_engine();
-    engine.db().install_agent_from_template(&template_id, member_id.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .install_agent_from_template(&template_id, member_id.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 // ── Story Games ──
@@ -1099,9 +1492,14 @@ pub struct CreateStoryGameRequest {
 }
 
 #[tauri::command]
-pub fn story_games_list(member_id: Option<String>) -> Result<Vec<engine::types::StoryGame>, String> {
+pub fn story_games_list(
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::StoryGame>, String> {
     let engine = engine::get_engine();
-    engine.db().get_story_games(member_id.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_story_games(member_id.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1109,9 +1507,18 @@ pub fn story_game_create(req: CreateStoryGameRequest) -> Result<engine::types::S
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
     let difficulty = req.difficulty.unwrap_or_else(|| "normal".to_string());
-    engine.db().create_story_game(
-        &id, req.member_id.as_deref(), &req.title, &req.genre, &req.age_group, &difficulty, None,
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .create_story_game(
+            &id,
+            req.member_id.as_deref(),
+            &req.title,
+            &req.genre,
+            &req.age_group,
+            &difficulty,
+            None,
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1123,43 +1530,67 @@ pub fn story_game_get(id: String) -> Result<Option<engine::types::StoryGame>, St
 #[tauri::command]
 pub fn story_chapters_list(game_id: String) -> Result<Vec<engine::types::StoryChapter>, String> {
     let engine = engine::get_engine();
-    engine.db().get_story_chapters(&game_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_story_chapters(&game_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn story_seeds_list(age_group: Option<String>, genre: Option<String>) -> Result<Vec<engine::types::StorySeed>, String> {
+pub fn story_seeds_list(
+    age_group: Option<String>,
+    genre: Option<String>,
+) -> Result<Vec<engine::types::StorySeed>, String> {
     let engine = engine::get_engine();
-    engine.db().get_story_seeds(age_group.as_deref(), genre.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_story_seeds(age_group.as_deref(), genre.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn story_choose_path(chapter_id: String, choice_id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().choose_story_path(&chapter_id, &choice_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .choose_story_path(&chapter_id, &choice_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn story_solve_puzzle(chapter_id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().solve_puzzle(&chapter_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .solve_puzzle(&chapter_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> Result<engine::types::StoryChapter, String> {
+pub async fn story_generate_next_chapter(
+    game_id: String,
+    choice_id: String,
+) -> Result<engine::types::StoryChapter, String> {
     let engine = engine::get_engine();
 
     // Load game state
-    let game = engine.db().get_story_game(&game_id)
+    let game = engine
+        .db()
+        .get_story_game(&game_id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Game not found".to_string())?;
 
     // Load all chapters so far
-    let chapters = engine.db().get_story_chapters(&game_id)
+    let chapters = engine
+        .db()
+        .get_story_chapters(&game_id)
         .map_err(|e| e.to_string())?;
 
     // Mark the last chapter's choice
     if let Some(last_chapter) = chapters.last() {
-        engine.db().choose_story_path(&last_chapter.id, &choice_id)
+        engine
+            .db()
+            .choose_story_path(&last_chapter.id, &choice_id)
             .map_err(|e| e.to_string())?;
     }
 
@@ -1174,7 +1605,10 @@ pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> 
     // Add previous chapters for continuity
     for ch in &chapters {
         if let Some(title) = &ch.title {
-            story_context.push_str(&format!("=== Chapter {}: {} ===\n", ch.chapter_number, title));
+            story_context.push_str(&format!(
+                "=== Chapter {}: {} ===\n",
+                ch.chapter_number, title
+            ));
         } else {
             story_context.push_str(&format!("=== Chapter {} ===\n", ch.chapter_number));
         }
@@ -1183,8 +1617,8 @@ pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> 
 
         // Show what choice was made
         if let Some(chosen_id) = &ch.chosen_choice_id {
-            let choices: Vec<engine::types::StoryChoice> = serde_json::from_str(&ch.choices)
-                .unwrap_or_default();
+            let choices: Vec<engine::types::StoryChoice> =
+                serde_json::from_str(&ch.choices).unwrap_or_default();
             if let Some(chosen) = choices.iter().find(|c| &c.id == chosen_id) {
                 story_context.push_str(&format!("→ The player chose: {}\n\n", chosen.text));
             }
@@ -1194,9 +1628,11 @@ pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> 
     // Get the chosen choice text for this turn
     let last_chapter = chapters.last();
     let chosen_text = if let Some(ch) = last_chapter {
-        let choices: Vec<engine::types::StoryChoice> = serde_json::from_str(&ch.choices)
-            .unwrap_or_default();
-        choices.iter().find(|c| c.id == choice_id)
+        let choices: Vec<engine::types::StoryChoice> =
+            serde_json::from_str(&ch.choices).unwrap_or_default();
+        choices
+            .iter()
+            .find(|c| c.id == choice_id)
             .map(|c| c.text.clone())
             .unwrap_or_default()
     } else {
@@ -1237,7 +1673,7 @@ pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> 
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
         .await
         .map_err(|e| format!("AI generation failed: {}", e))?;
 
@@ -1245,9 +1681,12 @@ pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> 
     let content = response.content.trim();
     // Strip markdown code fences if present
     let json_str = content
-        .strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content)
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
         .trim();
 
     #[derive(serde::Deserialize)]
@@ -1259,27 +1698,34 @@ pub async fn story_generate_next_chapter(game_id: String, choice_id: String) -> 
         image_prompt: Option<String>,
     }
 
-    let generated: ChapterGen = serde_json::from_str(json_str)
-        .map_err(|e| format!("Failed to parse AI response as JSON: {}. Response was: {}", e, json_str))?;
+    let generated: ChapterGen = serde_json::from_str(json_str).map_err(|e| {
+        format!(
+            "Failed to parse AI response as JSON: {}. Response was: {}",
+            e, json_str
+        )
+    })?;
 
-    let choices_json = serde_json::to_string(&generated.choices)
-        .map_err(|e| e.to_string())?;
-    let puzzle_json = generated.puzzle
+    let choices_json = serde_json::to_string(&generated.choices).map_err(|e| e.to_string())?;
+    let puzzle_json = generated
+        .puzzle
         .and_then(|p| serde_json::to_string(&p).ok());
 
     let chapter_number = game.current_chapter + 1;
     let chapter_id = uuid::Uuid::new_v4().to_string();
 
-    let chapter = engine.db().add_story_chapter(
-        &chapter_id,
-        &game_id,
-        chapter_number,
-        generated.title.as_deref(),
-        &generated.narrative,
-        &choices_json,
-        puzzle_json.as_deref(),
-        generated.image_prompt.as_deref(),
-    ).map_err(|e| e.to_string())?;
+    let chapter = engine
+        .db()
+        .add_story_chapter(
+            &chapter_id,
+            &game_id,
+            chapter_number,
+            generated.title.as_deref(),
+            &generated.narrative,
+            &choices_json,
+            puzzle_json.as_deref(),
+            generated.image_prompt.as_deref(),
+        )
+        .map_err(|e| e.to_string())?;
 
     Ok(chapter)
 }
@@ -1304,23 +1750,43 @@ pub struct LogActivityRequest {
 pub fn learning_log_activity(req: LogActivityRequest) -> Result<(), String> {
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().log_learning_activity(
-        &id, &req.member_id, &req.agent_id, req.session_id.as_deref(),
-        &req.activity_type, req.topic.as_deref(), req.description.as_deref(),
-        req.difficulty.as_deref(), req.score, req.duration_sec, req.metadata.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .log_learning_activity(
+            &id,
+            &req.member_id,
+            &req.agent_id,
+            req.session_id.as_deref(),
+            &req.activity_type,
+            req.topic.as_deref(),
+            req.description.as_deref(),
+            req.difficulty.as_deref(),
+            req.score,
+            req.duration_sec,
+            req.metadata.as_deref(),
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn learning_get_activities(member_id: String, limit: Option<i64>) -> Result<Vec<engine::types::LearningActivity>, String> {
+pub fn learning_get_activities(
+    member_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<engine::types::LearningActivity>, String> {
     let engine = engine::get_engine();
-    engine.db().get_learning_activities(&member_id, limit.unwrap_or(50)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_learning_activities(&member_id, limit.unwrap_or(50))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn learning_get_progress(member_id: String) -> Result<engine::types::LearningProgress, String> {
     let engine = engine::get_engine();
-    engine.db().get_learning_progress(&member_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_learning_progress(&member_id)
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1338,16 +1804,28 @@ pub struct CreateGoalRequest {
 pub fn learning_create_goal(req: CreateGoalRequest) -> Result<(), String> {
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().create_learning_goal(
-        &id, &req.member_id, &req.goal_type, req.activity_type.as_deref(),
-        &req.title, req.target_value, req.unit.as_deref(), req.deadline.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .create_learning_goal(
+            &id,
+            &req.member_id,
+            &req.goal_type,
+            req.activity_type.as_deref(),
+            &req.title,
+            req.target_value,
+            req.unit.as_deref(),
+            req.deadline.as_deref(),
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn learning_get_goals(member_id: String) -> Result<Vec<engine::types::LearningGoal>, String> {
     let engine = engine::get_engine();
-    engine.db().get_learning_goals(&member_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_learning_goals(&member_id)
+        .map_err(|e| e.to_string())
 }
 
 // ── Smart Kitchen — Meals ──
@@ -1368,38 +1846,73 @@ pub struct CreateMealRequest {
 }
 
 #[tauri::command]
-pub fn kitchen_create_meal(req: CreateMealRequest, member_id: Option<String>) -> Result<engine::types::Meal, String> {
+pub async fn kitchen_create_meal(
+    req: CreateMealRequest,
+    member_id: Option<String>,
+) -> Result<engine::types::Meal, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().create_meal(
-        &id, &req.name, req.description.as_deref(), req.cuisine.as_deref(),
-        req.category.as_deref(), req.photo_url.as_deref(), req.prep_time_min,
-        req.cook_time_min, req.servings.unwrap_or(4),
-        req.difficulty.as_deref().unwrap_or("normal"),
-        req.instructions.as_deref(), req.tags.as_deref(), "manual",
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .create_meal(
+            &id,
+            &req.name,
+            req.description.as_deref(),
+            req.cuisine.as_deref(),
+            req.category.as_deref(),
+            req.photo_url.as_deref(),
+            req.prep_time_min,
+            req.cook_time_min,
+            req.servings.unwrap_or(4),
+            req.difficulty.as_deref().unwrap_or("normal"),
+            req.instructions.as_deref(),
+            req.tags.as_deref(),
+            "manual",
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_get_meals(category: Option<String>, cuisine: Option<String>, favorites_only: bool, member_id: Option<String>) -> Result<Vec<engine::types::Meal>, String> {
+pub async fn kitchen_get_meals(
+    category: Option<String>,
+    cuisine: Option<String>,
+    favorites_only: bool,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::Meal>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().get_meals(category.as_deref(), cuisine.as_deref(), favorites_only).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_meals(category.as_deref(), cuisine.as_deref(), favorites_only)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_get_meal(id: String, member_id: Option<String>) -> Result<Option<engine::types::MealWithIngredients>, String> {
+pub async fn kitchen_get_meal(
+    id: String,
+    member_id: Option<String>,
+) -> Result<Option<engine::types::MealWithIngredients>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().get_meal_with_ingredients(&id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_meal_with_ingredients(&id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_toggle_favorite(id: String, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_toggle_favorite(id: String, member_id: Option<String>) -> Result<(), String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().toggle_favorite(&id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .toggle_favorite(&id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1415,21 +1928,36 @@ pub struct AddIngredientRequest {
 }
 
 #[tauri::command]
-pub fn kitchen_add_ingredient(req: AddIngredientRequest, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_add_ingredient(
+    req: AddIngredientRequest,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_meal_ingredient(
-        &id, &req.meal_id, &req.name, req.quantity,
-        req.unit.as_deref(), req.estimated_cost, req.category.as_deref(),
-        req.is_optional, req.notes.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_meal_ingredient(
+            &id,
+            &req.meal_id,
+            &req.name,
+            req.quantity,
+            req.unit.as_deref(),
+            req.estimated_cost,
+            req.category.as_deref(),
+            req.is_optional,
+            req.notes.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Smart Kitchen — AI Meal Recognition ──
 
 #[tauri::command]
-pub async fn kitchen_recognize_meal(_photo_base64: String) -> Result<engine::types::MealWithIngredients, String> {
+pub async fn kitchen_recognize_meal(
+    _photo_base64: String,
+) -> Result<engine::types::MealWithIngredients, String> {
     let _engine = engine::get_engine();
 
     let _prompt = "You are a culinary expert AI. Look at this photo of a meal and provide:
@@ -1476,11 +2004,204 @@ Be accurate with costs. Use 2026 US grocery prices. List every ingredient.";
 
     // Actually, let's use a direct text approach since we can't pass images through the router yet
     // The user can describe the meal or we can use the photo as a trigger to ask them about it
-    return Err("Photo recognition coming soon! For now, describe your meal and I'll help set it up.".to_string());
+    return Err(
+        "Photo recognition coming soon! For now, describe your meal and I'll help set it up."
+            .to_string(),
+    );
+}
+
+/// Build an HTTP client with a proper User-Agent header.
+/// Wikipedia blocks requests without a recognizable UA.
+fn meal_image_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .user_agent("ConfluxHome/1.0 (https://theconflux.ai; support@theconflux.ai)")
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
+}
+
+/// Skip common adjectives so "Decadent Chocolate Cake" → "Chocolate Cake".
+fn meal_search_keywords(name: &str) -> Vec<String> {
+    let skip: std::collections::HashSet<&str> = [
+        "decadent", "creamy", "delicious", "tasty", "spicy", "sweet", "savory",
+        "crispy", "crunchy", "tender", "juicy", "fresh", "homemade", "gourmet",
+        "rustic", "hearty", "light", "rich", "fluffy", "moist", "zesty", "tangy",
+        "smoky", "garlicky", "buttery", "spiced", "roasted", "grilled", "baked",
+        "fried", "steamed", "slow", "quick", "easy", "simple", "classic",
+        "traditional", "modern", "fusion", "authentic", "best", "perfect",
+        "ultimate", "amazing", "wonderful", "great", "lovely", "beautiful",
+        "elegant", "fancy", "casual", "comfort", "warming", "refreshing",
+        "vibrant", "colorful", "golden", "crispy", "silky", "smooth", "thick",
+        "thin", "chunky", "creamy", "cheesy", "meaty", "veggie", "healthy",
+        "indulgent", "luxurious", "exquisite", "divine", "heavenly", "sinful",
+    ].iter().cloned().collect();
+
+    let words: Vec<&str> = name.split_whitespace().collect();
+    let filtered: Vec<String> = words
+        .iter()
+        .filter(|w| !skip.contains(w.to_lowercase().as_str()))
+        .map(|w| w.to_string())
+        .collect();
+
+    if filtered.is_empty() {
+        // Fallback: if we stripped everything, return the original words
+        words.into_iter().map(|w| w.to_string()).collect()
+    } else {
+        filtered
+    }
+}
+
+/// Search TheMealDB for a food image matching the meal name.
+/// Tries exact match, then keyword-reduced match, then first 1-2 keywords.
+/// Returns the thumbnail URL if found, None otherwise.
+async fn fetch_mealdb_image(meal_name: &str) -> Option<String> {
+    let client = meal_image_client();
+
+    // Try exact name first
+    if let Some(url) = try_mealdb_search(&client, meal_name).await {
+        return Some(url);
+    }
+
+    // Try with adjectives stripped (e.g. "Chocolate Cake" from "Decadent Chocolate Cake")
+    let keywords = meal_search_keywords(meal_name);
+    let keyword_phrase = keywords.join(" ");
+    if keyword_phrase != meal_name && !keyword_phrase.is_empty() {
+        if let Some(url) = try_mealdb_search(&client, &keyword_phrase).await {
+            return Some(url);
+        }
+    }
+
+    // Try first keyword alone
+    if keywords.len() > 1 {
+        if let Some(url) = try_mealdb_search(&client, &keywords[0]).await {
+            return Some(url);
+        }
+    }
+
+    // Try first two keywords
+    if keywords.len() > 2 {
+        let two_words = format!("{} {}", keywords[0], keywords[1]);
+        if let Some(url) = try_mealdb_search(&client, &two_words).await {
+            return Some(url);
+        }
+    }
+
+    None
+}
+
+async fn try_mealdb_search(client: &reqwest::Client, query: &str) -> Option<String> {
+    let url = format!(
+        "https://www.themealdb.com/api/json/v1/1/search.php?s={}",
+        urlencoding::encode(query)
+    );
+    match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.json::<serde_json::Value>().await {
+                Ok(json) => {
+                    if let Some(meals) = json.get("meals").and_then(|m| m.as_array()) {
+                        if let Some(first) = meals.first() {
+                            if let Some(thumb) = first.get("strMealThumb").and_then(|t| t.as_str()) {
+                                if !thumb.is_empty() && thumb.starts_with("http") {
+                                    return Some(thumb.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => log::warn!("[MealDB] JSON parse error: {}", e),
+            }
+        }
+        Ok(resp) => log::warn!("[MealDB] HTTP error: {}", resp.status()),
+        Err(e) => log::warn!("[MealDB] Request error: {}", e),
+    }
+    None
+}
+
+/// Fetch a thumbnail image from Wikipedia (free, no auth).
+/// Uses the REST summary API which returns a thumbnail for many food articles.
+async fn fetch_wikipedia_image(meal_name: &str) -> Option<String> {
+    let client = meal_image_client();
+    let keywords = meal_search_keywords(meal_name);
+
+    // Try exact title first
+    if let Some(url) = try_wikipedia_summary(&client, meal_name).await {
+        return Some(url);
+    }
+
+    // Try keyword-reduced title (e.g. "Chocolate Cake")
+    let keyword_phrase = keywords.join(" ");
+    if keyword_phrase != meal_name && !keyword_phrase.is_empty() {
+        if let Some(url) = try_wikipedia_summary(&client, &keyword_phrase).await {
+            return Some(url);
+        }
+    }
+
+    // Try first two keywords
+    if keywords.len() > 2 {
+        let simplified = format!("{} {}", keywords[0], keywords[1]);
+        if let Some(url) = try_wikipedia_summary(&client, &simplified).await {
+            return Some(url);
+        }
+    }
+
+    // Try first keyword alone
+    if keywords.len() > 1 {
+        if let Some(url) = try_wikipedia_summary(&client, &keywords[0]).await {
+            return Some(url);
+        }
+    }
+
+    None
+}
+
+async fn try_wikipedia_summary(client: &reqwest::Client, title: &str) -> Option<String> {
+    let url = format!(
+        "https://en.wikipedia.org/api/rest_v1/page/summary/{}",
+        urlencoding::encode(title)
+    );
+    match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.json::<serde_json::Value>().await {
+                Ok(json) => {
+                    if let Some(thumb) = json.get("thumbnail").and_then(|t| t.get("source")).and_then(|s| s.as_str()) {
+                        if thumb.starts_with("http") {
+                            return Some(thumb.to_string());
+                        }
+                    }
+                }
+                Err(e) => log::warn!("[WikiImage] JSON parse error: {}", e),
+            }
+        }
+        Ok(resp) if resp.status().as_u16() == 404 => {
+            // Article not found — expected, don't warn
+        }
+        Ok(resp) if resp.status().as_u16() == 403 => {
+            log::warn!("[WikiImage] 403 Forbidden — Wikipedia blocked the request. Check User-Agent.");
+        }
+        Ok(resp) => log::warn!("[WikiImage] HTTP error: {}", resp.status()),
+        Err(e) => log::warn!("[WikiImage] Request error: {}", e),
+    }
+    None
+}
+
+/// Unified meal image fetcher: TheMealDB → Wikipedia → None
+pub async fn fetch_meal_image(meal_name: &str) -> Option<String> {
+    if let Some(url) = fetch_mealdb_image(meal_name).await {
+        log::info!("[MealImage] TheMealDB found image for '{}'", meal_name);
+        return Some(url);
+    }
+    if let Some(url) = fetch_wikipedia_image(meal_name).await {
+        log::info!("[MealImage] Wikipedia found image for '{}'", meal_name);
+        return Some(url);
+    }
+    log::warn!("[MealImage] No image found for '{}'", meal_name);
+    None
 }
 
 #[tauri::command]
-pub async fn kitchen_ai_add_meal(description: String, member_id: Option<String>) -> Result<engine::types::MealWithIngredients, String> {
+pub async fn kitchen_ai_add_meal(
+    description: String,
+    member_id: Option<String>,
+) -> Result<engine::types::MealWithIngredients, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
 
@@ -1523,16 +2244,39 @@ Respond in this EXACT JSON format (no markdown, no code fences, just raw JSON):
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
         .await
         .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
     let json_str = content
-        .strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content)
-        .trim();
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim()
+        // Replace fractions with decimals — AI outputs "1/2" but JSON requires "0.5"
+        .replace("1/2", "0.5")
+        .replace("1/4", "0.25")
+        .replace("3/4", "0.75");
+
+    let doc = serde_json::from_str::<serde_json::Value>(&json_str)
+        .map_err(|e| format!("Invalid JSON: {}. Raw: {}", e, &json_str))?;
+
+    let tags_str = doc.get("tags").and_then(|v| match v {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Array(arr) => {
+            let strings: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect();
+            Some(serde_json::to_string(&strings).unwrap_or_else(|_| "[]".to_string()))
+        }
+        _ => None,
+    });
 
     #[derive(serde::Deserialize)]
     struct AIMeal {
@@ -1545,7 +2289,6 @@ Respond in this EXACT JSON format (no markdown, no code fences, just raw JSON):
         servings: Option<i64>,
         difficulty: Option<String>,
         instructions: Option<String>,
-        tags: Option<String>,
         ingredients: Vec<AIIngredient>,
     }
 
@@ -1559,28 +2302,62 @@ Respond in this EXACT JSON format (no markdown, no code fences, just raw JSON):
         notes: Option<String>,
     }
 
-    let ai_meal: AIMeal = serde_json::from_str(json_str)
-        .map_err(|e| format!("Failed to parse AI response: {}. Raw: {}", e, json_str))?;
+    let ai_meal: AIMeal =
+        serde_json::from_value(doc).map_err(|e| format!("Failed to parse AI response: {}", e))?;
 
     let meal_id = uuid::Uuid::new_v4().to_string();
-    let _meal = engine.db().create_meal(
-        &meal_id, &ai_meal.name, ai_meal.description.as_deref(), ai_meal.cuisine.as_deref(),
-        ai_meal.category.as_deref(), None, ai_meal.prep_time_min, ai_meal.cook_time_min,
-        ai_meal.servings.unwrap_or(4), &ai_meal.difficulty.unwrap_or("normal".to_string()),
-        ai_meal.instructions.as_deref(), ai_meal.tags.as_deref(), "ai-generated",
-    ).map_err(|e| e.to_string())?;
+    let difficulty = ai_meal.difficulty.unwrap_or_else(|| "normal".to_string());
+    let _meal = engine
+        .db()
+        .create_meal(
+            &meal_id,
+            &ai_meal.name,
+            ai_meal.description.as_deref(),
+            ai_meal.cuisine.as_deref(),
+            ai_meal.category.as_deref(),
+            None,
+            ai_meal.prep_time_min,
+            ai_meal.cook_time_min,
+            ai_meal.servings.unwrap_or(4),
+            &difficulty,
+            ai_meal.instructions.as_deref(),
+            tags_str.as_deref(),
+            "ai-generated",
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Add ingredients
     for ing in &ai_meal.ingredients {
         let ing_id = uuid::Uuid::new_v4().to_string();
-        engine.db().add_meal_ingredient(
-            &ing_id, &meal_id, &ing.name, ing.quantity, ing.unit.as_deref(),
-            ing.estimated_cost, ing.category.as_deref(), false, ing.notes.as_deref(),
-        ).map_err(|e| e.to_string())?;
+        engine
+            .db()
+            .add_meal_ingredient(
+                &ing_id,
+                &meal_id,
+                &ing.name,
+                ing.quantity,
+                ing.unit.as_deref(),
+                ing.estimated_cost,
+                ing.category.as_deref(),
+                false,
+                ing.notes.as_deref(),
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    // Fetch a food image from free sources (TheMealDB → Wikipedia)
+    let photo_url = fetch_meal_image(&ai_meal.name).await;
+    if let Some(url) = photo_url {
+        let _ = engine.db().update_meal_photo(&meal_id, &url).await;
     }
 
     // Get the full meal with ingredients
-    engine.db().get_meal_with_ingredients(&meal_id)
+    engine
+        .db()
+        .get_meal_with_ingredients(&meal_id)
+        .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Failed to load created meal".to_string())
 }
@@ -1597,50 +2374,97 @@ pub struct SetPlanEntryRequest {
 }
 
 #[tauri::command]
-pub fn kitchen_set_plan_entry(req: SetPlanEntryRequest, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_set_plan_entry(
+    req: SetPlanEntryRequest,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().set_plan_entry(
-        &id, &req.week_start, req.day_of_week, &req.meal_slot, req.meal_id.as_deref(), req.notes.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .set_plan_entry(
+            &id,
+            &req.week_start,
+            req.day_of_week,
+            &req.meal_slot,
+            req.meal_id.as_deref(),
+            req.notes.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_get_weekly_plan(week_start: String, member_id: Option<String>) -> Result<engine::types::WeeklyPlan, String> {
+pub async fn kitchen_get_weekly_plan(
+    week_start: String,
+    member_id: Option<String>,
+) -> Result<engine::types::WeeklyPlan, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().get_weekly_plan(&week_start).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_weekly_plan(&week_start)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_clear_week_plan(week_start: String, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_clear_week_plan(
+    week_start: String,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().clear_week_plan(&week_start).map_err(|e| e.to_string())
+    engine
+        .db()
+        .clear_week_plan(&week_start)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Smart Kitchen — Grocery List ──
 
 #[tauri::command]
-pub fn kitchen_generate_grocery(week_start: String, member_id: Option<String>) -> Result<Vec<engine::types::GroceryItem>, String> {
+pub async fn kitchen_generate_grocery(
+    week_start: String,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::GroceryItem>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().generate_grocery_list(&week_start).map_err(|e| e.to_string())
+    engine
+        .db()
+        .generate_grocery_list(&week_start)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_get_grocery(week_start: String, member_id: Option<String>) -> Result<Vec<engine::types::GroceryItem>, String> {
+pub async fn kitchen_get_grocery(
+    week_start: String,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::GroceryItem>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().get_grocery_list(&week_start).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_grocery_list(&week_start)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_toggle_grocery_item(id: String, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_toggle_grocery_item(
+    id: String,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().toggle_grocery_item(&id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .toggle_grocery_item(&id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Smart Kitchen — Inventory ──
@@ -1656,31 +2480,177 @@ pub struct AddInventoryRequest {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn kitchen_add_inventory(req: AddInventoryRequest, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_add_inventory(
+    req: AddInventoryRequest,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let user_id = member_id.unwrap_or_else(|| get_supabase_user_id());
     let engine = engine::get_engine();
+
+    // Resolve family_members.id for this user (may create one if missing)
+    let family_member_id = engine
+        .db()
+        .get_or_create_family_member_id(&user_id)
+        .await
+        .map_err(|e| format!("Failed to resolve family member: {}", e))?;
+
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_inventory_item(
-        &id, &user_id, &req.name, req.quantity, req.unit.as_deref(),
-        req.category.as_deref(), req.expiry_date.as_deref(), req.location.as_deref(),
-    ).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_inventory_item(
+            &id,
+            &family_member_id,
+            &req.name,
+            req.quantity,
+            req.unit.as_deref(),
+            req.category.as_deref(),
+            req.expiry_date.as_deref(),
+            req.location.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// ── NL Inventory Add (Smart Defaults) ─────────────────────────────────────────
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct NlInventoryResult {
+    items_added: usize,
+    items: Vec<NlInventoryItem>,
+    message: String,
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct NlInventoryItem {
+    name: String,
+    quantity: Option<f64>,
+    unit: Option<String>,
+    expiry_date: Option<String>,
+    category: Option<String>,
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn kitchen_nl_add_inventory(
+    text: String,
+    member_id: Option<String>,
+) -> Result<NlInventoryResult, String> {
+    let user_id = member_id.unwrap_or_else(|| get_supabase_user_id());
+    let engine = engine::get_engine();
+    let family_member_id = engine
+        .db()
+        .get_or_create_family_member_id(&user_id)
+        .await
+        .map_err(|e| format!("Failed to resolve family member: {}", e))?;
+
+    // Prompt to LLM — extract items and infer expiry dates from Helix's research data
+    let example_json =
+        r#"[{"name":"eggs","quantity":12,"unit":"pieces","category":"dairy","expiry_date":null}]"#;
+    let prompt = format!(
+        "You are Hearth's inventory parser. Extract grocery items from this input: \"{}\"\n\
+         For each item return JSON: name, quantity (number/null), unit (string/null), category (produce/dairy/meat/seafood/bakery/pantry/frozen/beverage/condiment/other), expiry_date (YYYY-MM-DD or null).\n\
+         Use standard shelf life (USDA FoodKeeper): eggs=30d, milk=7d, chicken=2d, beef_ground=2d, pork=3d, fish=1d, shrimp=2d, butter=30d, cheese_hard=60d, cheese_soft=5d, yogurt=14d, bread=5d, rice_cooked=4d, pasta_cooked=4d, produce_leafy=5d, root_veg=21d, berries=5d, mushrooms=5d, canned_opened=3d, oil=365d, dried_pasta=730d, canned=365d, frozen=180d.\n\
+         If \"leftover\" or \"cooked\", use cooked shelf life. Freezer = fridge * 10.\n\
+         Return ONLY a JSON array. Example: {}",
+        text, example_json
+    );
+
+    let messages = vec![engine::router::OpenAIMessage {
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
+    }];
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1500), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
+
+    let response_content = response.content.trim();
+    let json_str = if response_content.starts_with("```json") {
+        response_content
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim()
+    } else if response_content.starts_with("```") {
+        response_content.trim_start_matches("```").trim()
+    } else {
+        response_content
+    };
+
+    let parsed: Vec<NlInventoryItem> = serde_json::from_str(json_str)
+        .map_err(|e| format!("Failed to parse inventory: {} — raw: {}", e, json_str))?;
+
+    let mut items_added = 0;
+    for item in &parsed {
+        let id = uuid::Uuid::new_v4().to_string();
+        let expiry = item.expiry_date.clone();
+        engine
+            .db()
+            .add_inventory_item(
+                &id,
+                &family_member_id,
+                &item.name,
+                item.quantity,
+                item.unit.as_deref(),
+                item.category.as_deref(),
+                expiry.as_deref(),
+                None,
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        items_added += 1;
+    }
+
+    let item_names: Vec<_> = parsed.iter().map(|i| i.name.clone()).collect();
+    let message = if items_added == 1 {
+        format!("✅ Added {} to your inventory.", item_names[0])
+    } else {
+        format!("✅ Added {} items: {}.", items_added, item_names.join(", "))
+    };
+
+    Ok(NlInventoryResult {
+        items_added,
+        items: parsed,
+        message,
+    })
 }
 
 #[tauri::command]
-pub fn kitchen_get_inventory(location: Option<String>, member_id: Option<String>) -> Result<Vec<engine::types::KitchenInventoryItem>, String> {
+pub async fn kitchen_get_inventory(
+    location: Option<String>,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::KitchenInventoryItem>, String> {
     let user_id = member_id.unwrap_or_else(|| get_supabase_user_id());
     let engine = engine::get_engine();
-    engine.db().get_inventory(&user_id, location.as_deref()).map_err(|e| e.to_string())
+    let family_member_id = engine
+        .db()
+        .get_or_create_family_member_id(&user_id)
+        .await
+        .map_err(|e| format!("Failed to resolve family member: {}", e))?;
+    engine
+        .db()
+        .get_inventory(&family_member_id, location.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Kitchen Hearth Commands ──
 
 #[tauri::command]
-pub fn kitchen_home_menu(member_id: Option<String>) -> Result<Vec<engine::types::HomeMenuItem>, String> {
+pub async fn kitchen_home_menu(
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::HomeMenuItem>, String> {
     let user_id = member_id.unwrap_or_else(|| get_supabase_user_id());
     let engine = engine::get_engine();
-    let _inventory = engine.db().get_inventory(&user_id, None).unwrap_or_default();
-    let meals = engine.db().get_meals(None, None, false).unwrap_or_default();
+    let _inventory = engine
+        .db()
+        .get_inventory(&user_id, None)
+        .await
+        .unwrap_or_default();
+    let meals = engine
+        .db()
+        .get_meals(None, None, false)
+        .await
+        .unwrap_or_default();
     let mut menu = Vec::new();
     for meal in meals.iter().take(5) {
         menu.push(engine::types::HomeMenuItem {
@@ -1696,15 +2666,41 @@ pub fn kitchen_home_menu(member_id: Option<String>) -> Result<Vec<engine::types:
 }
 
 #[tauri::command]
-pub fn kitchen_upload_meal_photo(meal_id: String, photo_url: String, caption: Option<String>, member_id: Option<String>) -> Result<(), String> {
+pub async fn kitchen_upload_meal_photo(
+    meal_id: String,
+    photo_url: String,
+    caption: Option<String>,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_meal_photo(&id, &meal_id, &photo_url, caption.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_meal_photo(&id, &meal_id, &photo_url, caption.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn kitchen_identify_meal_from_photo(_photo_url: String) -> Result<serde_json::Value, String> {
+pub async fn kitchen_update_meal_photo(
+    meal_id: String,
+    photo_url: String,
+    member_id: Option<String>,
+) -> Result<(), String> {
+    let _member_id = member_id;
+    let engine = engine::get_engine();
+    engine
+        .db()
+        .update_meal_photo(&meal_id, &photo_url)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn kitchen_identify_meal_from_photo(
+    _photo_url: String,
+) -> Result<serde_json::Value, String> {
     // Stub — returns placeholder identification
     Ok(serde_json::json!({
         "name": "Identified Meal",
@@ -1714,7 +2710,7 @@ pub async fn kitchen_identify_meal_from_photo(_photo_url: String) -> Result<serd
 }
 
 #[tauri::command]
-pub fn kitchen_plan_week_natural(input: String) -> Result<serde_json::Value, String> {
+pub async fn kitchen_plan_week_natural(input: String) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({
         "parsed": true,
         "input": input,
@@ -1723,30 +2719,48 @@ pub fn kitchen_plan_week_natural(input: String) -> Result<serde_json::Value, Str
 }
 
 #[tauri::command]
-pub fn kitchen_suggest_meal_natural(constraints: String, member_id: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn kitchen_suggest_meal_natural(
+    constraints: String,
+    member_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    let meals = engine.db().get_meals(None, None, false).unwrap_or_default();
-    let suggestion = meals.first().map(|m| serde_json::json!({
-        "meal_id": m.id,
-        "name": m.name,
-        "reason": format!("Based on: {}", constraints),
-    })).unwrap_or(serde_json::json!({"note": "No meals available"}));
+    let meals = engine
+        .db()
+        .get_meals(None, None, false)
+        .await
+        .unwrap_or_default();
+    let suggestion = meals
+        .first()
+        .map(|m| {
+            serde_json::json!({
+                "meal_id": m.id,
+                "name": m.name,
+                "reason": format!("Based on: {}", constraints),
+            })
+        })
+        .unwrap_or(serde_json::json!({"note": "No meals available"}));
     Ok(suggestion)
 }
 
 #[tauri::command]
-pub fn kitchen_pantry_heatmap(member_id: Option<String>) -> Result<Vec<engine::types::PantryHeatItem>, String> {
+pub async fn kitchen_pantry_heatmap(
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::PantryHeatItem>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().get_pantry_heatmap().map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_pantry_heatmap()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_use_expiring(member_id: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn kitchen_use_expiring(member_id: Option<String>) -> Result<serde_json::Value, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    let expiring = engine.db().get_expiring_items(3).unwrap_or_default();
+    let expiring = engine.db().get_expiring_items(3).await.unwrap_or_default();
     Ok(serde_json::json!({
         "expiring_count": expiring.len(),
         "items": expiring.iter().map(|i| serde_json::json!({
@@ -1757,10 +2771,17 @@ pub fn kitchen_use_expiring(member_id: Option<String>) -> Result<serde_json::Val
 }
 
 #[tauri::command]
-pub fn kitchen_get_cooking_steps(meal_id: String, member_id: Option<String>) -> Result<Vec<engine::types::CookingStep>, String> {
+pub async fn kitchen_get_cooking_steps(
+    meal_id: String,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::CookingStep>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    let meal = engine.db().get_meal_with_ingredients(&meal_id).map_err(|e| e.to_string())?;
+    let meal = engine
+        .db()
+        .get_meal_with_ingredients(&meal_id)
+        .await
+        .map_err(|e| e.to_string())?;
     if let Some(m) = meal {
         // Parse instructions into steps
         let instructions = m.meal.instructions.unwrap_or_default();
@@ -1782,29 +2803,45 @@ pub fn kitchen_get_cooking_steps(meal_id: String, member_id: Option<String>) -> 
 }
 
 #[tauri::command]
-pub fn kitchen_weekly_digest(week_start: String, member_id: Option<String>) -> Result<engine::types::KitchenDigest, String> {
+pub async fn kitchen_weekly_digest(
+    week_start: String,
+    member_id: Option<String>,
+) -> Result<engine::types::KitchenDigest, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    let meals_cooked = engine.db().get_weekly_plan(&week_start)
+    let meals_cooked = engine
+        .db()
+        .get_weekly_plan(&week_start)
+        .await
         .map(|p| p.meal_count)
         .unwrap_or(0);
     Ok(engine::types::KitchenDigest {
         week_start,
         meals_cooked,
-        variety_score: if meals_cooked > 0 { (meals_cooked as f64 / 21.0 * 100.0).min(100.0) } else { 0.0 },
+        variety_score: if meals_cooked > 0 {
+            (meals_cooked as f64 / 21.0 * 100.0).min(100.0)
+        } else {
+            0.0
+        },
         unique_cuisines: 1,
         estimated_savings: meals_cooked as f64 * 15.0,
         top_cuisine: None,
-        suggestion: if meals_cooked < 5 { "Try planning more meals this week!".to_string() } else { "Great variety this week!".to_string() },
+        suggestion: if meals_cooked < 5 {
+            "Try planning more meals this week!".to_string()
+        } else {
+            "Great variety this week!".to_string()
+        },
     })
 }
 
 #[tauri::command]
-pub fn kitchen_get_nudges(member_id: Option<String>) -> Result<Vec<engine::types::KitchenNudge>, String> {
+pub async fn kitchen_get_nudges(
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::KitchenNudge>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
     let mut nudges = Vec::new();
-    let expiring = engine.db().get_expiring_items(2).unwrap_or_default();
+    let expiring = engine.db().get_expiring_items(2).await.unwrap_or_default();
     if !expiring.is_empty() {
         nudges.push(engine::types::KitchenNudge {
             nudge_type: "expiring".to_string(),
@@ -1817,17 +2854,31 @@ pub fn kitchen_get_nudges(member_id: Option<String>) -> Result<Vec<engine::types
 }
 
 #[tauri::command]
-pub fn kitchen_smart_grocery(week_start: String, member_id: Option<String>) -> Result<Vec<engine::types::GroceryItem>, String> {
+pub async fn kitchen_smart_grocery(
+    week_start: String,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::GroceryItem>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().generate_grocery_list(&week_start).map_err(|e| e.to_string())
+    engine
+        .db()
+        .generate_grocery_list(&week_start)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn kitchen_get_meal_photos(meal_id: String, member_id: Option<String>) -> Result<Vec<engine::types::MealPhoto>, String> {
+pub async fn kitchen_get_meal_photos(
+    meal_id: String,
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::MealPhoto>, String> {
     let _member_id = member_id;
     let engine = engine::get_engine();
-    engine.db().get_meal_photos(&meal_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_meal_photos(&meal_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Onboarding Setup ──
@@ -1844,13 +2895,19 @@ pub struct SaveBudgetDataRequest {
 pub async fn save_budget_data(req: SaveBudgetDataRequest) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let income = req.income.unwrap_or(5000.0);
-    let categories = req.categories.unwrap_or_else(|| vec!["groceries".to_string(), "rent".to_string(), "utilities".to_string()]);
+    let categories = req.categories.unwrap_or_else(|| {
+        vec![
+            "groceries".to_string(),
+            "rent".to_string(),
+            "utilities".to_string(),
+        ]
+    });
     let member_id = req.member_id;
 
     // Save income entry
     let income_id = uuid::Uuid::new_v4().to_string();
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    let _ = engine.db().conn().execute(
+    let _ = engine.db().conn_async().await.execute(
         "INSERT INTO budget_entries (id, member_id, entry_type, category, amount, description, recurring, frequency, date, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         rusqlite::params![income_id, member_id, "income", "salary", income, "Onboarding starter income", 1i64, "monthly", today, chrono::Utc::now().to_rfc3339()],
@@ -1860,7 +2917,7 @@ pub async fn save_budget_data(req: SaveBudgetDataRequest) -> Result<serde_json::
     let mut entries_created = 1; // income
     for cat in &categories {
         let id = uuid::Uuid::new_v4().to_string();
-        let _ = engine.db().conn().execute(
+        let _ = engine.db().conn_async().await.execute(
             "INSERT INTO budget_entries (id, member_id, entry_type, category, amount, description, recurring, frequency, date, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![id, member_id, "expense", cat, 0.0, format!("Starter category: {}", cat), 0i64, None::<String>, today, chrono::Utc::now().to_rfc3339()],
@@ -1881,7 +2938,7 @@ pub async fn save_budget_data(req: SaveBudgetDataRequest) -> Result<serde_json::
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateBudgetEntryRequest {
     pub member_id: Option<String>,
-    pub entry_type: String,  // 'income' | 'expense' | 'savings' | 'goal'
+    pub entry_type: String, // 'income' | 'expense' | 'savings' | 'goal'
     pub category: String,
     pub amount: f64,
     pub description: Option<String>,
@@ -1891,11 +2948,13 @@ pub struct CreateBudgetEntryRequest {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_add_entry(req: CreateBudgetEntryRequest) -> Result<engine::types::BudgetEntry, String> {
+pub async fn budget_add_entry(
+    req: CreateBudgetEntryRequest,
+) -> Result<engine::types::BudgetEntry, String> {
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
     let now = engine::db::EngineDb::now();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     conn.execute(
         "INSERT INTO budget_entries (id, member_id, entry_type, category, amount, description, recurring, frequency, date, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -1903,16 +2962,26 @@ pub fn budget_add_entry(req: CreateBudgetEntryRequest) -> Result<engine::types::
                           if req.recurring { 1i64 } else { 0 }, req.frequency, req.date, now],
     ).map_err(|e| e.to_string())?;
     Ok(engine::types::BudgetEntry {
-        id, member_id: req.member_id, entry_type: req.entry_type, category: req.category,
-        amount: req.amount, description: req.description, recurring: req.recurring,
-        frequency: req.frequency, date: req.date, created_at: now,
+        id,
+        member_id: req.member_id,
+        entry_type: req.entry_type,
+        category: req.category,
+        amount: req.amount,
+        description: req.description,
+        recurring: req.recurring,
+        frequency: req.frequency,
+        date: req.date,
+        created_at: now,
     })
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_get_entries(member_id: Option<String>, month: Option<String>) -> Result<Vec<engine::types::BudgetEntry>, String> {
+pub async fn budget_get_entries(
+    member_id: Option<String>,
+    month: Option<String>,
+) -> Result<Vec<engine::types::BudgetEntry>, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let mut conditions = Vec::new();
     let mut params_vec: Vec<String> = Vec::new();
 
@@ -1925,30 +2994,51 @@ pub fn budget_get_entries(member_id: Option<String>, month: Option<String>) -> R
         params_vec.push(m.clone());
     }
 
-    let where_clause = if conditions.is_empty() { String::new() } else { format!("WHERE {}", conditions.join(" AND ")) };
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
     let query = format!(
         "SELECT id, member_id, entry_type, category, amount, description, recurring, frequency, date, created_at
          FROM budget_entries {} ORDER BY date DESC, created_at DESC", where_clause
     );
 
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
-    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
-    let rows = stmt.query_map(&params_refs[..], |row| {
-        Ok(engine::types::BudgetEntry {
-            id: row.get(0)?, member_id: row.get(1)?, entry_type: row.get(2)?, category: row.get(3)?,
-            amount: row.get(4)?, description: row.get(5)?, recurring: row.get::<_, i64>(6)? != 0,
-            frequency: row.get(7)?, date: row.get(8)?, created_at: row.get(9)?,
+    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
+    let rows = stmt
+        .query_map(&params_refs[..], |row| {
+            Ok(engine::types::BudgetEntry {
+                id: row.get(0)?,
+                member_id: row.get(1)?,
+                entry_type: row.get(2)?,
+                category: row.get(3)?,
+                amount: row.get(4)?,
+                description: row.get(5)?,
+                recurring: row.get::<_, i64>(6)? != 0,
+                frequency: row.get(7)?,
+                date: row.get(8)?,
+                created_at: row.get(9)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for r in rows { result.push(r.map_err(|e| e.to_string())?); }
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
     Ok(result)
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_get_summary(member_id: String, month: String) -> Result<engine::types::BudgetSummary, String> {
+pub async fn budget_get_summary(
+    member_id: String,
+    month: String,
+) -> Result<engine::types::BudgetSummary, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
 
     let total_income: f64 = conn.query_row(
         "SELECT COALESCE(SUM(amount), 0) FROM budget_entries WHERE member_id = ?1 AND entry_type = 'income' AND strftime('%Y-%m', date) = ?2",
@@ -1966,19 +3056,25 @@ pub fn budget_get_summary(member_id: String, month: String) -> Result<engine::ty
     ).unwrap_or(0.0);
 
     // Category breakdown for expenses
-    let mut cat_stmt = conn.prepare(
-        "SELECT category, SUM(amount) as total FROM budget_entries
+    let mut cat_stmt = conn
+        .prepare(
+            "SELECT category, SUM(amount) as total FROM budget_entries
          WHERE member_id = ?1 AND entry_type = 'expense' AND strftime('%Y-%m', date) = ?2
-         GROUP BY category ORDER BY total DESC"
-    ).map_err(|e| e.to_string())?;
-    let cat_rows = cat_stmt.query_map(rusqlite::params![member_id, month], |row| {
-        Ok(engine::types::CategoryTotal {
-            category: row.get(0)?,
-            total: row.get(1)?,
+         GROUP BY category ORDER BY total DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let cat_rows = cat_stmt
+        .query_map(rusqlite::params![member_id, month], |row| {
+            Ok(engine::types::CategoryTotal {
+                category: row.get(0)?,
+                total: row.get(1)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
     let mut categories = Vec::new();
-    for r in cat_rows { categories.push(r.map_err(|e| e.to_string())?); }
+    for r in cat_rows {
+        categories.push(r.map_err(|e| e.to_string())?);
+    }
 
     Ok(engine::types::BudgetSummary {
         month: month.clone(),
@@ -1991,9 +3087,16 @@ pub fn budget_get_summary(member_id: String, month: String) -> Result<engine::ty
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_delete_entry(id: String) -> Result<(), String> {
+pub async fn budget_delete_entry(id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().conn().execute("DELETE FROM budget_entries WHERE id = ?1", rusqlite::params![id])
+    engine
+        .db()
+        .conn_async()
+        .await
+        .execute(
+            "DELETE FROM budget_entries WHERE id = ?1",
+            rusqlite::params![id],
+        )
         .map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -2001,7 +3104,7 @@ pub fn budget_delete_entry(id: String) -> Result<(), String> {
 // ── Budget Pulse Commands ──
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_parse_natural(input: String) -> Result<serde_json::Value, String> {
+pub async fn budget_parse_natural(input: String) -> Result<serde_json::Value, String> {
     // Parse natural language like "spent $45 on groceries" or "got paid $2000"
     let lower = input.to_lowercase();
     let mut entry_type = "expense";
@@ -2010,7 +3113,12 @@ pub fn budget_parse_natural(input: String) -> Result<serde_json::Value, String> 
     let description = input.clone();
 
     // Detect type
-    if lower.contains("income") || lower.contains("paid") || lower.contains("earned") || lower.contains("salary") || lower.contains("got paid") {
+    if lower.contains("income")
+        || lower.contains("paid")
+        || lower.contains("earned")
+        || lower.contains("salary")
+        || lower.contains("got paid")
+    {
         entry_type = "income";
     } else if lower.contains("save") || lower.contains("invest") || lower.contains("savings") {
         entry_type = "savings";
@@ -2044,7 +3152,9 @@ pub fn budget_parse_natural(input: String) -> Result<serde_json::Value, String> 
                 break;
             }
         }
-        if category != "other" { break; }
+        if category != "other" {
+            break;
+        }
     }
 
     Ok(serde_json::json!({
@@ -2056,47 +3166,94 @@ pub fn budget_parse_natural(input: String) -> Result<serde_json::Value, String> 
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_detect_patterns(member_id: Option<String>) -> Result<Vec<engine::types::BudgetPattern>, String> {
+pub async fn budget_detect_patterns(
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::BudgetPattern>, String> {
     let engine = engine::get_engine();
-    engine.db().detect_budget_patterns(member_id.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .detect_budget_patterns(member_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_can_afford(amount: f64, month: String) -> Result<bool, String> {
+pub async fn budget_can_afford(amount: f64, month: String) -> Result<bool, String> {
     let engine = engine::get_engine();
-    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
-    engine.db().can_afford(&member_id, amount, &month).map_err(|e| e.to_string())
+    let member_id = tokio::task::block_in_place(|| engine.db().get_config("supabase_user_id"))
+        .unwrap_or_default()
+        .unwrap_or_else(|| "default_user".to_string());
+    engine
+        .db()
+        .can_afford(&member_id, amount, &month)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_create_goal(name: String, target_amount: f64, deadline: Option<String>, monthly_allocation: Option<f64>, member_id: Option<String>) -> Result<(), String> {
+pub async fn budget_create_goal(
+    name: String,
+    target_amount: f64,
+    deadline: Option<String>,
+    monthly_allocation: Option<f64>,
+    member_id: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().create_budget_goal(&id, member_id.as_deref(), &name, target_amount, deadline.as_deref(), monthly_allocation).map_err(|e| e.to_string())
+    engine
+        .db()
+        .create_budget_goal(
+            &id,
+            member_id.as_deref(),
+            &name,
+            target_amount,
+            deadline.as_deref(),
+            monthly_allocation,
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_get_goals(member_id: Option<String>) -> Result<Vec<engine::types::BudgetGoal>, String> {
+pub async fn budget_get_goals(
+    member_id: Option<String>,
+) -> Result<Vec<engine::types::BudgetGoal>, String> {
     let engine = engine::get_engine();
-    engine.db().get_budget_goals(member_id.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_budget_goals(member_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_update_goal(id: String, current_amount: f64) -> Result<(), String> {
+pub async fn budget_update_goal(id: String, current_amount: f64) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().update_budget_goal(&id, current_amount).map_err(|e| e.to_string())
+    engine
+        .db()
+        .update_budget_goal(&id, current_amount)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_delete_goal(id: String) -> Result<(), String> {
+pub async fn budget_delete_goal(id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().delete_budget_goal(&id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .delete_budget_goal(&id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn budget_goal_status(member_id: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn budget_goal_status(member_id: Option<String>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let goals = engine.db().get_budget_goals(member_id.as_deref()).map_err(|e| e.to_string())?;
+    let goals = engine
+        .db()
+        .get_budget_goals(member_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())?;
     let total_target: f64 = goals.iter().map(|g| g.target_amount).sum();
     let total_current: f64 = goals.iter().map(|g| g.current_amount).sum();
     Ok(serde_json::json!({
@@ -2108,18 +3265,29 @@ pub fn budget_goal_status(member_id: Option<String>) -> Result<serde_json::Value
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn budget_generate_report(month: String) -> Result<engine::types::MonthlyReport, String> {
+pub async fn budget_generate_report(month: String) -> Result<engine::types::MonthlyReport, String> {
     let engine = engine::get_engine();
-    let member_id = engine.db().get_config("supabase_user_id").unwrap_or_default().unwrap_or_else(|| "default_user".to_string());
-    engine.db().get_monthly_report(&member_id, &month).map_err(|e| e.to_string())
+    let member_id = tokio::task::block_in_place(|| engine.db().get_config("supabase_user_id"))
+        .unwrap_or_default()
+        .unwrap_or_else(|| "default_user".to_string());
+    engine
+        .db()
+        .get_monthly_report(&member_id, &month)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Content Feed ──
 
 #[tauri::command]
-pub fn feed_get_items(user_id: String, member_id: Option<String>, content_type: Option<String>, unread_only: bool) -> Result<Vec<engine::types::ContentFeedItem>, String> {
+pub async fn feed_get_items(
+    user_id: String,
+    member_id: Option<String>,
+    content_type: Option<String>,
+    unread_only: bool,
+) -> Result<Vec<engine::types::ContentFeedItem>, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let mut conditions = Vec::<String>::new();
     let mut params_vec: Vec<String> = Vec::new();
 
@@ -2137,39 +3305,64 @@ pub fn feed_get_items(user_id: String, member_id: Option<String>, content_type: 
         conditions.push("is_read = 0".to_string());
     }
 
-    let where_clause = if conditions.is_empty() { String::new() } else { format!("WHERE {}", conditions.join(" AND ")) };
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
     let query = format!(
         "SELECT id, member_id, content_type, title, body, source_url, category, is_read, is_bookmarked, created_at, expires_at
          FROM content_feed {} ORDER BY is_bookmarked DESC, is_read ASC, created_at DESC LIMIT 50", where_clause
     );
 
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
-    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
-    let rows = stmt.query_map(&params_refs[..], |row| {
-        Ok(engine::types::ContentFeedItem {
-            id: row.get(0)?, member_id: row.get(1)?, content_type: row.get(2)?, title: row.get(3)?,
-            body: row.get(4)?, source_url: row.get(5)?, category: row.get(6)?,
-            is_read: row.get::<_, i64>(7)? != 0, is_bookmarked: row.get::<_, i64>(8)? != 0,
-            created_at: row.get(9)?, expires_at: row.get(10)?,
+    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
+    let rows = stmt
+        .query_map(&params_refs[..], |row| {
+            Ok(engine::types::ContentFeedItem {
+                id: row.get(0)?,
+                member_id: row.get(1)?,
+                content_type: row.get(2)?,
+                title: row.get(3)?,
+                body: row.get(4)?,
+                source_url: row.get(5)?,
+                category: row.get(6)?,
+                is_read: row.get::<_, i64>(7)? != 0,
+                is_bookmarked: row.get::<_, i64>(8)? != 0,
+                created_at: row.get(9)?,
+                expires_at: row.get(10)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for r in rows { result.push(r.map_err(|e| e.to_string())?); }
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
     Ok(result)
 }
 
 #[tauri::command]
-pub fn feed_mark_read(user_id: String, id: String) -> Result<(), String> {
+pub async fn feed_mark_read(user_id: String, id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().conn().execute("UPDATE content_feed SET is_read = 1 WHERE id = ?1 AND member_id = ?2", rusqlite::params![id, user_id])
+    engine
+        .db()
+        .conn_async()
+        .await
+        .execute(
+            "UPDATE content_feed SET is_read = 1 WHERE id = ?1 AND member_id = ?2",
+            rusqlite::params![id, user_id],
+        )
         .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn feed_toggle_bookmark(user_id: String, id: String) -> Result<(), String> {
+pub async fn feed_toggle_bookmark(user_id: String, id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().conn().execute(
+    engine.db().conn_async().await.execute(
         "UPDATE content_feed SET is_bookmarked = CASE WHEN is_bookmarked = 1 THEN 0 ELSE 1 END WHERE id = ?1 AND member_id = ?2",
         rusqlite::params![id, user_id],
     ).map_err(|e| e.to_string())?;
@@ -2177,10 +3370,16 @@ pub fn feed_toggle_bookmark(user_id: String, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn feed_add_item(member_id: Option<String>, content_type: String, title: String, body: String,
-                      source_url: Option<String>, category: Option<String>) -> Result<engine::types::ContentFeedItem, String> {
+pub async fn feed_add_item(
+    member_id: Option<String>,
+    content_type: String,
+    title: String,
+    body: String,
+    source_url: Option<String>,
+    category: Option<String>,
+) -> Result<engine::types::ContentFeedItem, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let id = uuid::Uuid::new_v4().to_string();
     let now = engine::db::EngineDb::now();
     conn.execute(
@@ -2189,18 +3388,32 @@ pub fn feed_add_item(member_id: Option<String>, content_type: String, title: Str
         rusqlite::params![id, member_id, content_type, title, body, source_url, category, now],
     ).map_err(|e| e.to_string())?;
     Ok(engine::types::ContentFeedItem {
-        id, member_id, content_type, title, body, source_url, category,
-        is_read: false, is_bookmarked: false, created_at: now, expires_at: None,
+        id,
+        member_id,
+        content_type,
+        title,
+        body,
+        source_url,
+        category,
+        is_read: false,
+        is_bookmarked: false,
+        created_at: now,
+        expires_at: None,
     })
 }
 
 #[tauri::command]
-pub async fn feed_generate(user_id: String, member_id: Option<String>, interests: Option<String>) -> Result<Vec<engine::types::ContentFeedItem>, String> {
+pub async fn feed_generate(
+    user_id: String,
+    member_id: Option<String>,
+    interests: Option<String>,
+) -> Result<Vec<engine::types::ContentFeedItem>, String> {
     #[allow(unused_variables)]
     let _uid = user_id;
     let engine = engine::get_engine();
 
-    let interest_text = interests.unwrap_or_else(|| "general knowledge, technology, health, finance, fun facts".to_string());
+    let interest_text = interests
+        .unwrap_or_else(|| "general knowledge, technology, health, finance, fun facts".to_string());
 
     let prompt = format!(
         "Generate a personalized daily content feed for someone interested in: {interest_text}
@@ -2240,15 +3453,18 @@ Make the content genuinely useful and interesting. Not generic filler."
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(1500), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1500), None, None)
         .await
         .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
     let json_str = content
-        .strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content)
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
         .trim();
 
     #[derive(serde::Deserialize)]
@@ -2263,7 +3479,7 @@ Make the content genuinely useful and interesting. Not generic filler."
     let items: Vec<FeedItem> = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse AI response: {}. Raw: {}", e, json_str))?;
 
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let now = engine::db::EngineDb::now();
     let mut result = Vec::new();
 
@@ -2275,10 +3491,17 @@ Make the content genuinely useful and interesting. Not generic filler."
             rusqlite::params![id, member_id, item.content_type, item.title, item.body, item.source_url, item.category, now],
         ).map_err(|e| e.to_string())?;
         result.push(engine::types::ContentFeedItem {
-            id, member_id: member_id.clone(), content_type: item.content_type.clone(),
-            title: item.title.clone(), body: item.body.clone(),
-            source_url: item.source_url.clone(), category: item.category.clone(),
-            is_read: false, is_bookmarked: false, created_at: now.clone(), expires_at: None,
+            id,
+            member_id: member_id.clone(),
+            content_type: item.content_type.clone(),
+            title: item.title.clone(),
+            body: item.body.clone(),
+            source_url: item.source_url.clone(),
+            category: item.category.clone(),
+            is_read: false,
+            is_bookmarked: false,
+            created_at: now.clone(),
+            expires_at: None,
         });
     }
 
@@ -2288,7 +3511,9 @@ Make the content genuinely useful and interesting. Not generic filler."
 // ── Fridge Scanner ──
 
 #[tauri::command]
-pub async fn fridge_scan(scan_description: String) -> Result<engine::types::FridgeScanResult, String> {
+pub async fn fridge_scan(
+    scan_description: String,
+) -> Result<engine::types::FridgeScanResult, String> {
     let engine = engine::get_engine();
 
     let prompt = format!(
@@ -2322,15 +3547,18 @@ Be specific with ingredient names. Use standard grocery terms."
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(1500), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1500), None, None)
         .await
         .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
     let json_str = content
-        .strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content)
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
         .trim();
 
     #[derive(serde::Deserialize)]
@@ -2353,15 +3581,27 @@ Be specific with ingredient names. Use standard grocery terms."
         .map_err(|e| format!("Failed to parse scan: {}. Raw: {}", e, json_str))?;
 
     let now = chrono::Utc::now();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let mut added_items = Vec::new();
 
     for item in &scan.items {
         let id = uuid::Uuid::new_v4().to_string();
         let expiry = match item.expiry_window.as_deref() {
-            Some("fresh") => Some((now + chrono::Duration::days(4)).format("%Y-%m-%d").to_string()),
-            Some("medium") => Some((now + chrono::Duration::days(14)).format("%Y-%m-%d").to_string()),
-            Some("long") => Some((now + chrono::Duration::days(60)).format("%Y-%m-%d").to_string()),
+            Some("fresh") => Some(
+                (now + chrono::Duration::days(4))
+                    .format("%Y-%m-%d")
+                    .to_string(),
+            ),
+            Some("medium") => Some(
+                (now + chrono::Duration::days(14))
+                    .format("%Y-%m-%d")
+                    .to_string(),
+            ),
+            Some("long") => Some(
+                (now + chrono::Duration::days(60))
+                    .format("%Y-%m-%d")
+                    .to_string(),
+            ),
             _ => None,
         };
         let member_id = get_supabase_user_id();
@@ -2371,9 +3611,17 @@ Be specific with ingredient names. Use standard grocery terms."
             rusqlite::params![id, member_id, item.name, item.quantity, item.unit, item.category, expiry, now.to_rfc3339()],
         ).map_err(|e| e.to_string())?;
         added_items.push(engine::types::KitchenInventoryItem {
-            id, member_id, name: item.name.clone(), quantity: item.quantity, unit: item.unit.clone(),
-            category: item.category.clone(), expiry_date: expiry, location: Some("fridge".to_string()),
-            last_restocked: Some(now.to_rfc3339()), created_at: now.to_rfc3339(), updated_at: now.to_rfc3339(),
+            id,
+            member_id,
+            name: item.name.clone(),
+            quantity: item.quantity,
+            unit: item.unit.clone(),
+            category: item.category.clone(),
+            expiry_date: expiry,
+            location: Some("fridge".to_string()),
+            last_restocked: Some(now.to_rfc3339()),
+            created_at: now.to_rfc3339(),
+            updated_at: now.to_rfc3339(),
         });
     }
 
@@ -2386,32 +3634,54 @@ Be specific with ingredient names. Use standard grocery terms."
 }
 
 #[tauri::command]
-pub fn fridge_what_can_i_make() -> Result<engine::types::MealMatchResult, String> {
+pub async fn fridge_what_can_i_make() -> Result<engine::types::MealMatchResult, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
 
-    let mut inv_stmt = conn.prepare("SELECT name, quantity FROM kitchen_inventory").map_err(|e| e.to_string())?;
-    let inv_rows = inv_stmt.query_map([], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, Option<f64>>(1)?))
-    }).map_err(|e| e.to_string())?;
-    let mut inventory: std::collections::HashMap<String, Option<f64>> = std::collections::HashMap::new();
-    for r in inv_rows {
-        let (name, qty) = r.map_err(|e| e.to_string())?;
-        inventory.insert(name.to_lowercase(), qty);
-    }
+    // Get inventory (sync block — conn guard dropped before any await)
+    let inventory: std::collections::HashMap<String, Option<f64>> = {
+        let conn = engine.db().conn_blocking();
+        let mut inv_stmt = conn
+            .prepare("SELECT name, quantity FROM kitchen_inventory")
+            .map_err(|e| e.to_string())?;
+        let inv_rows = inv_stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, Option<f64>>(1)?))
+            })
+            .map_err(|e| e.to_string())?;
+        let mut inv = std::collections::HashMap::new();
+        for r in inv_rows {
+            let (name, qty) = r.map_err(|e| e.to_string())?;
+            inv.insert(name.to_lowercase(), qty);
+        }
+        inv
+    }; // conn guard dropped here
 
-    let meals = engine.db().get_meals(None, None, false).map_err(|e| e.to_string())?;
+    let meals = engine
+        .db()
+        .get_meals(None, None, false)
+        .await
+        .map_err(|e| e.to_string())?;
     let mut matches = Vec::new();
 
     for meal in &meals {
-        let ingredients = engine.db().get_meal_ingredients(&meal.id).map_err(|e| e.to_string())?;
+        let ingredients = engine
+            .db()
+            .get_meal_ingredients(&meal.id)
+            .await
+            .map_err(|e| e.to_string())?;
         let mut have = 0i64;
         let mut missing: Vec<String> = Vec::new();
 
         for ing in &ingredients {
             let ing_lower = ing.name.to_lowercase();
-            let has_it = inventory.keys().any(|inv| inv.contains(&ing_lower) || ing_lower.contains(inv));
-            if has_it { have += 1; } else { missing.push(ing.name.clone()); }
+            let has_it = inventory
+                .keys()
+                .any(|inv| inv.contains(&ing_lower) || ing_lower.contains(inv));
+            if has_it {
+                have += 1;
+            } else {
+                missing.push(ing.name.clone());
+            }
         }
 
         let total = ingredients.len() as i64;
@@ -2419,15 +3689,23 @@ pub fn fridge_what_can_i_make() -> Result<engine::types::MealMatchResult, String
             let pct = (have as f64 / total as f64) * 100.0;
             if pct >= 50.0 {
                 matches.push(engine::types::MealMatch {
-                    meal_id: meal.id.clone(), meal_name: meal.name.clone(),
-                    have_count: have, total_count: total, match_pct: pct,
-                    missing_ingredients: missing.clone(), can_make: missing.is_empty(),
+                    meal_id: meal.id.clone(),
+                    meal_name: meal.name.clone(),
+                    have_count: have,
+                    total_count: total,
+                    match_pct: pct,
+                    missing_ingredients: missing.clone(),
+                    can_make: missing.is_empty(),
                 });
             }
         }
     }
 
-    matches.sort_by(|a, b| b.match_pct.partial_cmp(&a.match_pct).unwrap_or(std::cmp::Ordering::Equal));
+    matches.sort_by(|a, b| {
+        b.match_pct
+            .partial_cmp(&a.match_pct)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let can_make_count = matches.iter().filter(|m| m.can_make).count() as i64;
 
     Ok(engine::types::MealMatchResult {
@@ -2438,62 +3716,100 @@ pub fn fridge_what_can_i_make() -> Result<engine::types::MealMatchResult, String
 }
 
 #[tauri::command]
-pub fn fridge_expiring_soon(days: Option<i64>) -> Result<Vec<engine::types::KitchenInventoryItem>, String> {
+pub async fn fridge_expiring_soon(
+    days: Option<i64>,
+) -> Result<Vec<engine::types::KitchenInventoryItem>, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let d = days.unwrap_or(3);
-    let future_date = (chrono::Utc::now() + chrono::Duration::days(d)).format("%Y-%m-%d").to_string();
+    let future_date = (chrono::Utc::now() + chrono::Duration::days(d))
+        .format("%Y-%m-%d")
+        .to_string();
     let member_id = get_supabase_user_id();
 
     let mut stmt = conn.prepare(
         "SELECT id, member_id, name, quantity, unit, category, expiry_date, location, last_restocked, created_at, updated_at
          FROM kitchen_inventory WHERE member_id = ?1 AND expiry_date IS NOT NULL AND expiry_date <= ?2 ORDER BY expiry_date"
     ).map_err(|e| e.to_string())?;
-    let rows = stmt.query_map(rusqlite::params![member_id, future_date], |row| {
-        Ok(engine::types::KitchenInventoryItem {
-            id: row.get(0)?, member_id: row.get(1)?, name: row.get(2)?, quantity: row.get(3)?, unit: row.get(4)?,
-            category: row.get(5)?, expiry_date: row.get(6)?, location: row.get(7)?,
-            last_restocked: row.get(8)?, created_at: row.get(9)?, updated_at: row.get(10)?,
+    let rows = stmt
+        .query_map(rusqlite::params![member_id, future_date], |row| {
+            Ok(engine::types::KitchenInventoryItem {
+                id: row.get(0)?,
+                member_id: row.get(1)?,
+                name: row.get(2)?,
+                quantity: row.get(3)?,
+                unit: row.get(4)?,
+                category: row.get(5)?,
+                expiry_date: row.get(6)?,
+                location: row.get(7)?,
+                last_restocked: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for r in rows { result.push(r.map_err(|e| e.to_string())?); }
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
     Ok(result)
 }
 
 #[tauri::command]
-pub fn fridge_shopping_for_meals() -> Result<Vec<engine::types::GroceryItem>, String> {
+pub async fn fridge_shopping_for_meals() -> Result<Vec<engine::types::GroceryItem>, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
 
-    let mut inv_stmt = conn.prepare("SELECT LOWER(name) FROM kitchen_inventory").map_err(|e| e.to_string())?;
-    let inv_rows = inv_stmt.query_map([], |row| Ok(row.get::<_, String>(0)?)).map_err(|e| e.to_string())?;
+    let mut inv_stmt = conn
+        .prepare("SELECT LOWER(name) FROM kitchen_inventory")
+        .map_err(|e| e.to_string())?;
+    let inv_rows = inv_stmt
+        .query_map([], |row| Ok(row.get::<_, String>(0)?))
+        .map_err(|e| e.to_string())?;
     let mut inventory_set = std::collections::HashSet::new();
-    for r in inv_rows { inventory_set.insert(r.map_err(|e| e.to_string())?); }
+    for r in inv_rows {
+        inventory_set.insert(r.map_err(|e| e.to_string())?);
+    }
 
     let mut ing_stmt = conn.prepare(
         "SELECT DISTINCT i.name, i.quantity, i.unit, i.category, i.estimated_cost, i.meal_id
          FROM meal_ingredients i INNER JOIN meals m ON i.meal_id = m.id WHERE m.is_favorite = 1 OR m.times_made > 0
          ORDER BY i.category, i.name"
     ).map_err(|e| e.to_string())?;
-    let ing_rows = ing_stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?, row.get::<_, Option<f64>>(1)?, row.get::<_, Option<String>>(2)?,
-            row.get::<_, Option<String>>(3)?, row.get::<_, Option<f64>>(4)?, row.get::<_, String>(5)?,
-        ))
-    }).map_err(|e| e.to_string())?;
+    let ing_rows = ing_stmt
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Option<f64>>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<f64>>(4)?,
+                row.get::<_, String>(5)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
 
     let mut items = Vec::new();
     for r in ing_rows {
         let (name, qty, unit, category, cost, meal_id) = r.map_err(|e| e.to_string())?;
         let name_lower = name.to_lowercase();
-        let has_it = inventory_set.iter().any(|inv| inv.contains(&name_lower) || name_lower.contains(inv));
+        let has_it = inventory_set
+            .iter()
+            .any(|inv| inv.contains(&name_lower) || name_lower.contains(inv));
         if !has_it {
             let id = uuid::Uuid::new_v4().to_string();
             items.push(engine::types::GroceryItem {
-                id, member_id: None, name, quantity: qty, unit, category,
-                estimated_cost: cost, is_checked: false, source_meal_id: Some(meal_id),
-                week_start: None, created_at: engine::db::EngineDb::now(),
+                id,
+                member_id: None,
+                name,
+                quantity: qty,
+                unit,
+                category,
+                estimated_cost: cost,
+                is_checked: false,
+                source_meal_id: Some(meal_id),
+                week_start: None,
+                created_at: engine::db::EngineDb::now(),
             });
         }
     }
@@ -2503,7 +3819,10 @@ pub fn fridge_shopping_for_meals() -> Result<Vec<engine::types::GroceryItem>, St
 // ── Life Autopilot ──
 
 #[tauri::command]
-pub async fn life_analyze_document(text: String, doc_type: Option<String>) -> Result<engine::types::LifeDocument, String> {
+pub async fn life_analyze_document(
+    text: String,
+    doc_type: Option<String>,
+) -> Result<engine::types::LifeDocument, String> {
     let engine = engine::get_engine();
 
     let doc_type_str = doc_type.as_deref().unwrap_or("unknown");
@@ -2549,15 +3868,18 @@ Be thorough but concise. Extract EVERY date and action item mentioned."
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
         .await
         .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
     let json_str = content
-        .strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content)
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
         .trim();
 
     #[derive(serde::Deserialize)]
@@ -2571,11 +3893,24 @@ Be thorough but concise. Extract EVERY date and action item mentioned."
         knowledge: Vec<KnowledgeItem>,
     }
     #[derive(serde::Deserialize, serde::Serialize)]
-    struct DateItem { date: String, description: String, #[serde(rename = "type")] dtype: String }
+    struct DateItem {
+        date: String,
+        description: String,
+        #[serde(rename = "type")]
+        dtype: String,
+    }
     #[derive(serde::Deserialize, serde::Serialize)]
-    struct ActionItem { action: String, deadline: Option<String>, priority: Option<String> }
+    struct ActionItem {
+        action: String,
+        deadline: Option<String>,
+        priority: Option<String>,
+    }
     #[derive(serde::Deserialize)]
-    struct KnowledgeItem { category: String, key: String, value: String }
+    struct KnowledgeItem {
+        category: String,
+        key: String,
+        value: String,
+    }
 
     let analysis: DocAnalysis = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse analysis: {}. Raw: {}", e, json_str))?;
@@ -2584,20 +3919,38 @@ Be thorough but concise. Extract EVERY date and action item mentioned."
     let key_dates_json = serde_json::to_string(&analysis.key_dates).unwrap_or_default();
     let action_items_json = serde_json::to_string(&analysis.action_items).unwrap_or_default();
 
-    engine.db().add_document(
-        &doc_id, None, &analysis.doc_type, &analysis.title,
-        Some(&text), Some(&analysis.summary), Some(&key_dates_json),
-        Some(&action_items_json), "ai-analysis",
-    ).map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .add_document(
+            &doc_id,
+            None,
+            &analysis.doc_type,
+            &analysis.title,
+            Some(&text),
+            Some(&analysis.summary),
+            Some(&key_dates_json),
+            Some(&action_items_json),
+            "ai-analysis",
+        )
+        .map_err(|e| e.to_string())?;
 
     // Auto-create reminders from key dates
     for date_item in &analysis.key_dates {
         let reminder_id = uuid::Uuid::new_v4().to_string();
-        let priority = if date_item.dtype == "deadline" { "high" } else { "normal" };
+        let priority = if date_item.dtype == "deadline" {
+            "high"
+        } else {
+            "normal"
+        };
         let _ = engine.db().add_reminder(
-            &reminder_id, None, Some(&doc_id), &date_item.dtype,
-            &format!("{}: {}", date_item.description, date_item.date), None,
-            &date_item.date, priority,
+            &reminder_id,
+            None,
+            Some(&doc_id),
+            &date_item.dtype,
+            &format!("{}: {}", date_item.description, date_item.date),
+            None,
+            &date_item.date,
+            priority,
         );
     }
 
@@ -2607,52 +3960,108 @@ Be thorough but concise. Extract EVERY date and action item mentioned."
         let due = action.deadline.as_deref().unwrap_or("2026-12-31");
         let pri = action.priority.as_deref().unwrap_or("normal");
         let _ = engine.db().add_reminder(
-            &reminder_id, None, Some(&doc_id), "custom",
-            &action.action, None, due, pri,
+            &reminder_id,
+            None,
+            Some(&doc_id),
+            "custom",
+            &action.action,
+            None,
+            due,
+            pri,
         );
     }
 
     // Store knowledge items
     for know in &analysis.knowledge {
         let know_id = uuid::Uuid::new_v4().to_string();
-        engine.db().add_knowledge(&know_id, None, &know.category, &know.key, &know.value).ok();
+        engine
+            .db()
+            .add_knowledge(&know_id, None, &know.category, &know.key, &know.value)
+            .ok();
     }
 
     // Get the full document back
-    let docs = engine.db().get_documents(None, None).map_err(|e| e.to_string())?;
-    docs.into_iter().find(|d| d.id == doc_id)
+    let docs = engine
+        .db()
+        .get_documents(None, None)
+        .await
+        .map_err(|e| e.to_string())?;
+    docs.into_iter()
+        .find(|d| d.id == doc_id)
         .ok_or_else(|| "Failed to load created document".to_string())
 }
 
 #[tauri::command]
-pub fn life_get_dashboard() -> Result<engine::types::LifeAutopilotDashboard, String> {
+pub async fn life_get_dashboard() -> Result<engine::types::LifeAutopilotDashboard, String> {
     let engine = engine::get_engine();
-    engine.db().get_life_dashboard().map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_life_dashboard()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn life_get_documents(member_id: Option<String>, doc_type: Option<String>) -> Result<Vec<engine::types::LifeDocument>, String> {
+pub async fn life_get_documents(
+    member_id: Option<String>,
+    doc_type: Option<String>,
+) -> Result<Vec<engine::types::LifeDocument>, String> {
     let engine = engine::get_engine();
-    engine.db().get_documents(member_id.as_deref(), doc_type.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_documents(member_id.as_deref(), doc_type.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn life_get_reminders(days: Option<i64>) -> Result<Vec<engine::types::LifeReminder>, String> {
+pub async fn life_get_reminders(
+    days: Option<i64>,
+) -> Result<Vec<engine::types::LifeReminder>, String> {
     let engine = engine::get_engine();
-    engine.db().get_upcoming_reminders(days.unwrap_or(30)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_upcoming_reminders(days.unwrap_or(30))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn life_get_knowledge(member_id: Option<String>, category: Option<String>) -> Result<Vec<engine::types::LifeKnowledge>, String> {
+pub async fn life_get_knowledge(
+    member_id: Option<String>,
+    category: Option<String>,
+) -> Result<Vec<engine::types::LifeKnowledge>, String> {
     let engine = engine::get_engine();
-    engine.db().get_knowledge(member_id.as_deref(), category.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_knowledge(member_id.as_deref(), category.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn life_add_reminder(member_id: Option<String>, title: String, description: Option<String>, due_date: String, priority: Option<String>) -> Result<(), String> {
+pub async fn life_add_reminder(
+    member_id: Option<String>,
+    title: String,
+    description: Option<String>,
+    due_date: String,
+    priority: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_reminder(&id, member_id.as_deref(), None, "custom", &title, description.as_deref(), &due_date, priority.as_deref().unwrap_or("normal"))
+    engine
+        .db()
+        .add_reminder(
+            &id,
+            member_id.as_deref(),
+            None,
+            "custom",
+            &title,
+            description.as_deref(),
+            &due_date,
+            priority.as_deref().unwrap_or("normal"),
+        )
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -2661,15 +4070,32 @@ pub async fn life_ask(question: String) -> Result<String, String> {
     let engine = engine::get_engine();
 
     // Gather context from all knowledge
-    let knowledge = engine.db().get_knowledge(None, None).map_err(|e| e.to_string())?;
-    let knowledge_context: String = knowledge.iter()
+    let knowledge = engine
+        .db()
+        .get_knowledge(None, None)
+        .await
+        .map_err(|e| e.to_string())?;
+    let knowledge_context: String = knowledge
+        .iter()
         .map(|k| format!("{}: {} = {}", k.category, k.key, k.value))
-        .collect::<Vec<_>>().join("\n");
+        .collect::<Vec<_>>()
+        .join("\n");
 
-    let reminders = engine.db().get_upcoming_reminders(60).map_err(|e| e.to_string())?;
-    let reminders_context: String = reminders.iter()
-        .map(|r| format!("[{}] {} (due: {}, priority: {})", r.reminder_type, r.title, r.due_date, r.priority))
-        .collect::<Vec<_>>().join("\n");
+    let reminders = engine
+        .db()
+        .get_upcoming_reminders(60)
+        .await
+        .map_err(|e| e.to_string())?;
+    let reminders_context: String = reminders
+        .iter()
+        .map(|r| {
+            format!(
+                "[{}] {} (due: {}, priority: {})",
+                r.reminder_type, r.title, r.due_date, r.priority
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     let prompt = format!(
         "You are a family life management AI assistant. Answer the user's question using the knowledge base and reminders available.
@@ -2692,7 +4118,7 @@ Provide a helpful, specific answer based on the information above. If you don't 
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(1000), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1000), None, None)
         .await
         .map_err(|e| format!("AI failed: {}", e))?;
 
@@ -2701,84 +4127,228 @@ Provide a helpful, specific answer based on the information above. If you don't 
 
 // ── Life Autopilot: Orbit Commands ──
 
-#[tauri::command]
-pub fn life_add_task(user_id: String, title: String, category: Option<String>, priority: Option<String>, due_date: Option<String>, energy_type: Option<String>) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_add_task(
+    user_id: String,
+    title: String,
+    category: Option<String>,
+    priority: Option<String>,
+    due_date: Option<String>,
+    energy_type: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_life_task(&id, &user_id, &title, category.as_deref(), priority.as_deref().unwrap_or("medium"), due_date.as_deref(), energy_type.as_deref()).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn life_get_tasks(user_id: String, status: Option<String>) -> Result<Vec<engine::types::LifeTask>, String> {
-    let engine = engine::get_engine();
-    engine.db().get_life_tasks(&user_id, status.as_deref()).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn life_complete_task(user_id: String, task_id: String) -> Result<(), String> {
-    let engine = engine::get_engine();
-    engine.db().update_life_task_status(&user_id, &task_id, "completed").map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn life_delete_task(user_id: String, task_id: String) -> Result<(), String> {
-    let engine = engine::get_engine();
-    engine.db().delete_life_task(&user_id, &task_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_life_task(
+            &id,
+            &member_id,
+            &title,
+            category.as_deref(),
+            priority.as_deref().unwrap_or("medium"),
+            due_date.as_deref(),
+            energy_type.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn life_add_habit(user_id: String, name: String, category: Option<String>, frequency: Option<String>, target_count: Option<i64>) -> Result<(), String> {
+pub async fn life_get_tasks(
+    user_id: String,
+    status: Option<String>,
+) -> Result<Vec<engine::types::LifeTask>, String> {
     let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_life_tasks(&member_id, status.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_complete_task(user_id: String, task_id: String) -> Result<(), String> {
+    let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .update_life_task_status(&member_id, &task_id, "completed")
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_delete_task(user_id: String, task_id: String) -> Result<(), String> {
+    let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .delete_life_task(&member_id, &task_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_add_habit(
+    user_id: String,
+    name: String,
+    category: Option<String>,
+    frequency: Option<String>,
+    target_count: Option<i64>,
+) -> Result<(), String> {
+    let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_life_habit(&id, &user_id, &name, category.as_deref(), frequency.as_deref().unwrap_or("daily"), target_count.unwrap_or(1)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_life_habit(
+            &id,
+            &member_id,
+            &name,
+            category.as_deref(),
+            frequency.as_deref().unwrap_or("daily"),
+            target_count.unwrap_or(1),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn life_get_habits(user_id: String, active_only: Option<bool>) -> Result<Vec<engine::types::LifeHabit>, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_get_habits(
+    user_id: String,
+    active_only: Option<bool>,
+) -> Result<Vec<engine::types::LifeHabit>, String> {
     let engine = engine::get_engine();
-    engine.db().get_life_habits(&user_id, active_only.unwrap_or(true)).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_life_habits(&member_id, active_only.unwrap_or(true))
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn life_log_habit(user_id: String, habit_id: String) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_log_habit(user_id: String, habit_id: String) -> Result<(), String> {
     let engine = engine::get_engine();
+    let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
     let id = uuid::Uuid::new_v4().to_string();
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    engine.db().log_life_habit(&id, &habit_id, &user_id, &today, 1).map_err(|e| e.to_string())
+    engine
+        .db()
+        .log_life_habit(&id, &habit_id, &member_id, &today, 1)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn life_get_orbit_dashboard(user_id: String) -> Result<engine::types::OrbitDashboard, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_get_orbit_dashboard(
+    user_id: String,
+) -> Result<engine::types::OrbitDashboard, String> {
     let engine = engine::get_engine();
-    engine.db().get_orbit_dashboard(&user_id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_orbit_dashboard(&member_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn life_add_daily_focus(user_id: String, task_id: String, position: Option<i64>) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_add_daily_focus(
+    user_id: String,
+    task_id: String,
+    position: Option<i64>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
     let id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_daily_focus(&id, &user_id, &task_id, position.unwrap_or(0)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_daily_focus(&id, &member_id, &task_id, position.unwrap_or(0))
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn life_morning_brief(user_id: String) -> Result<String, String> {
     let engine = engine::get_engine();
-    let dashboard = engine.db().get_orbit_dashboard(&user_id).map_err(|e| e.to_string())?;
-    let mut brief = String::from("☀️ Good morning!\n\n");
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    let dashboard = engine
+        .db()
+        .get_orbit_dashboard(&member_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let hour = chrono::Local::now().hour();
+    let greeting = if hour < 12 {
+        "☀️ Good morning!"
+    } else if hour < 17 {
+        "🌤️ Good afternoon!"
+    } else {
+        "🌙 Good evening!"
+    };
+
+    let today = chrono::Local::now().format("%A, %B %d").to_string();
+    let mut brief = format!("{} — {}\n\n", greeting, today);
+
+    // Today's focus
     if !dashboard.today_focus.is_empty() {
-        brief.push_str("🎯 Today's Focus:\n");
-        for (i, f) in dashboard.today_focus.iter().enumerate() {
+        brief.push_str("🎯 ON DECK:\n");
+        for (i, f) in dashboard.today_focus.iter().enumerate().take(3) {
             if let Some(ref task) = f.task {
-                brief.push_str(&format!("  {}. {}\n", i + 1, task.title));
+                let emoji = match task.priority.as_str() {
+                    "urgent" => "🔴",
+                    "high" => "🟠",
+                    _ => "▸",
+                };
+                brief.push_str(&format!("  {} {} \n", emoji, task.title));
             }
         }
+        brief.push('\n');
     }
-    if !dashboard.pending_tasks.is_empty() {
-        brief.push_str(&format!("\n📋 {} pending tasks\n", dashboard.pending_tasks.len()));
+
+    // Urgent/high pending tasks
+    let urgent: Vec<_> = dashboard
+        .pending_tasks
+        .iter()
+        .filter(|t| t.priority == "urgent" || t.priority == "high")
+        .take(3)
+        .collect();
+    if !urgent.is_empty() {
+        brief.push_str("⚡ PRIORITIES:\n");
+        for task in &urgent {
+            brief.push_str(&format!("  ▸ {} \n", task.title));
+        }
+        brief.push('\n');
     }
+
+    // Overall status
+    let total_pending = dashboard.pending_tasks.len();
+    if total_pending == 0 {
+        brief.push_str("✨ Nothing pending — enjoy the clearsky.\n");
+    } else {
+        brief.push_str(&format!(
+            "📋 {} task{} in your orbit\n",
+            total_pending,
+            if total_pending == 1 { "" } else { "s" }
+        ));
+    }
+
     if dashboard.streak_total > 0 {
-        brief.push_str(&format!("🔥 {} total habit streaks\n", dashboard.streak_total));
+        let streak_msg = if dashboard.streak_total >= 7 {
+            format!("🔥 {} — habit power! Keep the fire burning.", dashboard.streak_total)
+        } else {
+            format!("🔥 {} day streak — momentum is building.", dashboard.streak_total)
+        };
+        brief.push_str(&streak_msg);
+        brief.push('\n');
+    } else if !dashboard.active_habits.is_empty() {
+        brief.push_str("🔄 Habits active — log one today to start a streak!\n");
     }
+
     Ok(brief)
 }
 
@@ -2801,25 +4371,166 @@ pub async fn life_smart_reschedule(task_id: String) -> Result<engine::types::Lif
 #[tauri::command]
 pub async fn life_parse_input(input: String) -> Result<serde_json::Value, String> {
     let lower = input.to_lowercase();
-    let action = if lower.contains("remind") || lower.contains("remember") { "reminder" }
-        else if lower.contains("habit") || lower.contains("daily") { "habit" }
-        else { "task" };
+
+    // Action detection
+    let action = if lower.contains("remind") || lower.contains("remember") {
+        "reminder"
+    } else if lower.contains("habit") || lower.contains("daily") || lower.contains("every day") {
+        "habit"
+    } else {
+        "task"
+    };
+
+    // Priority detection
+    let priority = if lower.contains("urgent") || lower.contains("asap") || lower.contains("critical") {
+        Some("urgent".to_string())
+    } else if lower.contains("high priority") || lower.contains("important") || lower.contains("!") {
+        Some("high".to_string())
+    } else if lower.contains("low priority") || lower.contains("whenever") || lower.contains("someday") {
+        Some("low".to_string())
+    } else {
+        None
+    };
+
+    // Category detection
+    let category = if lower.contains("gym") || lower.contains("workout") || lower.contains("exercise") || lower.contains("run") || lower.contains("walk") {
+        Some("health".to_string())
+    } else if lower.contains("call") || lower.contains("email") || lower.contains("meeting") || lower.contains("presentation") {
+        Some("work".to_string())
+    } else if lower.contains("buy") || lower.contains("groceries") || lower.contains("shop") || lower.contains("store") {
+        Some("personal".to_string())
+    } else if lower.contains("pay") || lower.contains("bill") || lower.contains("budget") || lower.contains("money") {
+        Some("finance".to_string())
+    } else if lower.contains("learn") || lower.contains("read") || lower.contains("study") || lower.contains("course") {
+        Some("learning".to_string())
+    } else if lower.contains("write") || lower.contains("paint") || lower.contains("draw") || lower.contains("music") || lower.contains("song") {
+        Some("creative".to_string())
+    } else {
+        None
+    };
+
+    // Energy type detection
+    let energy_type = if lower.contains("high energy") || lower.contains("⚡") || lower.contains("intense") {
+        Some("high".to_string())
+    } else if lower.contains("low energy") || lower.contains("🌙") || lower.contains("chill") {
+        Some("low".to_string())
+    } else {
+        None
+    };
+
+    // Date extraction — look for patterns like "by 4/20", "tomorrow", "next friday", "in 3 days"
+    let due_date = extract_date(&input);
+
+    // Clean title: remove date phrases, priority words, category words for a cleaner title
+    let mut title = input.clone();
+    // Remove common date phrases
+    let date_patterns = [
+        r"by\s+\d{1,2}/\d{1,2}(/\d{2,4})?",
+        r"tomorrow",
+        r"today",
+        r"next\s+\w+",
+        r"in\s+\d+\s+days?",
+    ];
+    for pattern in &date_patterns {
+        let re = regex::Regex::new(&format!("(?i){}", pattern)).unwrap_or_else(|_| regex::Regex::new("(?i)..").unwrap());
+        title = re.replace_all(&title, "").to_string();
+    }
+    title = title.trim().to_string();
+    if title.is_empty() {
+        title = input.clone();
+    }
+
     Ok(serde_json::json!({
         "action": action,
-        "title": input,
-        "parsed": true,
+        "title": title,
+        "due_date": due_date,
+        "priority": priority,
+        "category": category,
+        "energy_type": energy_type,
+        "parsed": due_date.is_some() || category.is_some() || priority.is_some(),
     }))
+}
+
+fn extract_date(input: &str) -> Option<String> {
+    let lower = input.to_lowercase();
+
+    // "tomorrow"
+    if lower.contains("tomorrow") {
+        let d = chrono::Local::now() + chrono::Duration::days(1);
+        return Some(d.format("%Y-%m-%d").to_string());
+    }
+
+    // "today"
+    if lower.contains("today") {
+        let d = chrono::Local::now();
+        return Some(d.format("%Y-%m-%d").to_string());
+    }
+
+    // "in X days"
+    let re_days = regex::Regex::new(r"(?i)in\s+(\d+)\s+days?").ok()?;
+    if let Some(caps) = re_days.captures(&lower) {
+        if let Ok(days) = caps.get(1).unwrap().as_str().parse::<i64>() {
+            let d = chrono::Local::now() + chrono::Duration::days(days);
+            return Some(d.format("%Y-%m-%d").to_string());
+        }
+    }
+
+    // MM/DD or MM/DD/YYYY
+    let re_mdy = regex::Regex::new(r"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?").ok()?;
+    if let Some(caps) = re_mdy.captures(&lower) {
+        let month: u32 = caps.get(1).unwrap().as_str().parse().ok()?;
+        let day: u32 = caps.get(2).unwrap().as_str().parse().ok()?;
+        let year = if let Some(yr) = caps.get(3) {
+            let y = yr.as_str();
+            if y.len() == 2 {
+                let y2: i32 = y.parse().ok()?;
+                if y2 < 50 { 2000 + y2 } else { 1900 + y2 }
+            } else {
+                y.parse().ok()?
+            }
+        } else {
+            chrono::Local::now().year()
+        };
+        if month >= 1 && month <= 12 && day >= 1 && day <= 31 {
+            if let Some(date) = chrono::NaiveDate::from_ymd_opt(year, month, day) {
+                return Some(date.format("%Y-%m-%d").to_string());
+            }
+        }
+    }
+
+    // "by MM/DD" (end of day)
+    let re_by = regex::Regex::new(r"(?i)by\s+(\d{1,2})/(\d{1,2})").ok()?;
+    if let Some(caps) = re_by.captures(&lower) {
+        let month: u32 = caps.get(1).unwrap().as_str().parse().ok()?;
+        let day: u32 = caps.get(2).unwrap().as_str().parse().ok()?;
+        let year = chrono::Local::now().year();
+        if month >= 1 && month <= 12 && day >= 1 && day <= 31 {
+            if let Some(date) = chrono::NaiveDate::from_ymd_opt(year, month, day) {
+                return Some(date.format("%Y-%m-%d").to_string());
+            }
+        }
+    }
+
+    None
 }
 
 #[tauri::command]
 pub async fn life_decision_helper(options: String) -> Result<String, String> {
-    Ok(format!("🤔 Analyzing: {}\n\nConsider: pros/cons, time investment, alignment with goals.", options))
+    Ok(format!(
+        "🤔 Analyzing: {}\n\nConsider: pros/cons, time investment, alignment with goals.",
+        options
+    ))
 }
 
-#[tauri::command]
-pub fn life_get_heatmap(user_id: String) -> Result<serde_json::Value, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_get_heatmap(user_id: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let tasks = engine.db().get_life_tasks(&user_id, None).unwrap_or_default();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    let tasks = engine
+        .db()
+        .get_life_tasks(&member_id, None)
+        .await
+        .unwrap_or_default();
     let mut days: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
     for task in &tasks {
         if let Some(ref date) = task.due_date {
@@ -2829,79 +4540,198 @@ pub fn life_get_heatmap(user_id: String) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({ "days": days }))
 }
 
-#[tauri::command]
-pub fn life_dismiss_nudge(user_id: String, nudge_id: String) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn life_dismiss_nudge(user_id: String, nudge_id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
-    conn.execute("UPDATE life_nudges SET dismissed = 1 WHERE id = ?1 AND member_id = ?2", rusqlite::params![nudge_id, user_id]).map_err(|e| e.to_string())?;
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    let conn = engine.db().conn_async().await;
+    conn.execute(
+        "UPDATE life_nudges SET dismissed = 1 WHERE id = ?1 AND member_id = ?2",
+        rusqlite::params![nudge_id, member_id],
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 // ── Home Health ──
 
 #[tauri::command]
-pub fn home_upsert_profile(id: String, address: Option<String>, year_built: Option<i64>, square_feet: Option<i64>,
-    hvac_type: Option<String>, hvac_filter_size: Option<String>, water_heater_type: Option<String>,
-    roof_type: Option<String>, window_type: Option<String>, insulation_type: Option<String>) -> Result<(), String> {
+pub async fn home_upsert_profile(
+    id: String,
+    address: Option<String>,
+    year_built: Option<i64>,
+    square_feet: Option<i64>,
+    hvac_type: Option<String>,
+    hvac_filter_size: Option<String>,
+    water_heater_type: Option<String>,
+    roof_type: Option<String>,
+    window_type: Option<String>,
+    insulation_type: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().upsert_home_profile(&id, address.as_deref(), year_built, square_feet,
-        hvac_type.as_deref(), hvac_filter_size.as_deref(), water_heater_type.as_deref(),
-        roof_type.as_deref(), window_type.as_deref(), insulation_type.as_deref())
+    engine
+        .db()
+        .upsert_home_profile(
+            &id,
+            address.as_deref(),
+            year_built,
+            square_feet,
+            hvac_type.as_deref(),
+            hvac_filter_size.as_deref(),
+            water_heater_type.as_deref(),
+            roof_type.as_deref(),
+            window_type.as_deref(),
+            insulation_type.as_deref(),
+        )
+        .await
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_get_dashboard() -> Result<engine::types::HomeDashboard, String> {
+pub async fn home_get_dashboard() -> Result<engine::types::HomeDashboard, String> {
     let engine = engine::get_engine();
-    engine.db().get_home_dashboard().map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_home_dashboard()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_add_bill(id: String, bill_type: String, amount: f64, usage: Option<f64>, billing_month: String, notes: Option<String>) -> Result<(), String> {
+pub async fn home_add_bill(
+    id: String,
+    bill_type: String,
+    amount: f64,
+    usage: Option<f64>,
+    billing_month: String,
+    notes: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().add_home_bill(&id, &bill_type, amount, usage, &billing_month, notes.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_home_bill(
+            &id,
+            &bill_type,
+            amount,
+            usage,
+            &billing_month,
+            notes.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_get_bills(bill_type: Option<String>, limit: Option<i64>) -> Result<Vec<engine::types::HomeBill>, String> {
+pub async fn home_get_bills(
+    bill_type: Option<String>,
+    limit: Option<i64>,
+) -> Result<Vec<engine::types::HomeBill>, String> {
     let engine = engine::get_engine();
-    engine.db().get_home_bills(bill_type.as_deref(), limit.unwrap_or(24)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_home_bills(bill_type.as_deref(), limit.unwrap_or(24))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_delete_bill(id: String) -> Result<(), String> {
+pub async fn home_delete_bill(id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().delete_home_bill(&id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .delete_home_bill(&id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_add_maintenance(id: String, task: String, category: String, last_completed: Option<String>, interval_months: Option<i64>, priority: Option<String>, estimated_cost: Option<f64>, notes: Option<String>) -> Result<(), String> {
+pub async fn home_add_maintenance(
+    id: String,
+    task: String,
+    category: String,
+    last_completed: Option<String>,
+    interval_months: Option<i64>,
+    priority: Option<String>,
+    estimated_cost: Option<f64>,
+    notes: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().add_home_maintenance(&id, &task, &category, last_completed.as_deref(), interval_months, priority.as_deref(), estimated_cost, notes.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_home_maintenance(
+            &id,
+            &task,
+            &category,
+            last_completed.as_deref(),
+            interval_months,
+            priority.as_deref(),
+            estimated_cost,
+            notes.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_get_maintenance(category: Option<String>) -> Result<Vec<engine::types::HomeMaintenance>, String> {
+pub async fn home_get_maintenance(
+    category: Option<String>,
+) -> Result<Vec<engine::types::HomeMaintenance>, String> {
     let engine = engine::get_engine();
-    engine.db().get_home_maintenance(category.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_home_maintenance(category.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_add_appliance(id: String, name: String, category: String, model: Option<String>, installed_date: Option<String>, expected_lifespan_years: Option<f64>, warranty_expiry: Option<String>, estimated_replacement_cost: Option<f64>, notes: Option<String>) -> Result<(), String> {
+pub async fn home_add_appliance(
+    id: String,
+    name: String,
+    category: String,
+    model: Option<String>,
+    installed_date: Option<String>,
+    expected_lifespan_years: Option<f64>,
+    warranty_expiry: Option<String>,
+    estimated_replacement_cost: Option<f64>,
+    notes: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().add_home_appliance(&id, &name, &category, model.as_deref(), installed_date.as_deref(), expected_lifespan_years, warranty_expiry.as_deref(), estimated_replacement_cost, notes.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .add_home_appliance(
+            &id,
+            &name,
+            &category,
+            model.as_deref(),
+            installed_date.as_deref(),
+            expected_lifespan_years,
+            warranty_expiry.as_deref(),
+            estimated_replacement_cost,
+            notes.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn home_get_appliances() -> Result<Vec<engine::types::HomeAppliance>, String> {
+pub async fn home_get_appliances() -> Result<Vec<engine::types::HomeAppliance>, String> {
     let engine = engine::get_engine();
-    engine.db().get_home_appliances().map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_home_appliances()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn home_get_insights() -> Result<Vec<engine::types::HomeInsight>, String> {
     let engine = engine::get_engine();
-    let dashboard = engine.db().get_home_dashboard().map_err(|e| e.to_string())?;
+    let dashboard = engine
+        .db()
+        .get_home_dashboard()
+        .await
+        .map_err(|e| e.to_string())?;
     let appliances = dashboard.appliances_needing_service;
     let bills = engine.db().get_bill_trends(12).unwrap_or_default();
     let mut parts = Vec::new();
@@ -2910,25 +4740,56 @@ pub async fn home_get_insights() -> Result<Vec<engine::types::HomeInsight>, Stri
             let age = chrono::Utc::now().year() - yr as i32;
             parts.push(format!("Home age: {} years (built {})", age, yr));
         }
-        if let Some(ref ht) = profile.hvac_type { parts.push(format!("HVAC: {}", ht)); }
-        if let Some(ref fs) = profile.hvac_filter_size { parts.push(format!("Filter: {}", fs)); }
+        if let Some(ref ht) = profile.hvac_type {
+            parts.push(format!("HVAC: {}", ht));
+        }
+        if let Some(ref fs) = profile.hvac_filter_size {
+            parts.push(format!("Filter: {}", fs));
+        }
     }
     for bill in &bills {
         parts.push(format!("{}: ${:.2}", bill.month, bill.total));
     }
     for app in &appliances {
-        parts.push(format!("{} ({}): age ~{}yrs, replacement ${:.0}", app.name, app.category,
-            app.installed_date.as_deref().map(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok().map(|dd| ((chrono::Utc::now().date_naive() - dd).num_days() as f64 / 365.25) as i32).unwrap_or(0)).unwrap_or(0),
-            app.estimated_replacement_cost.unwrap_or(0.0)));
+        parts.push(format!(
+            "{} ({}): age ~{}yrs, replacement ${:.0}",
+            app.name,
+            app.category,
+            app.installed_date
+                .as_deref()
+                .map(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d")
+                    .ok()
+                    .map(
+                        |dd| ((chrono::Utc::now().date_naive() - dd).num_days() as f64 / 365.25)
+                            as i32
+                    )
+                    .unwrap_or(0))
+                .unwrap_or(0),
+            app.estimated_replacement_cost.unwrap_or(0.0)
+        ));
     }
     for m in &dashboard.upcoming_maintenance {
         parts.push(format!("Maintenance: {} (due {:?})", m.task, m.next_due));
     }
     let prompt = format!("You are a home health AI. Based on this data, provide 3-5 specific actionable insights.\n\n{}\n\nRespond as JSON array (no markdown):\n[{{\"title\":\"...\",\"description\":\"...\",\"estimated_impact\":\"$X/month\",\"priority\":\"normal\",\"category\":\"efficiency|maintenance|financial|safety\"}}]", parts.join("\n"));
-    let messages = vec![OpenAIMessage { role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None }];
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None).await.map_err(|e| format!("AI failed: {}", e))?;
+    let messages = vec![OpenAIMessage {
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
+    }];
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content).strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
     serde_json::from_str(json_str).map_err(|e| format!("Parse error: {}", e))
 }
 
@@ -2936,40 +4797,161 @@ pub async fn home_get_insights() -> Result<Vec<engine::types::HomeInsight>, Stri
 
 /// Diagnose a home problem from a natural language symptom description.
 #[tauri::command]
-pub fn home_diagnose_problem(user_id: String, symptom: String) -> Result<serde_json::Value, String> {
+pub async fn home_diagnose_problem(
+    user_id: String,
+    symptom: String,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let symptom_lower = symptom.to_lowercase();
 
     // Heuristic keyword-based diagnosis (placeholder for future LLM call)
     let (system, severity, causes, recommendations): (String, String, Vec<&str>, Vec<&str>) =
-        if symptom_lower.contains("leak") || symptom_lower.contains("water") || symptom_lower.contains("drip") {
-            ("plumbing".to_string(), "high".to_string(),
-             vec!["Worn-out pipe joint or gasket", "Corroded pipe fitting", "Loose connection under sink/toilet", "High water pressure causing stress"],
-             vec!["Turn off water supply to affected area", "Inspect visible pipes for corrosion", "Check toilet flapper and supply line", "Call plumber if leak is behind wall"])
-        } else if symptom_lower.contains("no heat") || symptom_lower.contains("cold") || symptom_lower.contains("thermostat") || symptom_lower.contains("hvac") || symptom_lower.contains("ac") || symptom_lower.contains("furnace") {
-            ("hvac".to_string(), "high".to_string(),
-             vec!["Clogged air filter restricting airflow", "Thermostat malfunction or dead batteries", "Pilot light out (gas furnace)", "Tripped circuit breaker", "Refrigerant leak (AC)"],
-             vec!["Replace HVAC filter", "Check thermostat settings and batteries", "Inspect circuit breaker panel", "Schedule professional HVAC inspection"])
-        } else if symptom_lower.contains("electrical") || symptom_lower.contains("outlet") || symptom_lower.contains("breaker") || symptom_lower.contains("flicker") || symptom_lower.contains("spark") {
-            ("electrical".to_string(), "critical".to_string(),
-             vec!["Overloaded circuit", "Loose wire connection", "Faulty outlet or switch", "Outdated wiring unable to handle modern loads"],
-             vec!["Do NOT touch exposed wires — call licensed electrician", "Check if GFCI outlet has tripped", "Reduce load on the affected circuit", "Schedule electrical inspection"])
-        } else if symptom_lower.contains("roof") || symptom_lower.contains("ceiling") || symptom_lower.contains("attic") || symptom_lower.contains("stain") {
-            ("roof".to_string(), "high".to_string(),
-             vec!["Damaged or missing shingles", "Failed flashing around chimney/vents", "Ice dam causing water backup", "Condensation from poor attic ventilation"],
-             vec!["Inspect attic for active water intrusion", "Check roof from ground for visible damage", "Clear gutters and check downspouts", "Call roofer if damage is extensive"])
-        } else if symptom_lower.contains("noise") || symptom_lower.contains("squeak") || symptom_lower.contains("bang") || symptom_lower.contains("rattle") || symptom_lower.contains("hum") {
-            ("general".to_string(), "medium".to_string(),
-             vec!["Loose component vibrating during operation", "Worn bearing or motor", "Water hammer in plumbing", "Ductwork expansion/contraction"],
-             vec!["Identify the exact location and timing of the noise", "Check for loose screws, bolts, or panels", "If plumbing-related, check water pressure", "If persistent, schedule professional inspection"])
-        } else if symptom_lower.contains("smell") || symptom_lower.contains("odor") || symptom_lower.contains("mold") || symptom_lower.contains("musty") {
-            ("general".to_string(), "high".to_string(),
-             vec!["Mold growth from moisture intrusion", "Sewer gas from dry P-trap", "Gas leak (if rotten egg smell) — VACUATE IMMEDIATELY", "Dead animal in crawlspace or ductwork"],
-             vec!["If gas smell: leave house immediately and call gas company", "Check for visible mold in bathrooms, basement, under sinks", "Run water in all unused drains to refill P-traps", "Use dehumidifier in damp areas"])
+        if symptom_lower.contains("leak")
+            || symptom_lower.contains("water")
+            || symptom_lower.contains("drip")
+        {
+            (
+                "plumbing".to_string(),
+                "high".to_string(),
+                vec![
+                    "Worn-out pipe joint or gasket",
+                    "Corroded pipe fitting",
+                    "Loose connection under sink/toilet",
+                    "High water pressure causing stress",
+                ],
+                vec![
+                    "Turn off water supply to affected area",
+                    "Inspect visible pipes for corrosion",
+                    "Check toilet flapper and supply line",
+                    "Call plumber if leak is behind wall",
+                ],
+            )
+        } else if symptom_lower.contains("no heat")
+            || symptom_lower.contains("cold")
+            || symptom_lower.contains("thermostat")
+            || symptom_lower.contains("hvac")
+            || symptom_lower.contains("ac")
+            || symptom_lower.contains("furnace")
+        {
+            (
+                "hvac".to_string(),
+                "high".to_string(),
+                vec![
+                    "Clogged air filter restricting airflow",
+                    "Thermostat malfunction or dead batteries",
+                    "Pilot light out (gas furnace)",
+                    "Tripped circuit breaker",
+                    "Refrigerant leak (AC)",
+                ],
+                vec![
+                    "Replace HVAC filter",
+                    "Check thermostat settings and batteries",
+                    "Inspect circuit breaker panel",
+                    "Schedule professional HVAC inspection",
+                ],
+            )
+        } else if symptom_lower.contains("electrical")
+            || symptom_lower.contains("outlet")
+            || symptom_lower.contains("breaker")
+            || symptom_lower.contains("flicker")
+            || symptom_lower.contains("spark")
+        {
+            (
+                "electrical".to_string(),
+                "critical".to_string(),
+                vec![
+                    "Overloaded circuit",
+                    "Loose wire connection",
+                    "Faulty outlet or switch",
+                    "Outdated wiring unable to handle modern loads",
+                ],
+                vec![
+                    "Do NOT touch exposed wires — call licensed electrician",
+                    "Check if GFCI outlet has tripped",
+                    "Reduce load on the affected circuit",
+                    "Schedule electrical inspection",
+                ],
+            )
+        } else if symptom_lower.contains("roof")
+            || symptom_lower.contains("ceiling")
+            || symptom_lower.contains("attic")
+            || symptom_lower.contains("stain")
+        {
+            (
+                "roof".to_string(),
+                "high".to_string(),
+                vec![
+                    "Damaged or missing shingles",
+                    "Failed flashing around chimney/vents",
+                    "Ice dam causing water backup",
+                    "Condensation from poor attic ventilation",
+                ],
+                vec![
+                    "Inspect attic for active water intrusion",
+                    "Check roof from ground for visible damage",
+                    "Clear gutters and check downspouts",
+                    "Call roofer if damage is extensive",
+                ],
+            )
+        } else if symptom_lower.contains("noise")
+            || symptom_lower.contains("squeak")
+            || symptom_lower.contains("bang")
+            || symptom_lower.contains("rattle")
+            || symptom_lower.contains("hum")
+        {
+            (
+                "general".to_string(),
+                "medium".to_string(),
+                vec![
+                    "Loose component vibrating during operation",
+                    "Worn bearing or motor",
+                    "Water hammer in plumbing",
+                    "Ductwork expansion/contraction",
+                ],
+                vec![
+                    "Identify the exact location and timing of the noise",
+                    "Check for loose screws, bolts, or panels",
+                    "If plumbing-related, check water pressure",
+                    "If persistent, schedule professional inspection",
+                ],
+            )
+        } else if symptom_lower.contains("smell")
+            || symptom_lower.contains("odor")
+            || symptom_lower.contains("mold")
+            || symptom_lower.contains("musty")
+        {
+            (
+                "general".to_string(),
+                "high".to_string(),
+                vec![
+                    "Mold growth from moisture intrusion",
+                    "Sewer gas from dry P-trap",
+                    "Gas leak (if rotten egg smell) — VACUATE IMMEDIATELY",
+                    "Dead animal in crawlspace or ductwork",
+                ],
+                vec![
+                    "If gas smell: leave house immediately and call gas company",
+                    "Check for visible mold in bathrooms, basement, under sinks",
+                    "Run water in all unused drains to refill P-traps",
+                    "Use dehumidifier in damp areas",
+                ],
+            )
         } else {
-            ("general".to_string(), "medium".to_string(),
-             vec!["Multiple possible causes — needs further investigation", "Normal wear and tear", "Deferred maintenance issue"],
-             vec!["Document the issue with photos and notes", "Check if issue is intermittent or constant", "Consult relevant maintenance guide", "Consider scheduling a professional inspection"])
+            (
+                "general".to_string(),
+                "medium".to_string(),
+                vec![
+                    "Multiple possible causes — needs further investigation",
+                    "Normal wear and tear",
+                    "Deferred maintenance issue",
+                ],
+                vec![
+                    "Document the issue with photos and notes",
+                    "Check if issue is intermittent or constant",
+                    "Consult relevant maintenance guide",
+                    "Consider scheduling a professional inspection",
+                ],
+            )
         };
 
     let diagnosis = serde_json::json!({
@@ -2983,7 +4965,16 @@ pub fn home_diagnose_problem(user_id: String, symptom: String) -> Result<serde_j
     });
 
     let diag_json = serde_json::to_string(&diagnosis).map_err(|e| e.to_string())?;
-    engine.db().store_home_problem(&user_id, &symptom, Some(&diag_json), Some(&system), Some(&severity))
+    engine
+        .db()
+        .store_home_problem(
+            &user_id,
+            &symptom,
+            Some(&diag_json),
+            Some(&system),
+            Some(&severity),
+        )
+        .await
         .map_err(|e| e.to_string())?;
 
     Ok(diagnosis)
@@ -2991,56 +4982,92 @@ pub fn home_diagnose_problem(user_id: String, symptom: String) -> Result<serde_j
 
 /// Predict appliance failures based on age vs expected lifespan.
 #[tauri::command]
-pub fn home_predict_failures() -> Result<Vec<serde_json::Value>, String> {
+pub async fn home_predict_failures() -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
-    let appliances = engine.db().get_home_appliances().map_err(|e| e.to_string())?;
+    let appliances = engine
+        .db()
+        .get_home_appliances()
+        .await
+        .map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().date_naive();
 
-    let mut predictions: Vec<serde_json::Value> = appliances.iter().filter_map(|app| {
-        let lifespan = app.expected_lifespan_years.unwrap_or(10.0);
-        let installed = app.installed_date.as_deref()?;
-        let install_date = chrono::NaiveDate::parse_from_str(installed, "%Y-%m-%d").ok()?;
-        let age_years = (now - install_date).num_days() as f64 / 365.25;
-        let pct_life = (age_years / lifespan).min(1.5);
+    let mut predictions: Vec<serde_json::Value> = appliances
+        .iter()
+        .filter_map(|app| {
+            let lifespan = app.expected_lifespan_years.unwrap_or(10.0);
+            let installed = app.installed_date.as_deref()?;
+            let install_date = chrono::NaiveDate::parse_from_str(installed, "%Y-%m-%d").ok()?;
+            let age_years = (now - install_date).num_days() as f64 / 365.25;
+            let pct_life = (age_years / lifespan).min(1.5);
 
-        // Failure probability model: exponential increase after 70% of lifespan
-        let failure_prob_6mo = if pct_life >= 1.0 {
-            0.85_f64.min(0.3 + (pct_life - 1.0) * 1.5)
-        } else if pct_life >= 0.7 {
-            0.05 + (pct_life - 0.7) * 0.83
-        } else {
-            0.02 + pct_life * 0.04
-        };
+            // Failure probability model: exponential increase after 70% of lifespan
+            let failure_prob_6mo = if pct_life >= 1.0 {
+                0.85_f64.min(0.3 + (pct_life - 1.0) * 1.5)
+            } else if pct_life >= 0.7 {
+                0.05 + (pct_life - 0.7) * 0.83
+            } else {
+                0.02 + pct_life * 0.04
+            };
 
-        let urgency = if failure_prob_6mo > 0.6 { "critical" }
-            else if failure_prob_6mo > 0.35 { "high" }
-            else if failure_prob_6mo > 0.15 { "medium" }
-            else { "low" };
+            let urgency = if failure_prob_6mo > 0.6 {
+                "critical"
+            } else if failure_prob_6mo > 0.35 {
+                "high"
+            } else if failure_prob_6mo > 0.15 {
+                "medium"
+            } else {
+                "low"
+            };
 
-        let warning_signs: Vec<&str> = match app.category.as_str() {
-            "hvac" => vec!["Uneven heating/cooling", "Unusual noises", "Rising energy bills", "Frequent cycling"],
-            "plumbing" => vec!["Reduced water pressure", "Discolored water", "Rumbling sounds", "Visible corrosion"],
-            "appliance" => vec!["Inconsistent performance", "Unusual noises", "Excessive heat", "Visible rust or wear"],
-            _ => vec!["Declining performance", "Unusual sounds or smells", "Visible wear or damage"],
-        };
+            let warning_signs: Vec<&str> = match app.category.as_str() {
+                "hvac" => vec![
+                    "Uneven heating/cooling",
+                    "Unusual noises",
+                    "Rising energy bills",
+                    "Frequent cycling",
+                ],
+                "plumbing" => vec![
+                    "Reduced water pressure",
+                    "Discolored water",
+                    "Rumbling sounds",
+                    "Visible corrosion",
+                ],
+                "appliance" => vec![
+                    "Inconsistent performance",
+                    "Unusual noises",
+                    "Excessive heat",
+                    "Visible rust or wear",
+                ],
+                _ => vec![
+                    "Declining performance",
+                    "Unusual sounds or smells",
+                    "Visible wear or damage",
+                ],
+            };
 
-        let action = if failure_prob_6mo > 0.6 { "Replace immediately" }
-            else if failure_prob_6mo > 0.35 { "Start shopping for replacement; schedule inspection" }
-            else if failure_prob_6mo > 0.15 { "Schedule preventive maintenance" }
-            else { "Continue regular maintenance" };
+            let action = if failure_prob_6mo > 0.6 {
+                "Replace immediately"
+            } else if failure_prob_6mo > 0.35 {
+                "Start shopping for replacement; schedule inspection"
+            } else if failure_prob_6mo > 0.15 {
+                "Schedule preventive maintenance"
+            } else {
+                "Continue regular maintenance"
+            };
 
-        Some(serde_json::json!({
-            "appliance_name": app.name,
-            "category": app.category,
-            "current_age_years": (age_years * 10.0).round() / 10.0,
-            "expected_lifespan": lifespan,
-            "failure_probability_next_6mo": (failure_prob_6mo * 100.0).round() / 100.0,
-            "warning_signs_to_watch": warning_signs,
-            "estimated_replacement_cost": app.estimated_replacement_cost.unwrap_or(0.0),
-            "recommended_action": action,
-            "urgency": urgency,
-        }))
-    }).collect();
+            Some(serde_json::json!({
+                "appliance_name": app.name,
+                "category": app.category,
+                "current_age_years": (age_years * 10.0).round() / 10.0,
+                "expected_lifespan": lifespan,
+                "failure_probability_next_6mo": (failure_prob_6mo * 100.0).round() / 100.0,
+                "warning_signs_to_watch": warning_signs,
+                "estimated_replacement_cost": app.estimated_replacement_cost.unwrap_or(0.0),
+                "recommended_action": action,
+                "urgency": urgency,
+            }))
+        })
+        .collect();
 
     predictions.sort_by(|a, b| {
         let pa = a["failure_probability_next_6mo"].as_f64().unwrap_or(0.0);
@@ -3053,25 +5080,34 @@ pub fn home_predict_failures() -> Result<Vec<serde_json::Value>, String> {
 
 /// Get seasonal maintenance tasks for a given month.
 #[tauri::command]
-pub fn home_get_seasonal_tasks(month: i64) -> Result<Vec<serde_json::Value>, String> {
+pub async fn home_get_seasonal_tasks(month: i64) -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
-    let tasks = engine.db().get_seasonal_tasks(month).map_err(|e| e.to_string())?;
+    let tasks = engine
+        .db()
+        .get_seasonal_tasks(month)
+        .map_err(|e| e.to_string())?;
     // If table is empty, schema seeds default tasks on first run via migration
     Ok(tasks)
 }
 
 /// Mark a seasonal task as completed.
 #[tauri::command]
-pub fn home_complete_seasonal_task(task_id: String) -> Result<(), String> {
+pub async fn home_complete_seasonal_task(task_id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().complete_seasonal_task(&task_id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .complete_seasonal_task(&task_id)
+        .map_err(|e| e.to_string())
 }
 
 /// Detect anomalous bills by comparing to 6-month rolling average.
 #[tauri::command]
-pub fn home_detect_anomalies() -> Result<Vec<serde_json::Value>, String> {
+pub async fn home_detect_anomalies() -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
-    let raw = engine.db().get_bills_rolling_avg(6).map_err(|e| e.to_string())?;
+    let raw = engine
+        .db()
+        .get_bills_rolling_avg(6)
+        .map_err(|e| e.to_string())?;
 
     let anomalies: Vec<serde_json::Value> = raw.into_iter().map(|mut item| {
         let deviation = item["deviation_percent"].as_f64().unwrap_or(0.0);
@@ -3110,9 +5146,13 @@ pub fn home_detect_anomalies() -> Result<Vec<serde_json::Value>, String> {
 
 /// Get warranty alerts for appliances with warranties expiring within 60 days.
 #[tauri::command]
-pub fn home_get_warranty_alerts() -> Result<Vec<serde_json::Value>, String> {
+pub async fn home_get_warranty_alerts() -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
-    let appliances = engine.db().get_home_appliances().map_err(|e| e.to_string())?;
+    let appliances = engine
+        .db()
+        .get_home_appliances()
+        .await
+        .map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().date_naive();
     let cutoff = now + chrono::Duration::days(60);
 
@@ -3168,26 +5208,47 @@ pub fn home_get_warranty_alerts() -> Result<Vec<serde_json::Value>, String> {
 
 /// Home AI chat — keyword-based smart replies (placeholder for LLM).
 #[tauri::command]
-pub fn home_chat(_user_id: String, message: String) -> Result<serde_json::Value, String> {
+pub async fn home_chat(_user_id: String, message: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let msg_lower = message.to_lowercase();
 
     // Store user message
     let user_msg_id = uuid::Uuid::new_v4().to_string();
-    engine.db().store_chat_message(&user_msg_id, "user", &message, None).map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .store_chat_message(&user_msg_id, "user", &message, None)
+        .map_err(|e| e.to_string())?;
 
     // Generate smart reply based on keywords
     let reply = if msg_lower.contains("maintenance") || msg_lower.contains("maintain") {
         "Based on your home data, I recommend checking your seasonal task list. Would you like me to pull up what's due this month? Regular maintenance can prevent 80% of major home repairs."
-    } else if msg_lower.contains("save") || msg_lower.contains("cost") || msg_lower.contains("cheap") || msg_lower.contains("money") {
+    } else if msg_lower.contains("save")
+        || msg_lower.contains("cost")
+        || msg_lower.contains("cheap")
+        || msg_lower.contains("money")
+    {
         "Great question about saving money! The biggest savings typically come from: 1) HVAC filter changes ($15 every 3 months saves ~$30/mo in efficiency), 2) Sealing air leaks ($20 in caulk can save $200+/year), 3) Water heater maintenance (annual flush extends life by years). Want me to calculate your potential savings?"
-    } else if msg_lower.contains("emergency") || msg_lower.contains("urgent") || msg_lower.contains("help") {
+    } else if msg_lower.contains("emergency")
+        || msg_lower.contains("urgent")
+        || msg_lower.contains("help")
+    {
         "If this is an emergency: For gas leaks, leave immediately and call your gas company. For water leaks, shut off the main water valve. For electrical issues, turn off the breaker. For all other emergencies, I can help you identify the issue — describe what you're experiencing."
-    } else if msg_lower.contains("season") || msg_lower.contains("month") || msg_lower.contains("when") {
+    } else if msg_lower.contains("season")
+        || msg_lower.contains("month")
+        || msg_lower.contains("when")
+    {
         "I track seasonal tasks for your home. Each month has specific maintenance priorities. Want me to show you this month's checklist? Staying ahead of seasonal tasks is the #1 way to prevent costly repairs."
-    } else if msg_lower.contains("appliance") || msg_lower.contains("replace") || msg_lower.contains("warranty") {
+    } else if msg_lower.contains("appliance")
+        || msg_lower.contains("replace")
+        || msg_lower.contains("warranty")
+    {
         "I'm tracking all your appliances' ages and warranty status. Want me to run a failure prediction? I can tell you which appliances are most likely to need attention in the next 6 months."
-    } else if msg_lower.contains("bill") || msg_lower.contains("utility") || msg_lower.contains("electric") || msg_lower.contains("gas") || msg_lower.contains("water") {
+    } else if msg_lower.contains("bill")
+        || msg_lower.contains("utility")
+        || msg_lower.contains("electric")
+        || msg_lower.contains("gas")
+        || msg_lower.contains("water")
+    {
         "I'm monitoring your utility bills for unusual patterns. Want me to run an anomaly check? I compare each bill to your 6-month rolling average and flag anything that deviates more than 20%."
     } else if msg_lower.contains("hello") || msg_lower.contains("hi") || msg_lower.contains("hey") {
         "Hey! I'm your home health assistant. I can help with maintenance scheduling, appliance tracking, bill monitoring, problem diagnosis, and cost-saving tips. What's on your mind?"
@@ -3197,7 +5258,10 @@ pub fn home_chat(_user_id: String, message: String) -> Result<serde_json::Value,
 
     // Store assistant reply
     let asst_msg_id = uuid::Uuid::new_v4().to_string();
-    engine.db().store_chat_message(&asst_msg_id, "assistant", reply, None).map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .store_chat_message(&asst_msg_id, "assistant", reply, None)
+        .map_err(|e| e.to_string())?;
 
     Ok(serde_json::json!({
         "role": "assistant",
@@ -3208,9 +5272,13 @@ pub fn home_chat(_user_id: String, message: String) -> Result<serde_json::Value,
 
 /// Get a narrative maintenance report aggregating dashboard data.
 #[tauri::command]
-pub fn home_get_maintenance_report() -> Result<serde_json::Value, String> {
+pub async fn home_get_maintenance_report() -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let dashboard = engine.db().get_home_dashboard().map_err(|e| e.to_string())?;
+    let dashboard = engine
+        .db()
+        .get_home_dashboard()
+        .await
+        .map_err(|e| e.to_string())?;
     let bills_6mo = engine.db().get_bill_trends(6).unwrap_or_default();
 
     let overdue_count = dashboard.overdue_maintenance.len();
@@ -3226,14 +5294,23 @@ pub fn home_get_maintenance_report() -> Result<serde_json::Value, String> {
         highlights.push("All maintenance tasks are up to date — great job!".to_string());
     }
     if dashboard.health_score >= 80.0 {
-        highlights.push(format!("Home health score: {:.0}/100 — looking good!", dashboard.health_score));
+        highlights.push(format!(
+            "Home health score: {:.0}/100 — looking good!",
+            dashboard.health_score
+        ));
     } else if dashboard.health_score >= 60.0 {
-        highlights.push(format!("Home health score: {:.0}/100 — some items need attention.", dashboard.health_score));
+        highlights.push(format!(
+            "Home health score: {:.0}/100 — some items need attention.",
+            dashboard.health_score
+        ));
     }
 
     // Generate concerns
     if overdue_count > 0 {
-        concerns.push(format!("{} overdue maintenance task(s) need immediate attention.", overdue_count));
+        concerns.push(format!(
+            "{} overdue maintenance task(s) need immediate attention.",
+            overdue_count
+        ));
         for m in dashboard.overdue_maintenance.iter().take(3) {
             upcoming_actions.push(format!("[OVERDUE] {} (was due: {:?})", m.task, m.next_due));
         }
@@ -3244,30 +5321,50 @@ pub fn home_get_maintenance_report() -> Result<serde_json::Value, String> {
         let recent = bills_6mo.last().map(|b| b.total).unwrap_or(0.0);
         let prior = bills_6mo[bills_6mo.len() - 2].total;
         if recent > prior * 1.15 {
-            concerns.push(format!("Utility bills trending up: ${:.2} last month vs ${:.2} prior month.", recent, prior));
+            concerns.push(format!(
+                "Utility bills trending up: ${:.2} last month vs ${:.2} prior month.",
+                recent, prior
+            ));
         } else if recent < prior * 0.85 {
-            highlights.push(format!("Utility bills trending down: ${:.2} last month vs ${:.2} — nice savings!", recent, prior));
+            highlights.push(format!(
+                "Utility bills trending down: ${:.2} last month vs ${:.2} — nice savings!",
+                recent, prior
+            ));
         }
     }
 
     // Upcoming maintenance
     for m in dashboard.upcoming_maintenance.iter().take(5) {
-        upcoming_actions.push(format!("{} (due: {:?}, est. ${:.0})", m.task, m.next_due, m.estimated_cost.unwrap_or(0.0)));
+        upcoming_actions.push(format!(
+            "{} (due: {:?}, est. ${:.0})",
+            m.task,
+            m.next_due,
+            m.estimated_cost.unwrap_or(0.0)
+        ));
     }
 
     // Cost forecast
-    let upcoming_cost_30: f64 = dashboard.upcoming_maintenance.iter()
+    let upcoming_cost_30: f64 = dashboard
+        .upcoming_maintenance
+        .iter()
         .filter(|m| m.estimated_cost.is_some())
         .map(|m| m.estimated_cost.unwrap_or(0.0))
         .sum();
     let avg_monthly_utilities = if !bills_6mo.is_empty() {
         bills_6mo.iter().map(|b| b.total).sum::<f64>() / bills_6mo.len() as f64
-    } else { 0.0 };
+    } else {
+        0.0
+    };
 
     let summary = if concerns.is_empty() {
-        "Your home is in good shape. No urgent issues detected. Keep up with seasonal maintenance.".to_string()
+        "Your home is in good shape. No urgent issues detected. Keep up with seasonal maintenance."
+            .to_string()
     } else {
-        format!("{} concern(s) need attention. {} upcoming task(s) in the next 30 days.", concerns.len(), upcoming_count)
+        format!(
+            "{} concern(s) need attention. {} upcoming task(s) in the next 30 days.",
+            concerns.len(),
+            upcoming_count
+        )
     };
 
     Ok(serde_json::json!({
@@ -3285,31 +5382,79 @@ pub fn home_get_maintenance_report() -> Result<serde_json::Value, String> {
 
 /// Log a problem using natural language — parses and extracts system/severity.
 #[tauri::command]
-pub fn home_log_problem_natural(user_id: String, description: String) -> Result<serde_json::Value, String> {
+pub async fn home_log_problem_natural(
+    user_id: String,
+    description: String,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
     let desc_lower = description.to_lowercase();
 
     // Extract system
-    let system = if desc_lower.contains("hvac") || desc_lower.contains("furnace") || desc_lower.contains("ac ") || desc_lower.contains("air condition") || desc_lower.contains("heating") || desc_lower.contains("thermostat") {
+    let system = if desc_lower.contains("hvac")
+        || desc_lower.contains("furnace")
+        || desc_lower.contains("ac ")
+        || desc_lower.contains("air condition")
+        || desc_lower.contains("heating")
+        || desc_lower.contains("thermostat")
+    {
         "hvac"
-    } else if desc_lower.contains("plumb") || desc_lower.contains("pipe") || desc_lower.contains("faucet") || desc_lower.contains("toilet") || desc_lower.contains("drain") || desc_lower.contains("water heater") || desc_lower.contains("leak") {
+    } else if desc_lower.contains("plumb")
+        || desc_lower.contains("pipe")
+        || desc_lower.contains("faucet")
+        || desc_lower.contains("toilet")
+        || desc_lower.contains("drain")
+        || desc_lower.contains("water heater")
+        || desc_lower.contains("leak")
+    {
         "plumbing"
-    } else if desc_lower.contains("electric") || desc_lower.contains("outlet") || desc_lower.contains("breaker") || desc_lower.contains("wire") || desc_lower.contains("flicker") {
+    } else if desc_lower.contains("electric")
+        || desc_lower.contains("outlet")
+        || desc_lower.contains("breaker")
+        || desc_lower.contains("wire")
+        || desc_lower.contains("flicker")
+    {
         "electrical"
-    } else if desc_lower.contains("roof") || desc_lower.contains("shingle") || desc_lower.contains("gutter") || desc_lower.contains("ceiling") || desc_lower.contains("attic") {
+    } else if desc_lower.contains("roof")
+        || desc_lower.contains("shingle")
+        || desc_lower.contains("gutter")
+        || desc_lower.contains("ceiling")
+        || desc_lower.contains("attic")
+    {
         "roof"
-    } else if desc_lower.contains("window") || desc_lower.contains("door") || desc_lower.contains("wall") || desc_lower.contains("floor") || desc_lower.contains("foundation") {
+    } else if desc_lower.contains("window")
+        || desc_lower.contains("door")
+        || desc_lower.contains("wall")
+        || desc_lower.contains("floor")
+        || desc_lower.contains("foundation")
+    {
         "structure"
     } else {
         "general"
     };
 
     // Extract severity
-    let severity = if desc_lower.contains("emergency") || desc_lower.contains("urgent") || desc_lower.contains("danger") || desc_lower.contains("flood") || desc_lower.contains("fire") || desc_lower.contains("gas leak") || desc_lower.contains("spark") {
+    let severity = if desc_lower.contains("emergency")
+        || desc_lower.contains("urgent")
+        || desc_lower.contains("danger")
+        || desc_lower.contains("flood")
+        || desc_lower.contains("fire")
+        || desc_lower.contains("gas leak")
+        || desc_lower.contains("spark")
+    {
         "critical"
-    } else if desc_lower.contains("broken") || desc_lower.contains("not working") || desc_lower.contains("failed") || desc_lower.contains("smoke") || desc_lower.contains("significant") {
+    } else if desc_lower.contains("broken")
+        || desc_lower.contains("not working")
+        || desc_lower.contains("failed")
+        || desc_lower.contains("smoke")
+        || desc_lower.contains("significant")
+    {
         "high"
-    } else if desc_lower.contains("slow") || desc_lower.contains("minor") || desc_lower.contains("small") || desc_lower.contains("cosmetic") || desc_lower.contains("annoying") {
+    } else if desc_lower.contains("slow")
+        || desc_lower.contains("minor")
+        || desc_lower.contains("small")
+        || desc_lower.contains("cosmetic")
+        || desc_lower.contains("annoying")
+    {
         "low"
     } else {
         "medium"
@@ -3325,7 +5470,10 @@ pub fn home_log_problem_natural(user_id: String, description: String) -> Result<
         "created_at": now,
     });
 
-    engine.db().store_home_problem(&id, &description, None, Some(system), Some(severity))
+    engine
+        .db()
+        .store_home_problem(&id, &description, None, Some(system), Some(severity))
+        .await
         .map_err(|e| e.to_string())?;
 
     Ok(result)
@@ -3333,96 +5481,309 @@ pub fn home_log_problem_natural(user_id: String, description: String) -> Result<
 
 /// Get a year summary of all utility bills.
 #[tauri::command]
-pub fn home_get_year_summary() -> Result<serde_json::Value, String> {
+pub async fn home_get_year_summary() -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    engine.db().get_year_bills_summary().map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_year_bills_summary()
+        .map_err(|e| e.to_string())
 }
 
 // ── Dream Builder ──
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn dream_add(id: String, member_id: Option<String>, title: String, description: Option<String>, category: String, target_date: Option<String>) -> Result<(), String> {
+pub async fn dream_add(
+    user_id: String,
+    id: String,
+    member_id: Option<String>,
+    title: String,
+    description: Option<String>,
+    category: String,
+    target_date: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().add_dream(&id, member_id.as_deref(), &title, description.as_deref(), &category, target_date.as_deref()).map_err(|e| e.to_string())
+    let resolved_member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .add_dream(
+            &id,
+            Some(&resolved_member_id),
+            &title,
+            description.as_deref(),
+            &category,
+            target_date.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_get_all(user_id: String, status: Option<String>) -> Result<Vec<engine::types::Dream>, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_all(
+    user_id: String,
+    status: Option<String>,
+) -> Result<Vec<engine::types::Dream>, String> {
     let engine = engine::get_engine();
-    engine.db().get_dreams(&user_id, status.as_deref()).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_dreams(&member_id, status.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_get_dashboard(user_id: String) -> Result<engine::types::DreamDashboard, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_dashboard(user_id: String) -> Result<engine::types::DreamDashboard, String> {
     let engine = engine::get_engine();
-    engine.db().get_dream_dashboard(&user_id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_dream_dashboard(&member_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_add_milestone(user_id: String, id: String, dream_id: String, title: String, description: Option<String>, target_date: Option<String>, sort_order: i64) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_milestones(
+    user_id: String,
+    dream_id: String,
+) -> Result<Vec<engine::types::DreamMilestone>, String> {
     let engine = engine::get_engine();
-    engine.db().add_milestone(&id, &dream_id, &user_id, &title, description.as_deref(), target_date.as_deref(), sort_order).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_milestones(&dream_id, &member_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_complete_milestone(user_id: String, id: String) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_add_milestone(
+    user_id: String,
+    id: String,
+    dream_id: String,
+    title: String,
+    description: Option<String>,
+    target_date: Option<String>,
+    sort_order: i64,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().complete_milestone(&user_id, &id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .add_milestone(
+            &id,
+            &dream_id,
+            &member_id,
+            &title,
+            description.as_deref(),
+            target_date.as_deref(),
+            sort_order,
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_add_task(user_id: String, id: String, dream_id: String, milestone_id: Option<String>, title: String, description: Option<String>, due_date: Option<String>, frequency: Option<String>) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_complete_milestone(user_id: String, id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().add_dream_task(&id, &dream_id, milestone_id.as_deref(), &user_id, &title, description.as_deref(), due_date.as_deref(), frequency.as_deref()).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .complete_milestone(&member_id, &id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_get_tasks(user_id: String, dream_id: String) -> Result<Vec<engine::types::DreamTask>, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_add_task(
+    user_id: String,
+    id: String,
+    dream_id: String,
+    milestone_id: Option<String>,
+    title: String,
+    description: Option<String>,
+    due_date: Option<String>,
+    frequency: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().get_dream_tasks(&dream_id, &user_id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .add_dream_task(
+            &id,
+            &dream_id,
+            milestone_id.as_deref(),
+            &member_id,
+            &title,
+            description.as_deref(),
+            due_date.as_deref(),
+            frequency.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_complete_task(user_id: String, id: String) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_tasks(
+    user_id: String,
+    dream_id: String,
+) -> Result<Vec<engine::types::DreamTask>, String> {
     let engine = engine::get_engine();
-    engine.db().complete_dream_task(&user_id, &id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_dream_tasks(&dream_id, &member_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_add_progress(user_id: String, id: String, dream_id: String, note: Option<String>, progress_change: Option<f64>, ai_insight: Option<String>) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_complete_task(user_id: String, id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().add_dream_progress(&id, &dream_id, &user_id, note.as_deref(), progress_change, ai_insight.as_deref()).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .complete_dream_task(&member_id, &id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_delete(user_id: String, id: String) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_add_progress(
+    user_id: String,
+    id: String,
+    dream_id: String,
+    note: Option<String>,
+    progress_change: Option<f64>,
+    ai_insight: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().delete_dream(&user_id, &id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .add_dream_progress(
+            &id,
+            &dream_id,
+            &member_id,
+            note.as_deref(),
+            progress_change,
+            ai_insight.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub async fn dream_ai_plan(user_id: String, dream_id: String, title: String, description: Option<String>, category: String, target_date: Option<String>) -> Result<serde_json::Value, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_update(
+    user_id: String,
+    id: String,
+    title: String,
+    description: Option<String>,
+    category: String,
+    target_date: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .update_dream(
+            &member_id,
+            &id,
+            &title,
+            description.as_deref(),
+            &category,
+            target_date.as_deref(),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_delete(user_id: String, id: String) -> Result<(), String> {
+    let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .delete_dream(&member_id, &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_ai_plan(
+    user_id: String,
+    dream_id: String,
+    title: String,
+    description: Option<String>,
+    category: String,
+    target_date: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let engine = engine::get_engine();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
     let prompt = format!(
         "You are a goal achievement AI. A family wants to achieve:\n\nTitle: {title}\nCategory: {category}\nDescription: {}\nTarget: {}\n\nReverse-engineer into concrete plan. Respond as JSON (no markdown):\n{{\"analysis\":\"...\",\"milestones\":[{{\"title\":\"...\",\"description\":\"...\",\"target_date\":\"2026-06-01\",\"sort_order\":0}}],\"immediate_tasks\":[{{\"title\":\"...\",\"description\":\"...\",\"due_date\":\"2026-03-25\",\"frequency\":\"one-time\"}}],\"habit\":{{\"title\":\"...\",\"description\":\"...\"}},\"metrics\":[\"...\"]}}",
         description.as_deref().unwrap_or("No description"), target_date.as_deref().unwrap_or("No deadline")
     );
-    let messages = vec![OpenAIMessage { role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None }];
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None).await.map_err(|e| format!("AI failed: {}", e))?;
+    let messages = vec![OpenAIMessage {
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
+    }];
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content).strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
-    let plan: serde_json::Value = serde_json::from_str(json_str).map_err(|e| format!("Parse error: {}", e))?;
-    engine.db().update_dream_ai_plan(&dream_id, json_str, "AI-generated plan").map_err(|e| e.to_string())?;
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
+    let plan: serde_json::Value =
+        serde_json::from_str(json_str).map_err(|e| format!("Parse error: {}", e))?;
+    engine
+        .db()
+        .update_dream_ai_plan(&dream_id, json_str, "AI-generated plan")
+        .await
+        .map_err(|e| e.to_string())?;
     if let Some(ms) = plan["milestones"].as_array() {
         for (i, m) in ms.iter().enumerate() {
             let mid = uuid::Uuid::new_v4().to_string();
-            engine.db().add_milestone(&mid, &dream_id, &user_id, m["title"].as_str().unwrap_or("Milestone"), m["description"].as_str(), m["target_date"].as_str(), i as i64).ok();
+            engine
+                .db()
+                .add_milestone(
+                    &mid,
+                    &dream_id,
+                    &member_id,
+                    m["title"].as_str().unwrap_or("Milestone"),
+                    m["description"].as_str(),
+                    m["target_date"].as_str(),
+                    i as i64,
+                )
+                .await
+                .ok();
         }
     }
     if let Some(tasks) = plan["immediate_tasks"].as_array() {
         for t in tasks {
             let tid = uuid::Uuid::new_v4().to_string();
-            engine.db().add_dream_task(&tid, &dream_id, None, &user_id, t["title"].as_str().unwrap_or("Task"), t["description"].as_str(), t["due_date"].as_str(), t["frequency"].as_str()).ok();
+            engine
+                .db()
+                .add_dream_task(
+                    &tid,
+                    &dream_id,
+                    None,
+                    &member_id,
+                    t["title"].as_str().unwrap_or("Task"),
+                    t["description"].as_str(),
+                    t["due_date"].as_str(),
+                    t["frequency"].as_str(),
+                )
+                .await
+                .ok();
         }
     }
     Ok(plan)
@@ -3430,47 +5791,96 @@ pub async fn dream_ai_plan(user_id: String, dream_id: String, title: String, des
 
 // ── Dreams: Horizon Commands ──
 
-#[tauri::command]
-pub fn dream_get_velocity(user_id: String, dream_id: String) -> Result<engine::types::DreamVelocity, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_velocity(
+    user_id: String,
+    dream_id: String,
+) -> Result<engine::types::DreamVelocity, String> {
     let engine = engine::get_engine();
-    engine.db().get_dream_velocity(&dream_id, &user_id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_dream_velocity(&dream_id, &member_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_get_timeline(user_id: String, dream_id: String) -> Result<engine::types::DreamTimeline, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_timeline(
+    user_id: String,
+    dream_id: String,
+) -> Result<engine::types::DreamTimeline, String> {
     let engine = engine::get_engine();
-    engine.db().get_dream_timeline(&dream_id, &user_id).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .get_dream_timeline(&dream_id, &member_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_update_progress_manual(user_id: String, dream_id: String, progress_pct: f64) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_update_progress_manual(
+    user_id: String,
+    dream_id: String,
+    progress_pct: f64,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().set_dream_progress(&user_id, &dream_id, progress_pct).map_err(|e| e.to_string())
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .set_dream_progress(&member_id, &dream_id, progress_pct)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn dream_get_all_active_with_velocity(user_id: String) -> Result<serde_json::Value, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub async fn dream_get_all_active_with_velocity(
+    user_id: String,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let dreams_vel = engine.db().get_active_dreams_with_velocity(&user_id).map_err(|e| e.to_string())?;
-    let result: Vec<serde_json::Value> = dreams_vel.into_iter().map(|(d, v)| {
-        serde_json::json!({ "dream": d, "velocity": v })
-    }).collect();
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    let dreams_vel = engine
+        .db()
+        .get_active_dreams_with_velocity(&member_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let result: Vec<serde_json::Value> = dreams_vel
+        .into_iter()
+        .map(|(d, v)| serde_json::json!({ "dream": d, "velocity": v }))
+        .collect();
     Ok(serde_json::json!(result))
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn dream_ai_narrate(user_id: String, dream_id: String) -> Result<String, String> {
     let engine = engine::get_engine();
-    let velocity = engine.db().get_dream_velocity(&dream_id, &user_id).map_err(|e| e.to_string())?;
-    let dreams = engine.db().get_dreams(&user_id, None).map_err(|e| e.to_string())?;
-    let title = dreams.iter().find(|d| d.id == dream_id)
+    let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
+    let velocity = engine
+        .db()
+        .get_dream_velocity(&dream_id, &member_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let dreams = engine
+        .db()
+        .get_dreams(&member_id, None)
+        .await
+        .map_err(|e| e.to_string())?;
+    let title = dreams
+        .iter()
+        .find(|d| d.id == dream_id)
         .map(|d| d.title.clone())
         .unwrap_or_else(|| "Your Dream".to_string());
-    let mut narrative = format!("⭐ {} — {}% complete\n\n", title, velocity.progress_pct as i64);
+    let mut narrative = format!(
+        "⭐ {} — {}% complete\n\n",
+        title, velocity.progress_pct as i64
+    );
     match velocity.pace.as_str() {
         "ahead" => narrative.push_str("You're ahead of schedule! Keep the momentum going."),
         "on_track" => narrative.push_str("You're on track. Stay consistent and you'll get there."),
-        _ => narrative.push_str("Things are moving slower than planned. Consider breaking it into smaller steps."),
+        _ => narrative.push_str(
+            "Things are moving slower than planned. Consider breaking it into smaller steps.",
+        ),
     }
     if let Some(days) = velocity.days_remaining {
         narrative.push_str(&format!("\n\n📅 {} days until your target date.", days));
@@ -3485,8 +5895,13 @@ pub async fn diary_generate_entry(agent_id: String) -> Result<engine::types::Dia
     let engine = engine::get_engine();
 
     // Get agent info
-    let agents = engine.db().get_agent_templates(None).map_err(|e| e.to_string())?;
-    let agent = agents.iter().find(|a| a.id == agent_id)
+    let agents = engine
+        .db()
+        .get_agent_templates(None)
+        .map_err(|e| e.to_string())?;
+    let agent = agents
+        .iter()
+        .find(|a| a.id == agent_id)
         .ok_or_else(|| format!("Agent '{}' not found", agent_id))?;
 
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
@@ -3521,8 +5936,10 @@ Respond in this EXACT JSON format (no markdown, no code fences):
     \"feeling\": \"How it made you feel\"
   }}
 }}",
-        name = agent.name, role = agent.category,
-        soul = agent.soul, instructions = agent.instructions,
+        name = agent.name,
+        role = agent.category,
+        soul = agent.soul,
+        instructions = agent.instructions,
         day_name = day_name
     );
 
@@ -3533,15 +5950,18 @@ Respond in this EXACT JSON format (no markdown, no code fences):
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
         .await
         .map_err(|e| format!("AI failed: {}", e))?;
 
     let raw = response.content.trim();
     let json_str = raw
-        .strip_prefix("```json").unwrap_or(raw)
-        .strip_prefix("```").unwrap_or(raw)
-        .strip_suffix("```").unwrap_or(raw)
+        .strip_prefix("```json")
+        .unwrap_or(raw)
+        .strip_prefix("```")
+        .unwrap_or(raw)
+        .strip_suffix("```")
+        .unwrap_or(raw)
         .trim();
 
     #[derive(serde::Deserialize)]
@@ -3553,47 +5973,81 @@ Respond in this EXACT JSON format (no markdown, no code fences):
         memorable_moment: Option<MemorableMoment>,
     }
     #[derive(serde::Deserialize)]
-    struct MemorableMoment { moment: String, feeling: String }
+    struct MemorableMoment {
+        moment: String,
+        feeling: String,
+    }
 
     let result: DiaryResult = serde_json::from_str(json_str)
         .map_err(|e| format!("Parse error: {}. Raw: {}", e, json_str))?;
 
     let entry_id = uuid::Uuid::new_v4().to_string();
     let topics_json = serde_json::to_string(&result.topics).unwrap_or_default();
-    let moment_json = result.memorable_moment.as_ref()
+    let moment_json = result
+        .memorable_moment
+        .as_ref()
         .map(|m| serde_json::json!({"moment": m.moment, "feeling": m.feeling}).to_string());
 
-    engine.db().add_diary_entry(
-        &entry_id, &agent_id, &today,
-        Some(&result.title), &result.content, &result.mood,
-        Some(&topics_json), moment_json.as_deref()
-    ).map_err(|e| e.to_string())?;
+    engine
+        .db()
+        .add_diary_entry(
+            &entry_id,
+            &agent_id,
+            &today,
+            Some(&result.title),
+            &result.content,
+            &result.mood,
+            Some(&topics_json),
+            moment_json.as_deref(),
+        )
+        .map_err(|e| e.to_string())?;
 
     // Log mood
     let mood_id = uuid::Uuid::new_v4().to_string();
-    engine.db().add_mood_log(&mood_id, &agent_id, &result.mood, 50, Some("diary entry")).ok();
+    engine
+        .db()
+        .add_mood_log(&mood_id, &agent_id, &result.mood, 50, Some("diary entry"))
+        .ok();
 
-    let entries = engine.db().get_diary_entries(&agent_id, 1).map_err(|e| e.to_string())?;
-    entries.into_iter().next().ok_or_else(|| "Failed to load entry".to_string())
+    let entries = engine
+        .db()
+        .get_diary_entries(&agent_id, 1)
+        .map_err(|e| e.to_string())?;
+    entries
+        .into_iter()
+        .next()
+        .ok_or_else(|| "Failed to load entry".to_string())
 }
 
 #[tauri::command]
-pub fn diary_get_entries(agent_id: String, limit: Option<i64>) -> Result<Vec<engine::types::DiaryEntry>, String> {
+pub fn diary_get_entries(
+    agent_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<engine::types::DiaryEntry>, String> {
     let engine = engine::get_engine();
-    engine.db().get_diary_entries(&agent_id, limit.unwrap_or(20)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_diary_entries(&agent_id, limit.unwrap_or(20))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn diary_get_all_entries(limit: Option<i64>) -> Result<Vec<engine::types::DiaryEntry>, String> {
     let engine = engine::get_engine();
-    engine.db().get_all_diary_entries(limit.unwrap_or(50)).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_all_diary_entries(limit.unwrap_or(50))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn diary_get_today() -> Result<Vec<engine::types::DiaryEntry>, String> {
     let engine = engine::get_engine();
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    engine.db().get_diary_entries_by_date(&today).map_err(|e| e.to_string())
+    engine
+        .db()
+        .get_diary_entries_by_date(&today)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -3607,72 +6061,121 @@ pub fn diary_get_dashboard() -> Result<engine::types::DiaryDashboard, String> {
 #[tauri::command]
 pub fn echo_write_entry(req: EchoWriteRequest) -> Result<EchoEntry, String> {
     let engine = engine::get_engine();
-    engine.db().echo_create_entry(&req).map_err(|e| e.to_string())
+    engine
+        .db()
+        .echo_create_entry(&req)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn echo_get_entries(limit: Option<i64>, offset: Option<i64>) -> Result<Vec<EchoEntry>, String> {
+pub async fn echo_get_entries(
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<EchoEntry>, String> {
     let engine = engine::get_engine();
-    engine.db().echo_get_entries(limit, offset).map_err(|e| e.to_string())
+    engine
+        .db()
+        .echo_get_entries(limit, offset)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn echo_delete_entry(id: String) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().echo_delete_entry(&id).map_err(|e| e.to_string())
+    engine
+        .db()
+        .echo_delete_entry(&id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn echo_get_stats() -> Result<EchoDailyBrief, String> {
+pub async fn echo_get_stats() -> Result<EchoDailyBrief, String> {
     let engine = engine::get_engine();
     engine.db().echo_get_stats().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn echo_get_patterns() -> Result<Vec<EchoPattern>, String> {
+pub async fn echo_get_patterns() -> Result<Vec<EchoPattern>, String> {
     let engine = engine::get_engine();
     engine.db().echo_get_patterns().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn echo_create_pattern(pattern_type: String, title: String, description: String, confidence: f64, data_json: Option<String>) -> Result<(), String> {
+pub fn echo_create_pattern(
+    pattern_type: String,
+    title: String,
+    description: String,
+    confidence: f64,
+    data_json: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
-    engine.db().echo_create_pattern(&pattern_type, &title, &description, confidence, data_json.as_deref()).map_err(|e| e.to_string())
+    engine
+        .db()
+        .echo_create_pattern(
+            &pattern_type,
+            &title,
+            &description,
+            confidence,
+            data_json.as_deref(),
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn echo_get_entries_by_date(date: String) -> Result<Vec<EchoEntry>, String> {
+pub async fn echo_get_entries_by_date(date: String) -> Result<Vec<EchoEntry>, String> {
     let engine = engine::get_engine();
-    engine.db().echo_get_entries_by_date(&date).map_err(|e| e.to_string())
+    engine
+        .db()
+        .echo_get_entries_by_date(&date)
+        .map_err(|e| e.to_string())
 }
-
 
 // ── Current — Intelligence Briefing ──
 
 /// Generate a personalized daily briefing via LLM
 #[tauri::command]
-pub async fn current_daily_briefing(member_id: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn current_daily_briefing(
+    member_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
 
     // Pull feed context before the await
-    let feed_context = {
-        let conn = engine.db().conn();
-        let mut stmt = conn.prepare(
+    let feed_context =
+        {
+            let conn = engine.db().conn_async().await;
+            let mut stmt = conn.prepare(
             "SELECT title, body, category FROM content_feed ORDER BY created_at DESC LIMIT 10"
         ).map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, Option<String>>(2)?))
-        }).map_err(|e| e.to_string())?;
-        let mut ctx = String::new();
-        for r in rows {
-            let (title, body, category) = r.map_err(|e| e.to_string())?;
-            ctx.push_str(&format!("[{}] {}: {}\n", category.unwrap_or_else(|| "general".to_string()), title, body));
-        }
-        ctx
-    };
+            let rows = stmt
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
+                })
+                .map_err(|e| e.to_string())?;
+            let mut ctx = String::new();
+            for r in rows {
+                let (title, body, category) = r.map_err(|e| e.to_string())?;
+                ctx.push_str(&format!(
+                    "[{}] {}: {}\n",
+                    category.unwrap_or_else(|| "general".to_string()),
+                    title,
+                    body
+                ));
+            }
+            ctx
+        };
 
     let hour = chrono::Utc::now().hour();
-    let time_greeting = if hour < 12 { "Good morning" } else if hour < 17 { "Good afternoon" } else { "Good evening" };
+    let time_greeting = if hour < 12 {
+        "Good morning"
+    } else if hour < 17 {
+        "Good afternoon"
+    } else {
+        "Good evening"
+    };
 
     let prompt = format!(
         "You are Current, an intelligence briefing AI. Generate a personalized daily briefing for the user.
@@ -3697,37 +6200,53 @@ Make items genuinely insightful, not generic filler."
     );
 
     let messages = vec![OpenAIMessage {
-        role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None,
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
     }];
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
-        .await.map_err(|e| format!("AI failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     let briefing: serde_json::Value = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse briefing: {}. Raw: {}", e, json_str))?;
 
     // Cache in DB
     let id = uuid::Uuid::new_v4().to_string();
-    let greeting = briefing["greeting"].as_str().unwrap_or(time_greeting).to_string();
+    let greeting = briefing["greeting"]
+        .as_str()
+        .unwrap_or(time_greeting)
+        .to_string();
     let items_json = serde_json::to_string(&briefing["items"]).unwrap_or_default();
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     conn.execute(
         "INSERT INTO daily_briefings (id, member_id, greeting, items_json, generated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
         rusqlite::params![id, member_id, greeting, items_json, now],
     ).map_err(|e| e.to_string())?;
 
-    Ok(serde_json::json!({ "id": id, "greeting": greeting, "items": briefing["items"], "generated_at": now }))
+    Ok(
+        serde_json::json!({ "id": id, "greeting": greeting, "items": briefing["items"], "generated_at": now }),
+    )
 }
 
 /// Detect weak signals / emerging trends (ripples)
 #[tauri::command]
-pub async fn current_detect_ripples(member_id: Option<String>) -> Result<Vec<serde_json::Value>, String> {
+pub async fn current_detect_ripples(
+    member_id: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
 
     let prompt = "You are Current, an intelligence analyst AI. Detect weak signals and emerging trends that most people haven't noticed yet.
@@ -3742,23 +6261,40 @@ Respond as JSON (no markdown, no code fences):
 Confidence should be honest — most weak signals are 0.3-0.7. Be specific, not vague.";
 
     let messages = vec![OpenAIMessage {
-        role: "user".to_string(), content: Some(prompt.to_string()), tool_call_id: None, tool_calls: None,
+        role: "user".to_string(),
+        content: Some(prompt.to_string()),
+        tool_call_id: None,
+        tool_calls: None,
     }];
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
-        .await.map_err(|e| format!("AI failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     #[derive(serde::Deserialize)]
-    struct RippleItem { title: String, description: String, confidence: f64, category: String, why_it_could_matter: String, sources: Vec<String> }
+    struct RippleItem {
+        title: String,
+        description: String,
+        confidence: f64,
+        category: String,
+        why_it_could_matter: String,
+        sources: Vec<String>,
+    }
 
     let items: Vec<RippleItem> = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse ripples: {}. Raw: {}", e, json_str))?;
 
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     let mut result = Vec::new();
 
     for item in &items {
@@ -3781,15 +6317,25 @@ Confidence should be honest — most weak signals are 0.3-0.7. Be specific, not 
 #[tauri::command]
 pub fn current_signal_threads(member_id: Option<String>) -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_blocking();
     let mut conditions = Vec::<String>::new();
     let mut params_vec: Vec<String> = Vec::new();
-    if let Some(mid) = &member_id { conditions.push("member_id = ?".to_string()); params_vec.push(mid.clone()); }
-    let where_clause = if conditions.is_empty() { String::new() } else { format!("WHERE {}", conditions.join(" AND ")) };
+    if let Some(mid) = &member_id {
+        conditions.push("member_id = ?".to_string());
+        params_vec.push(mid.clone());
+    }
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
     let query = format!("SELECT id, member_id, topic, summary, key_developments_json, prediction, prediction_confidence, entries_json, entries_count, created_at, updated_at FROM signal_threads {} ORDER BY updated_at DESC", where_clause);
 
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
-    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
     let rows = stmt.query_map(&params_refs[..], |row| {
         Ok(serde_json::json!({
             "id": row.get::<_, String>(0)?, "member_id": row.get::<_, Option<String>>(1)?,
@@ -3801,13 +6347,19 @@ pub fn current_signal_threads(member_id: Option<String>) -> Result<Vec<serde_jso
         }))
     }).map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for r in rows { result.push(r.map_err(|e| e.to_string())?); }
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
     Ok(result)
 }
 
 /// Create a new signal thread with LLM-generated initial summary
 #[tauri::command]
-pub async fn current_create_signal_thread(member_id: Option<String>, topic: String, initial_content: String) -> Result<serde_json::Value, String> {
+pub async fn current_create_signal_thread(
+    member_id: Option<String>,
+    topic: String,
+    initial_content: String,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
 
     let prompt = format!(
@@ -3827,17 +6379,32 @@ Respond as JSON (no markdown):
     );
 
     let messages = vec![OpenAIMessage {
-        role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None,
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
     }];
-    let response = cloud::cloud_chat(None, messages, Some(1000), None, None)
-        .await.map_err(|e| format!("AI failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1000), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     #[derive(serde::Deserialize)]
-    struct ThreadInit { summary: String, key_developments: Vec<String>, prediction: Option<String>, prediction_confidence: Option<f64> }
+    struct ThreadInit {
+        summary: String,
+        key_developments: Vec<String>,
+        prediction: Option<String>,
+        prediction_confidence: Option<f64>,
+    }
 
     let init: ThreadInit = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse: {}. Raw: {}", e, json_str))?;
@@ -3847,7 +6414,7 @@ Respond as JSON (no markdown):
     let key_devs_json = serde_json::to_string(&init.key_developments).unwrap_or_default();
     let entries_json = serde_json::to_string(&serde_json::json!([{"timestamp": now, "content": initial_content, "source": "user_input"}])).unwrap_or_default();
 
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     conn.execute(
         "INSERT INTO signal_threads (id, member_id, topic, summary, key_developments_json, prediction, prediction_confidence, entries_json, entries_count, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, ?9, ?9)",
         rusqlite::params![id, member_id, topic, init.summary, key_devs_json, init.prediction, init.prediction_confidence, entries_json, now],
@@ -3863,20 +6430,38 @@ Respond as JSON (no markdown):
 
 /// Natural language question → LLM research → synthesized answer
 #[tauri::command]
-pub async fn current_ask(member_id: Option<String>, question: String) -> Result<serde_json::Value, String> {
+pub async fn current_ask(
+    member_id: Option<String>,
+    question: String,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
 
     // Pull feed context before the await
     let feed_context = {
-        let conn = engine.db().conn();
-        let mut stmt = conn.prepare("SELECT title, body, category FROM content_feed ORDER BY created_at DESC LIMIT 5").map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, Option<String>>(2)?))
-        }).map_err(|e| e.to_string())?;
+        let conn = engine.db().conn_async().await;
+        let mut stmt = conn
+            .prepare(
+                "SELECT title, body, category FROM content_feed ORDER BY created_at DESC LIMIT 5",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
         let mut ctx = String::new();
         for r in rows {
             let (title, body, category) = r.map_err(|e| e.to_string())?;
-            ctx.push_str(&format!("[{}] {}: {}\n", category.unwrap_or_else(|| "general".to_string()), title, body));
+            ctx.push_str(&format!(
+                "[{}] {}: {}\n",
+                category.unwrap_or_else(|| "general".to_string()),
+                title,
+                body
+            ));
         }
         ctx
     };
@@ -3896,17 +6481,32 @@ Use confidence_level: high, medium, or low. Be honest."
     );
 
     let messages = vec![OpenAIMessage {
-        role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None,
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
     }];
-    let response = cloud::cloud_chat(None, messages, Some(1500), None, None)
-        .await.map_err(|e| format!("AI failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1500), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     #[derive(serde::Deserialize)]
-    struct QAResult { answer: String, key_points: Vec<String>, sources: Vec<String>, confidence_level: String }
+    struct QAResult {
+        answer: String,
+        key_points: Vec<String>,
+        sources: Vec<String>,
+        confidence_level: String,
+    }
 
     let qa: QAResult = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse: {}. Raw: {}", e, json_str))?;
@@ -3916,7 +6516,7 @@ Use confidence_level: high, medium, or low. Be honest."
     let kp_json = serde_json::to_string(&qa.key_points).unwrap_or_default();
     let src_json = serde_json::to_string(&qa.sources).unwrap_or_default();
 
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     conn.execute(
         "INSERT INTO questions (id, member_id, question, answer, key_points_json, sources_json, confidence_level, asked_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![id, member_id, question, qa.answer, kp_json, src_json, qa.confidence_level, now],
@@ -3930,18 +6530,31 @@ Use confidence_level: high, medium, or low. Be honest."
 
 /// Get recent questions from DB
 #[tauri::command]
-pub fn current_get_questions(member_id: Option<String>, limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+pub fn current_get_questions(
+    member_id: Option<String>,
+    limit: Option<i64>,
+) -> Result<Vec<serde_json::Value>, String> {
     let engine = engine::get_engine();
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_blocking();
     let lim = limit.unwrap_or(20);
     let mut conditions = Vec::<String>::new();
     let mut params_vec: Vec<String> = Vec::new();
-    if let Some(mid) = &member_id { conditions.push("member_id = ?".to_string()); params_vec.push(mid.clone()); }
-    let where_clause = if conditions.is_empty() { String::new() } else { format!("WHERE {}", conditions.join(" AND ")) };
+    if let Some(mid) = &member_id {
+        conditions.push("member_id = ?".to_string());
+        params_vec.push(mid.clone());
+    }
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
     let query = format!("SELECT id, member_id, question, answer, key_points_json, sources_json, confidence_level, asked_at FROM questions {} ORDER BY asked_at DESC LIMIT {}", where_clause, lim);
 
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
-    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+    let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec
+        .iter()
+        .map(|p| p as &dyn rusqlite::ToSql)
+        .collect();
     let rows = stmt.query_map(&params_refs[..], |row| {
         Ok(serde_json::json!({
             "id": row.get::<_, String>(0)?, "member_id": row.get::<_, Option<String>>(1)?,
@@ -3952,32 +6565,46 @@ pub fn current_get_questions(member_id: Option<String>, limit: Option<i64>) -> R
         }))
     }).map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for r in rows { result.push(r.map_err(|e| e.to_string())?); }
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
     Ok(result)
 }
 
 /// Analyze reading patterns from content_feed table
 #[tauri::command]
-pub async fn current_cognitive_patterns(member_id: Option<String>, time_range: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn current_cognitive_patterns(
+    member_id: Option<String>,
+    time_range: Option<String>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
 
     // Pull feed data before the await
     let (feed_data, cat_dist) = {
-        let conn = engine.db().conn();
+        let conn = engine.db().conn_async().await;
         let mut stmt = conn.prepare("SELECT content_type, category, title, body FROM content_feed ORDER BY created_at DESC LIMIT 50").map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?, row.get::<_, String>(2)?, row.get::<_, String>(3)?))
-        }).map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
 
         let mut feed = String::new();
-        let mut cat_counts: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        let mut cat_counts: std::collections::HashMap<String, i64> =
+            std::collections::HashMap::new();
         for r in rows {
             let (ctype, cat, title, body) = r.map_err(|e| e.to_string())?;
             let c = cat.unwrap_or_else(|| "uncategorized".to_string());
             *cat_counts.entry(c.clone()).or_insert(0) += 1;
             feed.push_str(&format!("[{ctype}|{c}] {title}: {body}\n"));
         }
-        let dist: serde_json::Value = cat_counts.iter()
+        let dist: serde_json::Value = cat_counts
+            .iter()
             .map(|(k, v)| (k.clone(), serde_json::json!({"count": v, "pct": 0.0})))
             .collect();
         (feed, dist)
@@ -3998,61 +6625,108 @@ Be specific and actionable. Don't just describe — interpret."
     );
 
     let messages = vec![OpenAIMessage {
-        role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None,
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
     }];
-    let response = cloud::cloud_chat(None, messages, Some(1500), None, None)
-        .await.map_err(|e| format!("AI failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1500), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     let analysis: serde_json::Value = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse: {}. Raw: {}", e, json_str))?;
 
+    // Serialize→deserialize to break any internal parent-reference chains that
+    // serde_json::Value preserves from the parsed tree. This guarantees a
+    // clean, cycle-free tree for Tauri IPC serialization.
+    let cat_dist = serde_json::from_value::<serde_json::Value>(
+        serde_json::to_string(&analysis["category_distribution"])
+            .map_err(|e| format!("category_distribution serialization failed: {}", e))?
+            .into(),
+    ).map_err(|e| e.to_string())?;
+    let blind_spots = serde_json::from_value::<serde_json::Value>(
+        serde_json::to_string(&analysis["blind_spots"])
+            .map_err(|e| format!("blind_spots serialization failed: {}", e))?
+            .into(),
+    ).map_err(|e| e.to_string())?;
+
+    let tone_trend = analysis["tone_trend"].as_str().unwrap_or("neutral").to_string();
+    let focus_shift = analysis["focus_shift"].as_str().unwrap_or("").to_string();
+    let recommendation = analysis["recommendation"].as_str().unwrap_or("").to_string();
+    let cat_json = serde_json::to_string(&cat_dist).unwrap_or_default();
+    let blind_json = serde_json::to_string(&blind_spots).unwrap_or_default();
+
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let tr = time_range.unwrap_or_else(|| "last_7_days".to_string());
-    let cat_json = serde_json::to_string(&analysis["category_distribution"]).unwrap_or_default();
-    let tone = analysis["tone_trend"].as_str().unwrap_or("neutral").to_string();
-    let blind_json = serde_json::to_string(&analysis["blind_spots"]).unwrap_or_default();
-    let focus = analysis["focus_shift"].as_str().unwrap_or("").to_string();
-    let rec = analysis["recommendation"].as_str().unwrap_or("").to_string();
 
-    let conn = engine.db().conn();
+    let conn = engine.db().conn_async().await;
     conn.execute(
         "INSERT INTO reading_patterns (id, member_id, time_range, category_distribution_json, tone_trend, blind_spots_json, focus_shift, recommendation, analyzed_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        rusqlite::params![id, member_id, tr, cat_json, tone, blind_json, focus, rec, now],
+        rusqlite::params![id, member_id, tr, cat_json, tone_trend, blind_json, focus_shift, recommendation, now],
     ).map_err(|e| e.to_string())?;
 
-    Ok(serde_json::json!({
-        "id": id, "time_range": tr, "category_distribution": analysis["category_distribution"],
-        "tone_trend": tone, "blind_spots": analysis["blind_spots"], "focus_shift": focus,
-        "recommendation": rec, "analyzed_at": now,
-    }))
+    // Build final value from plain primitives — no nested Values, no cycles
+    let mut obj = serde_json::Map::new();
+    obj.insert("id".to_string(), serde_json::Value::String(id));
+    obj.insert("time_range".to_string(), serde_json::Value::String(tr));
+    obj.insert("category_distribution".to_string(), cat_dist);
+    obj.insert("tone_trend".to_string(), serde_json::Value::String(tone_trend));
+    obj.insert("blind_spots".to_string(), blind_spots);
+    obj.insert("focus_shift".to_string(), serde_json::Value::String(focus_shift));
+    obj.insert("recommendation".to_string(), serde_json::Value::String(recommendation));
+    obj.insert("analyzed_at".to_string(), serde_json::Value::String(now));
+
+    Ok(serde_json::Value::Object(obj))
 }
 
 /// Synthesize multiple sources on a topic
 #[tauri::command]
-pub async fn current_synthesize(_member_id: Option<String>, topic: String) -> Result<serde_json::Value, String> {
+pub async fn current_synthesize(
+    _member_id: Option<String>,
+    topic: String,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
 
     // Pull relevant feed items before the await
     let source_data = {
-        let conn = engine.db().conn();
+        let conn = engine.db().conn_async().await;
         let mut stmt = conn.prepare(
             "SELECT title, body, category, source_url FROM content_feed WHERE title LIKE ?1 OR body LIKE ?1 OR category LIKE ?1 ORDER BY created_at DESC LIMIT 10"
         ).map_err(|e| e.to_string())?;
         let search = format!("%{}%", topic);
-        let rows = stmt.query_map(rusqlite::params![search], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, Option<String>>(2)?, row.get::<_, Option<String>>(3)?))
-        }).map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(rusqlite::params![search], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
 
         let mut sources = String::new();
         for r in rows {
             let (title, body, cat, url) = r.map_err(|e| e.to_string())?;
-            sources.push_str(&format!("[{}] {}\n{}\nSource: {}\n\n",
-                cat.unwrap_or_else(|| "general".to_string()), title, body, url.unwrap_or_else(|| "N/A".to_string())));
+            sources.push_str(&format!(
+                "[{}] {}\n{}\nSource: {}\n\n",
+                cat.unwrap_or_else(|| "general".to_string()),
+                title,
+                body,
+                url.unwrap_or_else(|| "N/A".to_string())
+            ));
         }
         if sources.is_empty() {
             sources = format!("No existing content found about '{topic}'. Provide synthesis based on general knowledge.\n");
@@ -4071,14 +6745,24 @@ Create a comprehensive synthesis. Respond as JSON (no markdown):
     );
 
     let messages = vec![OpenAIMessage {
-        role: "user".to_string(), content: Some(prompt), tool_call_id: None, tool_calls: None,
+        role: "user".to_string(),
+        content: Some(prompt),
+        tool_call_id: None,
+        tool_calls: None,
     }];
-    let response = cloud::cloud_chat(None, messages, Some(2000), None, None)
-        .await.map_err(|e| format!("AI failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(2000), None, None)
+        .await
+        .map_err(|e| format!("AI failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content).strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     let synthesis: serde_json::Value = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse: {}. Raw: {}", e, json_str))?;
@@ -4116,28 +6800,42 @@ pub fn google_get_events(days: Option<i64>) -> Result<serde_json::Value, String>
     let days = days.unwrap_or(7);
     let days_str = format!("--days={}", days);
     let args = vec![
-        "calendar", "events", "--json", "--results-only",
-        "-a", GOG_ACCOUNT, &days_str,
+        "calendar",
+        "events",
+        "--json",
+        "--results-only",
+        "-a",
+        GOG_ACCOUNT,
+        &days_str,
     ];
     let json = run_gog(&args)?;
-    let events: serde_json::Value = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse calendar JSON: {}", e))?;
+    let events: serde_json::Value =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse calendar JSON: {}", e))?;
     Ok(events)
 }
 
 /// Get recent inbox emails
 #[tauri::command]
-pub fn google_get_emails(query: Option<String>, limit: Option<i64>) -> Result<serde_json::Value, String> {
+pub fn google_get_emails(
+    query: Option<String>,
+    limit: Option<i64>,
+) -> Result<serde_json::Value, String> {
     let query = query.unwrap_or_else(|| "in:inbox".to_string());
     let limit = limit.unwrap_or(15);
     let limit_str = format!("--max={}", limit);
     let args = vec![
-        "gmail", "search", &query, "--json", "--results-only",
-        "-a", GOG_ACCOUNT, &limit_str,
+        "gmail",
+        "search",
+        &query,
+        "--json",
+        "--results-only",
+        "-a",
+        GOG_ACCOUNT,
+        &limit_str,
     ];
     let json = run_gog(&args)?;
-    let emails: serde_json::Value = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse email JSON: {}", e))?;
+    let emails: serde_json::Value =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse email JSON: {}", e))?;
     Ok(emails)
 }
 
@@ -4147,12 +6845,17 @@ pub fn google_get_drive_files(limit: Option<i64>) -> Result<serde_json::Value, S
     let limit = limit.unwrap_or(15);
     let limit_str = format!("--max={}", limit);
     let args = vec![
-        "drive", "ls", "--json", "--results-only",
-        "-a", GOG_ACCOUNT, &limit_str,
+        "drive",
+        "ls",
+        "--json",
+        "--results-only",
+        "-a",
+        GOG_ACCOUNT,
+        &limit_str,
     ];
     let json = run_gog(&args)?;
-    let files: serde_json::Value = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse drive JSON: {}", e))?;
+    let files: serde_json::Value =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse drive JSON: {}", e))?;
     Ok(files)
 }
 
@@ -4160,20 +6863,38 @@ pub fn google_get_drive_files(limit: Option<i64>) -> Result<serde_json::Value, S
 #[tauri::command]
 pub fn google_get_tasks() -> Result<serde_json::Value, String> {
     // First get task lists
-    let lists_json = run_gog(&["tasks", "lists", "--json", "--results-only", "-a", GOG_ACCOUNT])?;
+    let lists_json = run_gog(&[
+        "tasks",
+        "lists",
+        "--json",
+        "--results-only",
+        "-a",
+        GOG_ACCOUNT,
+    ])?;
     let lists: serde_json::Value = serde_json::from_str(&lists_json)
         .map_err(|e| format!("Failed to parse task lists: {}", e))?;
 
     // Get tasks from the default list
     let tasklist_id = if let Some(arr) = lists.as_array() {
-        arr.first().and_then(|l| l["id"].as_str()).unwrap_or("@default")
+        arr.first()
+            .and_then(|l| l["id"].as_str())
+            .unwrap_or("@default")
     } else {
         "@default"
     };
 
-    let tasks_json = run_gog(&["tasks", "ls", "--json", "--results-only", "-a", GOG_ACCOUNT, "--tasklist", tasklist_id])?;
-    let tasks: serde_json::Value = serde_json::from_str(&tasks_json)
-        .map_err(|e| format!("Failed to parse tasks: {}", e))?;
+    let tasks_json = run_gog(&[
+        "tasks",
+        "ls",
+        "--json",
+        "--results-only",
+        "-a",
+        GOG_ACCOUNT,
+        "--tasklist",
+        tasklist_id,
+    ])?;
+    let tasks: serde_json::Value =
+        serde_json::from_str(&tasks_json).map_err(|e| format!("Failed to parse tasks: {}", e))?;
 
     Ok(serde_json::json!({
         "lists": lists,
@@ -4213,13 +6934,19 @@ Return ONLY the JSON object, no explanation."#,
         tool_calls: None,
     }];
 
-    let response = cloud::cloud_chat(None, messages, Some(500), None, None)
-        .await.map_err(|e| format!("AI parse failed: {}", e))?;
+    let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(500), None, None)
+        .await
+        .map_err(|e| format!("AI parse failed: {}", e))?;
 
     let content = response.content.trim();
-    let json_str = content.strip_prefix("```json").unwrap_or(content)
-        .strip_prefix("```").unwrap_or(content)
-        .strip_suffix("```").unwrap_or(content).trim();
+    let json_str = content
+        .strip_prefix("```json")
+        .unwrap_or(content)
+        .strip_prefix("```")
+        .unwrap_or(content)
+        .strip_suffix("```")
+        .unwrap_or(content)
+        .trim();
 
     let parsed: serde_json::Value = serde_json::from_str(json_str)
         .map_err(|e| format!("Failed to parse AI response: {} — Raw: {}", e, json_str))?;
@@ -4286,9 +7013,18 @@ pub async fn download_update_file(url: String) -> Result<String, String> {
     let log_path = format!("{}/updater.log", log_dir);
 
     // Log the download attempt
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
         use std::io::Write;
-        let _ = writeln!(f, "[{}] Attempting download: {}", chrono::Utc::now().to_rfc3339(), url);
+        let _ = writeln!(
+            f,
+            "[{}] Attempting download: {}",
+            chrono::Utc::now().to_rfc3339(),
+            url
+        );
     }
 
     let client = reqwest::Client::builder()
@@ -4296,7 +7032,8 @@ pub async fn download_update_file(url: String) -> Result<String, String> {
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-    let response = client.get(&url)
+    let response = client
+        .get(&url)
         .send()
         .await
         .map_err(|e| format!("Download request failed: {}", e))?;
@@ -4304,9 +7041,18 @@ pub async fn download_update_file(url: String) -> Result<String, String> {
     if !response.status().is_success() {
         let status = response.status();
         // Log the failure
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+        {
             use std::io::Write;
-            let _ = writeln!(f, "[{}] Download failed with status: {}", chrono::Utc::now().to_rfc3339(), status);
+            let _ = writeln!(
+                f,
+                "[{}] Download failed with status: {}",
+                chrono::Utc::now().to_rfc3339(),
+                status
+            );
         }
         return Err(format!("Download failed with status: {}", status));
     }
@@ -4317,19 +7063,30 @@ pub async fn download_update_file(url: String) -> Result<String, String> {
     let temp_path = temp_dir.join(format!("conflux_update_{}", filename));
 
     // Stream to file
-    let bytes = response.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
     std::fs::write(&temp_path, &bytes).map_err(|e| format!("Failed to write file: {}", e))?;
 
     // Verify file was written
-    let file_size = std::fs::metadata(&temp_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let file_size = std::fs::metadata(&temp_path).map(|m| m.len()).unwrap_or(0);
 
     // Log success
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
         use std::io::Write;
-        let _ = writeln!(f, "[{}] Download complete: {} ({} bytes, verified: {} bytes)", 
-            chrono::Utc::now().to_rfc3339(), temp_path.display(), bytes.len(), file_size);
+        let _ = writeln!(
+            f,
+            "[{}] Download complete: {} ({} bytes, verified: {} bytes)",
+            chrono::Utc::now().to_rfc3339(),
+            temp_path.display(),
+            bytes.len(),
+            file_size
+        );
     }
 
     if file_size == 0 {
@@ -4347,9 +7104,18 @@ pub fn run_installer(installer_path: String) -> Result<(), String> {
         .unwrap_or_default();
     let log_path = format!("{}/.openclaw/logs/updater.log", home);
 
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
         use std::io::Write;
-        let _ = writeln!(f, "[{}] Running installer: {}", chrono::Utc::now().to_rfc3339(), installer_path);
+        let _ = writeln!(
+            f,
+            "[{}] Running installer: {}",
+            chrono::Utc::now().to_rfc3339(),
+            installer_path
+        );
     }
 
     #[cfg(target_os = "windows")]
@@ -4362,9 +7128,18 @@ pub fn run_installer(installer_path: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
 
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+        {
             use std::io::Write;
-            let _ = writeln!(f, "[{}] NSIS installer launched (pid: {})", chrono::Utc::now().to_rfc3339(), child.id());
+            let _ = writeln!(
+                f,
+                "[{}] NSIS installer launched (pid: {})",
+                chrono::Utc::now().to_rfc3339(),
+                child.id()
+            );
         }
     }
 
@@ -4410,7 +7185,7 @@ pub fn run_installer(installer_path: String) -> Result<(), String> {
                 .spawn()
                 .map_err(|e| format!("Failed to run installer: {}", e))?;
         }
-        
+
         // Quit the app so the new version launches
         std::process::exit(0);
     }
@@ -4423,14 +7198,22 @@ pub fn run_installer(installer_path: String) -> Result<(), String> {
 // ============================================================
 
 #[tauri::command]
-pub fn vault_scan_directory(dir_path: String) -> Result<Vec<engine::types::VaultFile>, String> {
+pub async fn vault_scan_directory(
+    dir_path: String,
+) -> Result<Vec<engine::types::VaultFile>, String> {
     use std::fs;
     let entries = fs::read_dir(&dir_path).map_err(|e| e.to_string())?;
     for entry in entries {
         if let Ok(entry) = entry {
             let path = entry.path();
-            if path.is_dir() { continue; }
-            let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            if path.is_dir() {
+                continue;
+            }
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
             let extension = path.extension().map(|e| e.to_string_lossy().to_string());
             let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
             let size_bytes = metadata.len() as i64;
@@ -4439,9 +7222,20 @@ pub fn vault_scan_directory(dir_path: String) -> Result<Vec<engine::types::Vault
             let id = uuid::Uuid::new_v4().to_string();
             let path_str = path.to_string_lossy().to_string();
             let _ = engine::db::vault_upsert_file(
-                &id, &path_str, &name, &file_type,
-                mime_type.as_deref(), extension.as_deref(),
-                size_bytes, None, None, None, None, None, None, None,
+                &id,
+                &path_str,
+                &name,
+                &file_type,
+                mime_type.as_deref(),
+                extension.as_deref(),
+                size_bytes,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             );
         }
     }
@@ -4450,11 +7244,17 @@ pub fn vault_scan_directory(dir_path: String) -> Result<Vec<engine::types::Vault
 
 fn detect_file_type(ext: &Option<String>) -> String {
     match ext.as_deref() {
-        Some("jpg") | Some("jpeg") | Some("png") | Some("gif") | Some("webp") | Some("svg") | Some("bmp") => "image".to_string(),
-        Some("mp3") | Some("wav") | Some("ogg") | Some("flac") | Some("aac") | Some("m4a") => "audio".to_string(),
+        Some("jpg") | Some("jpeg") | Some("png") | Some("gif") | Some("webp") | Some("svg")
+        | Some("bmp") => "image".to_string(),
+        Some("mp3") | Some("wav") | Some("ogg") | Some("flac") | Some("aac") | Some("m4a") => {
+            "audio".to_string()
+        }
         Some("mp4") | Some("webm") | Some("avi") | Some("mov") | Some("mkv") => "video".to_string(),
-        Some("rs") | Some("ts") | Some("tsx") | Some("js") | Some("jsx") | Some("py") | Some("go") | Some("c") | Some("cpp") | Some("h") | Some("css") | Some("html") | Some("json") | Some("toml") | Some("yaml") | Some("yml") => "code".to_string(),
-        Some("pdf") | Some("doc") | Some("docx") | Some("txt") | Some("md") | Some("csv") | Some("xls") | Some("xlsx") => "document".to_string(),
+        Some("rs") | Some("ts") | Some("tsx") | Some("js") | Some("jsx") | Some("py")
+        | Some("go") | Some("c") | Some("cpp") | Some("h") | Some("css") | Some("html")
+        | Some("json") | Some("toml") | Some("yaml") | Some("yml") => "code".to_string(),
+        Some("pdf") | Some("doc") | Some("docx") | Some("txt") | Some("md") | Some("csv")
+        | Some("xls") | Some("xlsx") => "document".to_string(),
         Some("zip") | Some("tar") | Some("gz") | Some("rar") | Some("7z") => "archive".to_string(),
         _ => "other".to_string(),
     }
@@ -4482,22 +7282,31 @@ fn detect_mime_type(ext: &Option<String>) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn vault_get_files(file_type: Option<String>, limit: Option<i64>, offset: Option<i64>) -> Result<Vec<engine::types::VaultFile>, String> {
-    engine::db::vault_get_files(file_type.as_deref(), limit.unwrap_or(100), offset.unwrap_or(0)).map_err(|e| e.to_string())
+pub async fn vault_get_files(
+    file_type: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<engine::types::VaultFile>, String> {
+    engine::db::vault_get_files(
+        file_type.as_deref(),
+        limit.unwrap_or(100),
+        offset.unwrap_or(0),
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_search_files(query: String) -> Result<Vec<engine::types::VaultFile>, String> {
+pub async fn vault_search_files(query: String) -> Result<Vec<engine::types::VaultFile>, String> {
     engine::db::vault_search(&query, 50).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_get_file(id: String) -> Result<Option<engine::types::VaultFile>, String> {
+pub async fn vault_get_file(id: String) -> Result<Option<engine::types::VaultFile>, String> {
     engine::db::vault_get_file_by_id(&id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_delete_file(id: String) -> Result<(), String> {
+pub async fn vault_delete_file(id: String) -> Result<(), String> {
     // Also delete from disk
     if let Ok(Some(file)) = engine::db::vault_get_file_by_id(&id) {
         let _ = std::fs::remove_file(&file.path);
@@ -4506,98 +7315,152 @@ pub fn vault_delete_file(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn vault_toggle_favorite(id: String) -> Result<(), String> {
+pub async fn vault_toggle_favorite(id: String) -> Result<(), String> {
     engine::db::vault_toggle_favorite(&id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_get_recent(limit: Option<i64>) -> Result<Vec<engine::types::VaultFile>, String> {
+pub async fn vault_get_recent(limit: Option<i64>) -> Result<Vec<engine::types::VaultFile>, String> {
     engine::db::vault_get_recent(limit.unwrap_or(20)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_get_favorites() -> Result<Vec<engine::types::VaultFile>, String> {
+pub async fn vault_get_favorites() -> Result<Vec<engine::types::VaultFile>, String> {
     engine::db::vault_get_favorites().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_get_stats() -> Result<(i64, i64, i64), String> {
+pub async fn vault_get_stats() -> Result<(i64, i64, i64), String> {
     engine::db::vault_get_stats().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_create_project(name: String, description: Option<String>, project_type: Option<String>) -> Result<String, String> {
+pub async fn vault_create_project(
+    name: String,
+    description: Option<String>,
+    project_type: Option<String>,
+) -> Result<String, String> {
     let id = uuid::Uuid::new_v4().to_string();
-    engine::db::vault_create_project(&id, &name, description.as_deref(), project_type.as_deref()).map_err(|e| e.to_string())?;
+    engine::db::vault_create_project(&id, &name, description.as_deref(), project_type.as_deref())
+        .map_err(|e| e.to_string())?;
     Ok(id)
 }
 
 #[tauri::command]
-pub fn vault_get_projects() -> Result<Vec<engine::types::VaultProject>, String> {
+pub async fn vault_get_projects() -> Result<Vec<engine::types::VaultProject>, String> {
     engine::db::vault_get_projects().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_get_project_detail(project_id: String) -> Result<Option<engine::types::VaultProjectDetail>, String> {
+pub async fn vault_get_project_detail(
+    project_id: String,
+) -> Result<Option<engine::types::VaultProjectDetail>, String> {
     engine::db::vault_get_project_detail(&project_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_add_file_to_project(project_id: String, file_id: String, role: Option<String>) -> Result<(), String> {
-    engine::db::vault_add_file_to_project(&project_id, &file_id, role.as_deref()).map_err(|e| e.to_string())
+pub async fn vault_add_file_to_project(
+    project_id: String,
+    file_id: String,
+    role: Option<String>,
+) -> Result<(), String> {
+    engine::db::vault_add_file_to_project(&project_id, &file_id, role.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_remove_file_from_project(project_id: String, file_id: String) -> Result<(), String> {
+pub async fn vault_remove_file_from_project(
+    project_id: String,
+    file_id: String,
+) -> Result<(), String> {
     engine::db::vault_remove_file_from_project(&project_id, &file_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_delete_project(id: String) -> Result<(), String> {
+pub async fn vault_delete_project(id: String) -> Result<(), String> {
     engine::db::vault_delete_project(&id).map_err(|e| e.to_string())
 }
 
+#[tauri::command(rename_all = "snake_case")]
+pub async fn vault_edit_project(id: String, name: Option<String>, description: Option<String>, project_type: Option<String>) -> Result<(), String> {
+    engine::db::vault_update_project(&id, name.as_deref(), description.as_deref(), project_type.as_deref()).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
-pub fn vault_get_tags() -> Result<Vec<engine::types::VaultTag>, String> {
+pub async fn vault_get_tags() -> Result<Vec<engine::types::VaultTag>, String> {
     engine::db::vault_get_tags().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_tag_file(file_id: String, tag_name: String) -> Result<(), String> {
+pub async fn vault_tag_file(file_id: String, tag_name: String) -> Result<(), String> {
     let tag_id = uuid::Uuid::new_v4().to_string();
     engine::db::vault_upsert_tag(&tag_id, &tag_name, None, "manual").map_err(|e| e.to_string())?;
     // Get existing tag id if tag already exists
     let tags = engine::db::vault_get_tags().map_err(|e| e.to_string())?;
-    let actual_tag_id = tags.iter().find(|t| t.name == tag_name).map(|t| t.id.clone()).unwrap_or(tag_id);
+    let actual_tag_id = tags
+        .iter()
+        .find(|t| t.name == tag_name)
+        .map(|t| t.id.clone())
+        .unwrap_or(tag_id);
     engine::db::vault_tag_file(&file_id, &actual_tag_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn vault_untag_file(file_id: String, tag_id: String) -> Result<(), String> {
+pub async fn vault_untag_file(file_id: String, tag_id: String) -> Result<(), String> {
     engine::db::vault_untag_file(&file_id, &tag_id).map_err(|e| e.to_string())
 }
 
 // ── Studio — Creator Workspace ──
 
 #[tauri::command]
-pub fn studio_create_generation(module: String, prompt: String, model: String, provider: String) -> Result<String, String> {
-    let id = format!("gen_{}", &uuid::Uuid::new_v4().to_string().replace("-", "")[..12]);
-    engine::db::studio_create_generation(&id, &module, &prompt, &model, &provider).map_err(|e| e.to_string())?;
+pub fn studio_create_generation(
+    module: String,
+    prompt: String,
+    model: String,
+    provider: String,
+) -> Result<String, String> {
+    let id = format!(
+        "gen_{}",
+        &uuid::Uuid::new_v4().to_string().replace("-", "")[..12]
+    );
+    engine::db::studio_create_generation(&id, &module, &prompt, &model, &provider)
+        .map_err(|e| e.to_string())?;
     Ok(id)
 }
 
 #[tauri::command]
-pub fn studio_update_generation_status(id: String, status: String, output_path: Option<String>, output_url: Option<String>, metadata_json: Option<String>, cost_cents: i64) -> Result<(), String> {
-    engine::db::studio_update_generation_status(&id, &status, output_path.as_deref(), output_url.as_deref(), metadata_json.as_deref(), cost_cents).map_err(|e| e.to_string())
+pub fn studio_update_generation_status(
+    id: String,
+    status: String,
+    output_path: Option<String>,
+    output_url: Option<String>,
+    metadata_json: Option<String>,
+    cost_cents: i64,
+) -> Result<(), String> {
+    engine::db::studio_update_generation_status(
+        &id,
+        &status,
+        output_path.as_deref(),
+        output_url.as_deref(),
+        metadata_json.as_deref(),
+        cost_cents,
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn studio_get_generations(module: Option<String>, limit: Option<i64>) -> Result<Vec<engine::types::StudioGeneration>, String> {
-    engine::db::studio_get_generations(module.as_deref(), limit.unwrap_or(50)).map_err(|e| e.to_string())
+pub async fn studio_get_generations(
+    module: Option<String>,
+    limit: Option<i64>,
+) -> Result<Vec<engine::types::StudioGeneration>, String> {
+    engine::db::studio_get_generations(module.as_deref(), limit.unwrap_or(50))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn studio_get_generation(id: String) -> Result<Option<engine::types::StudioGeneration>, String> {
+pub async fn studio_get_generation(
+    id: String,
+) -> Result<Option<engine::types::StudioGeneration>, String> {
     engine::db::studio_get_generation(&id).map_err(|e| e.to_string())
 }
 
@@ -4612,39 +7475,67 @@ pub fn studio_upsert_prompt(prompt: String, module: String) -> Result<(), String
 }
 
 #[tauri::command]
-pub fn studio_get_prompts(module: Option<String>, limit: Option<i64>) -> Result<Vec<engine::types::StudioPromptHistory>, String> {
-    engine::db::studio_get_prompts(module.as_deref(), limit.unwrap_or(20)).map_err(|e| e.to_string())
+pub async fn studio_get_prompts(
+    module: Option<String>,
+    limit: Option<i64>,
+) -> Result<Vec<engine::types::StudioPromptHistory>, String> {
+    engine::db::studio_get_prompts(module.as_deref(), limit.unwrap_or(20))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn studio_update_usage(user_id: String, month: String, module: String, cost_cents: i64) -> Result<(), String> {
-    engine::db::studio_update_usage(&user_id, &month, &module, cost_cents).map_err(|e| e.to_string())
+pub fn studio_update_usage(
+    user_id: String,
+    month: String,
+    module: String,
+    cost_cents: i64,
+) -> Result<(), String> {
+    engine::db::studio_update_usage(&user_id, &month, &module, cost_cents)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn studio_get_usage(user_id: String, month: String) -> Result<Vec<engine::types::StudioUsageStats>, String> {
+pub async fn studio_get_usage(
+    user_id: String,
+    month: String,
+) -> Result<Vec<engine::types::StudioUsageStats>, String> {
     engine::db::studio_get_usage(&user_id, &month).map_err(|e| e.to_string())
 }
 
 // ── Studio: API Key Management ──
 
 #[tauri::command]
-pub fn studio_set_api_keys(replicate_key: Option<String>, elevenlabs_key: Option<String>) -> Result<(), String> {
+pub fn studio_set_api_keys(
+    replicate_key: Option<String>,
+    elevenlabs_key: Option<String>,
+) -> Result<(), String> {
     let engine = engine::get_engine();
     if let Some(key) = replicate_key {
-        engine.db().set_config("studio_replicate_key", &key).map_err(|e| e.to_string())?;
+        engine
+            .db()
+            .set_config("studio_replicate_key", &key)
+            .map_err(|e| e.to_string())?;
     }
     if let Some(key) = elevenlabs_key {
-        engine.db().set_config("studio_elevenlabs_key", &key).map_err(|e| e.to_string())?;
+        engine
+            .db()
+            .set_config("studio_elevenlabs_key", &key)
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
 
 #[tauri::command]
-pub fn studio_get_api_keys_status() -> Result<serde_json::Value, String> {
+pub async fn studio_get_api_keys_status() -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let replicate = engine.db().get_config("studio_replicate_key").map_err(|e| e.to_string())?;
-    let elevenlabs = engine.db().get_config("studio_elevenlabs_key").map_err(|e| e.to_string())?;
+    let replicate = engine
+        .db()
+        .get_config("studio_replicate_key")
+        .map_err(|e| e.to_string())?;
+    let elevenlabs = engine
+        .db()
+        .get_config("studio_elevenlabs_key")
+        .map_err(|e| e.to_string())?;
     Ok(serde_json::json!({
         "replicate_configured": replicate.is_some() && !replicate.as_ref().unwrap().is_empty(),
         "elevenlabs_configured": elevenlabs.is_some() && !elevenlabs.as_ref().unwrap().is_empty(),
@@ -4662,25 +7553,23 @@ struct ReplicatePrediction {
 }
 
 #[tauri::command]
-pub async fn studio_generate_image(generation_id: String, prompt: String, aspect_ratio: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn studio_generate_image(
+    generation_id: String,
+    prompt: String,
+    aspect_ratio: Option<String>,
+) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let api_key = engine.db().get_config("studio_replicate_key")
-        .ok().flatten().filter(|k| !k.is_empty())
-        .or_else(|| std::env::var("REPLICATE_API_KEY").ok().filter(|k| !k.is_empty()))
-        .or_else(|| option_env!("REPLICATE_API_KEY").map(|s| s.to_string()).filter(|k| !k.is_empty()))
-        .unwrap_or_default();
-
-    if api_key.is_empty() {
-        return Err("Replicate API key not configured.".to_string());
-    }
-
-    // Check credits before generating (image costs 3 credits)
     let user_id = get_supabase_user_id();
     let image_cost: i64 = 3;
+
+    // Check credits before generating
     if !user_id.is_empty() {
         match cloud::check_cloud_balance(&user_id).await {
             Ok(status) if status.balance < image_cost => {
-                return Err(format!("Insufficient credits: have {}, need {}. Upgrade for more.", status.balance, image_cost));
+                return Err(format!(
+                    "Insufficient credits: have {}, need {}. Upgrade for more.",
+                    status.balance, image_cost
+                ));
             }
             Err(e) => log::warn!("[Studio] Credit check failed (proceeding): {}", e),
             _ => {}
@@ -4691,20 +7580,129 @@ pub async fn studio_generate_image(generation_id: String, prompt: String, aspect
     engine::db::studio_update_generation_status(&generation_id, "generating", None, None, None, 0)
         .map_err(|e| e.to_string())?;
 
+    // ── PRIMARY: DALL-E 3 via OpenAI ──
+    let openai_key = engine
+        .db()
+        .get_config("openai_api_key")
+        .ok()
+        .flatten()
+        .filter(|k| !k.is_empty());
+
+    if let Some(ref api_key) = openai_key {
+        let size = match aspect_ratio.as_deref() {
+            Some("16:9") => "1792x1024",
+            Some("9:16") => "1024x1792",
+            _ => "1024x1024",
+        };
+
+        let client = reqwest::Client::new();
+        let response = client
+            .post("https://api.openai.com/v1/images/generations")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&serde_json::json!({
+                "model": "dall-e-3",
+                "prompt": prompt,
+                "n": 1,
+                "size": size,
+                "response_format": "url"
+            }))
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) if resp.status().is_success() => {
+                let data: serde_json::Value = resp
+                    .json()
+                    .await
+                    .map_err(|e| format!("Failed to parse OpenAI response: {}", e))?;
+
+                if let Some(output_url) = data["data"]
+                    .as_array()
+                    .and_then(|arr| arr.first())
+                    .and_then(|v| v["url"].as_str())
+                {
+                    let metadata = serde_json::json!({
+                        "size": size,
+                        "format": "png",
+                        "model": "dall-e-3"
+                    })
+                    .to_string();
+
+                    engine::db::studio_update_generation_status(
+                        &generation_id,
+                        "complete",
+                        None,
+                        Some(output_url),
+                        Some(&metadata),
+                        3,
+                    )
+                    .map_err(|e| e.to_string())?;
+
+                    let _ = engine::db::studio_upsert_prompt(&prompt, "image");
+                    let month = chrono::Utc::now().format("%Y-%m").to_string();
+                    let _ = engine::db::studio_update_usage(&user_id, &month, "image", 3);
+
+                    if !user_id.is_empty() {
+                        let _ = cloud::charge_credits(&user_id, image_cost, &generation_id).await;
+                    }
+
+                    return Ok(serde_json::json!({
+                        "status": "complete",
+                        "output_url": output_url,
+                        "metadata": metadata,
+                        "provider": "openai",
+                        "model": "dall-e-3"
+                    }));
+                }
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                log::warn!("[Studio] DALL-E error ({}): {} — falling back to Replicate", status, body);
+            }
+            Err(e) => {
+                log::warn!("[Studio] DALL-E request failed: {} — falling back to Replicate", e);
+            }
+        }
+    }
+
+    // ── FALLBACK: Replicate (Flux Schnell) ──
+    let replicate_key = engine
+        .db()
+        .get_config("studio_replicate_key")
+        .ok()
+        .flatten()
+        .filter(|k| !k.is_empty())
+        .or_else(|| {
+            std::env::var("REPLICATE_API_KEY")
+                .ok()
+                .filter(|k| !k.is_empty())
+        })
+        .or_else(|| {
+            option_env!("REPLICATE_API_KEY")
+                .map(|s| s.to_string())
+                .filter(|k| !k.is_empty())
+        })
+        .unwrap_or_default();
+
+    if replicate_key.is_empty() {
+        return Err("No image generation API key configured. Add an OpenAI or Replicate key in Settings.".to_string());
+    }
+
     let client = reqwest::Client::new();
 
-    // Determine dimensions from aspect ratio
     let (width, height) = match aspect_ratio.as_deref() {
         Some("16:9") => (1280, 720),
         Some("9:16") => (720, 1280),
         Some("4:3") => (1024, 768),
         Some("3:4") => (768, 1024),
-        _ => (1024, 1024), // default 1:1
+        _ => (1024, 1024),
     };
 
-    // Start prediction using Flux Schnell (fast, cheap)
-    let response = client.post("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions")
-        .header("Authorization", format!("Bearer {}", api_key))
+    let replicate_response = client
+        .post("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions")
+        .header("Authorization", format!("Bearer {}", replicate_key))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
             "input": {
@@ -4719,35 +7717,42 @@ pub async fn studio_generate_image(generation_id: String, prompt: String, aspect
         .await
         .map_err(|e| format!("Failed to call Replicate: {}", e))?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
+    if !replicate_response.status().is_success() {
+        let status = replicate_response.status();
+        let body = replicate_response.text().await.unwrap_or_default();
         engine::db::studio_update_generation_status(&generation_id, "failed", None, None, None, 0)
             .map_err(|e| e.to_string())?;
         return Err(format!("Replicate error ({}): {}", status, body));
     }
 
-    let prediction: ReplicatePrediction = response.json().await
+    let prediction: ReplicatePrediction = replicate_response
+        .json()
+        .await
         .map_err(|e| format!("Failed to parse Replicate response: {}", e))?;
 
-    // Poll for completion (max 60 seconds)
     let prediction_id = prediction.id;
     for _ in 0..30 {
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-        let poll = client.get(format!("https://api.replicate.com/v1/predictions/{}", prediction_id))
-            .header("Authorization", format!("Bearer {}", api_key))
+        let poll = client
+            .get(format!(
+                "https://api.replicate.com/v1/predictions/{}",
+                prediction_id
+            ))
+            .header("Authorization", format!("Bearer {}", replicate_key))
             .send()
             .await
             .map_err(|e| format!("Poll failed: {}", e))?;
 
-        let pred: ReplicatePrediction = poll.json().await
+        let pred: ReplicatePrediction = poll
+            .json()
+            .await
             .map_err(|e| format!("Failed to parse poll response: {}", e))?;
 
         match pred.status.as_str() {
             "succeeded" => {
-                // Extract output URL
-                let output_url = pred.output
+                let output_url = pred
+                    .output
                     .as_ref()
                     .and_then(|o| o.as_array())
                     .and_then(|arr| arr.first())
@@ -4760,48 +7765,51 @@ pub async fn studio_generate_image(generation_id: String, prompt: String, aspect
                     "height": height,
                     "format": "png",
                     "model": "flux-schnell"
-                }).to_string();
+                })
+                .to_string();
 
-                // Update generation record
                 engine::db::studio_update_generation_status(
                     &generation_id,
                     "complete",
                     None,
                     Some(&output_url),
                     Some(&metadata),
-                    3, // ~$0.03 cost
-                ).map_err(|e| e.to_string())?;
+                    3,
+                )
+                .map_err(|e| e.to_string())?;
 
-                // Also save to prompt history
                 let _ = engine::db::studio_upsert_prompt(&prompt, "image");
-
-                // Update usage tracking
                 let month = chrono::Utc::now().format("%Y-%m").to_string();
-                let user_id = get_supabase_user_id();
                 let _ = engine::db::studio_update_usage(&user_id, &month, "image", 3);
 
-                // Charge cloud credits (fire and forget)
                 if !user_id.is_empty() {
-                    let uid = user_id.clone();
-                    let _ = cloud::charge_credits(&uid, image_cost, &generation_id).await;
+                    let _ = cloud::charge_credits(&user_id, image_cost, &generation_id).await;
                 }
 
                 return Ok(serde_json::json!({
                     "status": "complete",
                     "output_url": output_url,
-                    "metadata": metadata
+                    "metadata": metadata,
+                    "provider": "replicate",
+                    "model": "flux-schnell"
                 }));
             }
             "failed" | "canceled" => {
-                engine::db::studio_update_generation_status(&generation_id, "failed", None, None, None, 0)
-                    .map_err(|e| e.to_string())?;
+                engine::db::studio_update_generation_status(
+                    &generation_id,
+                    "failed",
+                    None,
+                    None,
+                    None,
+                    0,
+                )
+                .map_err(|e| e.to_string())?;
                 return Err(format!("Generation failed: {:?}", pred.error));
             }
-            _ => continue, // still processing
+            _ => continue,
         }
     }
 
-    // Timeout
     engine::db::studio_update_generation_status(&generation_id, "failed", None, None, None, 0)
         .map_err(|e| e.to_string())?;
     Err("Generation timed out after 60 seconds".to_string())
@@ -4814,27 +7822,57 @@ pub async fn studio_generate_image(generation_id: String, prompt: String, aspect
 pub async fn tts_speak(text: String, voice: Option<String>) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
 
-    let api_key = engine.db().get_config("elevenlabs_key")
-        .ok().flatten().filter(|k| !k.is_empty())
-        .or_else(|| engine.db().get_config("studio_elevenlabs_key").ok().flatten().filter(|k| !k.is_empty()))
-        .or_else(|| std::env::var("ELEVENLABS_API_KEY").ok().filter(|k| !k.is_empty()))
-        .or_else(|| option_env!("ELEVENLABS_API_KEY").map(|s| s.to_string()).filter(|k| !k.is_empty()))
+    let api_key = engine
+        .db()
+        .get_config("elevenlabs_key")
+        .ok()
+        .flatten()
+        .filter(|k| !k.is_empty())
+        .or_else(|| {
+            engine
+                .db()
+                .get_config("studio_elevenlabs_key")
+                .ok()
+                .flatten()
+                .filter(|k| !k.is_empty())
+        })
+        .or_else(|| {
+            std::env::var("ELEVENLABS_API_KEY")
+                .ok()
+                .filter(|k| !k.is_empty())
+        })
+        .or_else(|| {
+            option_env!("ELEVENLABS_API_KEY")
+                .map(|s| s.to_string())
+                .filter(|k| !k.is_empty())
+        })
         .unwrap_or_default();
 
     if api_key.is_empty() {
         return Err("ElevenLabs API key not configured.".to_string());
     }
 
-    // Map voice name → ElevenLabs voice ID
+    // Map agent name → ElevenLabs voice ID
+    // Configured by Don on 2026-04-29
+    // Conflux voice = ELEVENLABS_VOICE_ID from .env (TvxTBL9RtGW6tVhl4NoI)
     let voice_id = match voice.as_deref() {
-        Some("Conflux") | Some("conflux") => "JBFqnCBsd6RMkjVDRZzb", // George
-        Some(id) => id,
-        None => "JBFqnCBsd6RMkjVDRZzb",
+        Some("Conflux") | Some("conflux") => "TvxTBL9RtGW6tVhl4NoI", // From .env ELEVENLABS_VOICE_ID
+        Some("Helix") | Some("helix") => "USEXQnsXRJlw2k9LUzG4",
+        Some("Pulse") | Some("pulse") => "auq43ws1oslv0tO4BDa7",
+        Some("Hearth") | Some("hearth") => "W7iR5kTNHozpIl2Jqq15",
+        Some("Echo") | Some("echo") => "EST9Ui6982FZPSi7gCHi",
+        Some("Aegis") | Some("aegis") => "WtA85syCrJwasGeHGH2p",
+        Some("Viper") | Some("viper") => "Mtmp3KhFIjYpWYRycDe3",
+        Some(id) => id, // Pass through raw voice ID if not a known agent
+        None => "TvxTBL9RtGW6tVhl4NoI", // Default: Conflux voice from .env
     };
 
     let client = reqwest::Client::new();
     let resp = client
-        .post(&format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice_id))
+        .post(&format!(
+            "https://api.elevenlabs.io/v1/text-to-speech/{}",
+            voice_id
+        ))
         .header("xi-api-key", &api_key)
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
@@ -4842,7 +7880,9 @@ pub async fn tts_speak(text: String, voice: Option<String>) -> Result<serde_json
             "model_id": "eleven_multilingual_v2",
             "voice_settings": { "stability": 0.5, "similarity_boost": 0.75 }
         }))
-        .send().await.map_err(|e| format!("ElevenLabs request failed: {e}"))?;
+        .send()
+        .await
+        .map_err(|e| format!("ElevenLabs request failed: {e}"))?;
 
     if !resp.status().is_success() {
         let s = resp.status();
@@ -4850,7 +7890,10 @@ pub async fn tts_speak(text: String, voice: Option<String>) -> Result<serde_json
         return Err(format!("ElevenLabs error ({s}): {b}"));
     }
 
-    let bytes = resp.bytes().await.map_err(|e| format!("Read audio failed: {e}"))?;
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("Read audio failed: {e}"))?;
     use base64::Engine;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
 
@@ -4860,14 +7903,37 @@ pub async fn tts_speak(text: String, voice: Option<String>) -> Result<serde_json
 // ── Studio: Voice Generation (ElevenLabs) ──
 
 #[tauri::command]
-pub async fn studio_generate_voice(generation_id: String, text: String, voice_id: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn studio_generate_voice(
+    generation_id: String,
+    text: String,
+    voice_id: Option<String>,
+) -> Result<serde_json::Value, String> {
     let api_key = {
         let engine = engine::get_engine();
-        engine.db().get_config("studio_elevenlabs_key")
-            .ok().flatten().filter(|k| !k.is_empty())
-            .or_else(|| engine.db().get_config("elevenlabs_key").ok().flatten().filter(|k| !k.is_empty()))
-            .or_else(|| std::env::var("ELEVENLABS_API_KEY").ok().filter(|k| !k.is_empty()))
-            .or_else(|| option_env!("ELEVENLABS_API_KEY").map(|s| s.to_string()).filter(|k| !k.is_empty()))
+        engine
+            .db()
+            .get_config("studio_elevenlabs_key")
+            .ok()
+            .flatten()
+            .filter(|k| !k.is_empty())
+            .or_else(|| {
+                engine
+                    .db()
+                    .get_config("elevenlabs_key")
+                    .ok()
+                    .flatten()
+                    .filter(|k| !k.is_empty())
+            })
+            .or_else(|| {
+                std::env::var("ELEVENLABS_API_KEY")
+                    .ok()
+                    .filter(|k| !k.is_empty())
+            })
+            .or_else(|| {
+                option_env!("ELEVENLABS_API_KEY")
+                    .map(|s| s.to_string())
+                    .filter(|k| !k.is_empty())
+            })
             .unwrap_or_default()
     };
 
@@ -4881,7 +7947,10 @@ pub async fn studio_generate_voice(generation_id: String, text: String, voice_id
     if !user_id.is_empty() {
         match cloud::check_cloud_balance(&user_id).await {
             Ok(status) if status.balance < voice_cost => {
-                return Err(format!("Insufficient credits: have {}, need {}. Upgrade for more.", status.balance, voice_cost));
+                return Err(format!(
+                    "Insufficient credits: have {}, need {}. Upgrade for more.",
+                    status.balance, voice_cost
+                ));
             }
             Err(e) => log::warn!("[Studio] Credit check failed (proceeding): {}", e),
             _ => {}
@@ -4897,7 +7966,11 @@ pub async fn studio_generate_voice(generation_id: String, text: String, voice_id
     // Default to George voice (British male) if no voice_id specified
     let voice = voice_id.unwrap_or_else(|| "JBFqnCBsd6RMkjVDRZzb".to_string());
 
-    let response = client.post(format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice))
+    let response = client
+        .post(format!(
+            "https://api.elevenlabs.io/v1/text-to-speech/{}",
+            voice
+        ))
         .header("xi-api-key", &api_key)
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
@@ -4921,7 +7994,10 @@ pub async fn studio_generate_voice(generation_id: String, text: String, voice_id
     }
 
     // Save audio bytes to file
-    let bytes = response.bytes().await.map_err(|e| format!("Failed to read audio: {}", e))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read audio: {}", e))?;
 
     // Create output directory
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
@@ -4937,7 +8013,8 @@ pub async fn studio_generate_voice(generation_id: String, text: String, voice_id
         "voice_id": voice,
         "model": "eleven_multilingual_v2",
         "char_count": text.len()
-    }).to_string();
+    })
+    .to_string();
 
     // Convert path to file:// URL for frontend playback
     let output_url = format!("file://{}", output_path);
@@ -4950,7 +8027,8 @@ pub async fn studio_generate_voice(generation_id: String, text: String, voice_id
         Some(&output_url),
         Some(&metadata),
         2, // ~$0.02 cost
-    ).map_err(|e| e.to_string())?;
+    )
+    .map_err(|e| e.to_string())?;
 
     // Save to prompt history
     let _ = engine::db::studio_upsert_prompt(&text, "voice");
@@ -4979,7 +8057,9 @@ pub async fn studio_generate_voice(generation_id: String, text: String, voice_id
 #[tauri::command]
 pub async fn studio_generate_wallpaper(app_name: String) -> Result<serde_json::Value, String> {
     let engine = engine::get_engine();
-    let api_key = engine.db().get_config("studio_replicate_key")
+    let api_key = engine
+        .db()
+        .get_config("studio_replicate_key")
         .map_err(|e| e.to_string())?
         .or_else(|| std::env::var("REPLICATE_API_KEY").ok())
         .or_else(|| option_env!("REPLICATE_API_KEY").map(|s| s.to_string()))
@@ -4999,7 +8079,8 @@ pub async fn studio_generate_wallpaper(app_name: String) -> Result<serde_json::V
     let client = reqwest::Client::new();
 
     // Start prediction with FLUX 1.1 Pro
-    let start = client.post("https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions")
+    let start = client
+        .post("https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions")
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
@@ -5010,7 +8091,9 @@ pub async fn studio_generate_wallpaper(app_name: String) -> Result<serde_json::V
                 "output_quality": 90
             }
         }))
-        .send().await.map_err(|e| format!("Request failed: {}", e))?;
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
 
     if !start.status().is_success() {
         let status = start.status();
@@ -5018,33 +8101,51 @@ pub async fn studio_generate_wallpaper(app_name: String) -> Result<serde_json::V
         return Err(format!("Replicate error {}: {}", status, body));
     }
 
-    let start_json: serde_json::Value = start.json().await.map_err(|e| format!("Parse failed: {}", e))?;
-    let get_url = start_json["urls"]["get"].as_str().ok_or("No get URL")?.to_string();
+    let start_json: serde_json::Value = start
+        .json()
+        .await
+        .map_err(|e| format!("Parse failed: {}", e))?;
+    let get_url = start_json["urls"]["get"]
+        .as_str()
+        .ok_or("No get URL")?
+        .to_string();
 
     // Poll for completion (up to 3 minutes)
     for _ in 0..60 {
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        let poll = client.get(&get_url)
+        let poll = client
+            .get(&get_url)
             .header("Authorization", format!("Bearer {}", api_key))
-            .send().await.map_err(|e| format!("Poll failed: {}", e))?;
-        let status_json: serde_json::Value = poll.json().await.map_err(|e| format!("Parse poll failed: {}", e))?;
+            .send()
+            .await
+            .map_err(|e| format!("Poll failed: {}", e))?;
+        let status_json: serde_json::Value = poll
+            .json()
+            .await
+            .map_err(|e| format!("Parse poll failed: {}", e))?;
 
         match status_json["status"].as_str() {
             Some("succeeded") => {
                 let output = &status_json["output"];
-                let url = output.as_str()
+                let url = output
+                    .as_str()
                     .or_else(|| output.as_array().and_then(|a| a[0].as_str()))
                     .ok_or("No output URL")?;
 
                 // Download and save
-                let bytes = client.get(url).send().await
+                let bytes = client
+                    .get(url)
+                    .send()
+                    .await
                     .map_err(|e| format!("Download failed: {}", e))?
-                    .bytes().await
+                    .bytes()
+                    .await
                     .map_err(|e| format!("Read failed: {}", e))?;
 
                 let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
                 let wallpaper_dir = format!("{}/.openclaw/studio/wallpapers", home);
-                std::fs::create_dir_all(&wallpaper_dir).map_err(|e| format!("Create dir failed: {}", e))?;
+                std::fs::create_dir_all(&wallpaper_dir)
+                    .map_err(|e| format!("Create dir failed: {}", e))?;
 
                 let filename = format!("{}_wallpaper.webp", app_name);
                 let path = format!("{}/{}", wallpaper_dir, filename);
@@ -5090,7 +8191,8 @@ pub async fn studio_save_to_vault(generation_id: String) -> Result<serde_json::V
     // Create vault directory
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
     let vault_dir = format!("{}/.openclaw/studio/vault", home);
-    std::fs::create_dir_all(&vault_dir).map_err(|e| format!("Failed to create vault dir: {}", e))?;
+    std::fs::create_dir_all(&vault_dir)
+        .map_err(|e| format!("Failed to create vault dir: {}", e))?;
 
     // Determine file extension and content type
     let (ext, file_type, mime_type) = match gen.module.as_str() {
@@ -5106,10 +8208,13 @@ pub async fn studio_save_to_vault(generation_id: String) -> Result<serde_json::V
     if output_url.starts_with("http") {
         // Download from URL (images from Replicate)
         let client = reqwest::Client::new();
-        let bytes = client.get(output_url)
-            .send().await
+        let bytes = client
+            .get(output_url)
+            .send()
+            .await
             .map_err(|e| format!("Download failed: {}", e))?
-            .bytes().await
+            .bytes()
+            .await
             .map_err(|e| format!("Read failed: {}", e))?;
         std::fs::write(&vault_path, &bytes).map_err(|e| format!("Write failed: {}", e))?;
     } else if let Some(src) = output_path {
@@ -5133,18 +8238,18 @@ pub async fn studio_save_to_vault(generation_id: String) -> Result<serde_json::V
         Some(mime_type),
         Some(ext),
         size_bytes,
-        None,      // thumbnail_path
-        None,      // width
-        None,      // height
-        None,      // duration_secs
-        Some("studio"), // created_by
-        Some(&gen.prompt), // source_prompt
+        None,                                               // thumbnail_path
+        None,                                               // width
+        None,                                               // height
+        None,                                               // duration_secs
+        Some("studio"),                                     // created_by
+        Some(&gen.prompt),                                  // source_prompt
         Some(&format!("Studio {} generation", gen.module)), // description
-    ).map_err(|e| e.to_string())?;
+    )
+    .map_err(|e| e.to_string())?;
 
     // Link vault file to generation
-    engine::db::studio_link_vault_file(&generation_id, &vault_id)
-        .map_err(|e| e.to_string())?;
+    engine::db::studio_link_vault_file(&generation_id, &vault_id).map_err(|e| e.to_string())?;
 
     Ok(serde_json::json!({
         "vault_file_id": vault_id,
@@ -5160,10 +8265,15 @@ pub async fn studio_save_to_vault(generation_id: String) -> Result<serde_json::V
 
 #[cfg(not(target_os = "android"))]
 pub mod voice_cmds {
+    use crate::engine;
     use crate::voice;
     use crate::voice::capture::{self, AUDIO_BUFFER};
-    use crate::engine;
+    use crate::voice::stream::STREAMING_TRANSCRIPT;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use tauri::Manager;
+
+    /// Flag to prevent Whisper fallback when realtime STT already delivered a transcript.
+    static ELEVENLABS_TRANSCRIPT_RECEIVED: AtomicBool = AtomicBool::new(false);
 
     /// Start recording from the default microphone and begin volume monitoring.
     #[tauri::command]
@@ -5176,23 +8286,33 @@ pub mod voice_cmds {
         result
     }
 
-    /// Stop recording and return sample count.
+    /// Stop recording and return sample count and transcript (if available from realtime STT).
     #[tauri::command]
     pub fn voice_capture_stop(window: tauri::Window) -> Result<serde_json::Value, String> {
         println!("[STT] voice_capture_stop command triggered");
-        // TODO: Stop the ElevenLabs stream sender here
         let count = capture::stop_recording(window.clone())?;
+
+        // Retrieve the final transcript from the realtime STT static (if any)
+        let transcript = STREAMING_TRANSCRIPT.lock().unwrap().take();
+        if transcript.is_some() {
+            // Mark that we got a realtime transcript — downstream can skip Whisper fallback
+            ELEVENLABS_TRANSCRIPT_RECEIVED.store(true, Ordering::Relaxed);
+        }
+
         Ok(serde_json::json!({
             "samples": count,
             "duration_seconds": count as f64 / 16000.0,
+            "transcript": transcript,
         }))
     }
 
-    /// Transcribe the current audio buffer using Whisper (primary) or ElevenLabs (fallback).
+    /// Transcribe the current audio buffer using the ElevenLabs SDK (via Node.js script).
+    /// This is the primary STT path. The realtime WebSocket (stream.rs) handles live transcripts;
+    /// this batch path is the fallback when realtime didn't capture a final result.
     #[tauri::command]
     pub async fn voice_transcribe() -> Result<String, String> {
-        println!("[STT] Transcribing...");
-        
+        println!("[STT] Transcribing via ElevenLabs SDK...");
+
         let audio = {
             let buf = AUDIO_BUFFER.lock().map_err(|e| e.to_string())?;
             buf.clone()
@@ -5205,71 +8325,97 @@ pub mod voice_cmds {
         // Convert f32 samples to WAV bytes
         let wav_bytes = audio_to_wav_bytes(&audio);
 
-        // Try OpenAI Whisper first
-        let openai_config = crate::voice::openai::OpenAIConfig::default();
-        if !openai_config.api_key.is_empty() {
-            println!("[STT] Trying OpenAI Whisper...");
-            match crate::voice::openai::transcribe_audio(wav_bytes.clone(), openai_config).await {
-                Ok(text) => return Ok(text),
-                Err(e) => println!("[STT] OpenAI failed: {}", e),
-            }
-        }
+        // Write WAV to a temp file for the Node.js script
+        let temp_wav = std::env::temp_dir().join("conflux_stt_temp.wav");
+        std::fs::write(&temp_wav, &wav_bytes)
+            .map_err(|e| format!("Failed to write temp WAV: {}", e))?;
 
-        // Fallback to ElevenLabs batch STT
-        println!("[STT] Falling back to ElevenLabs...");
+        // Get API key (sync — must happen outside async block)
         let eleven_key = {
             let engine = crate::engine::get_engine();
-            engine.db().get_config("elevenlabs_key").ok().flatten().filter(|k| !k.is_empty())
-                .or_else(|| engine.db().get_config("studio_elevenlabs_key").ok().flatten().filter(|k| !k.is_empty()))
+            engine
+                .db()
+                .get_config("studio_elevenlabs_key")
+                .ok()
+                .flatten()
+                .filter(|k| !k.is_empty())
                 .or_else(|| std::env::var("ELEVENLABS_API_KEY").ok().filter(|k| !k.is_empty()))
                 .or_else(|| option_env!("ELEVENLABS_API_KEY").map(|s| s.to_string()).filter(|k| !k.is_empty()))
+                .unwrap_or_default()
         };
 
-        match eleven_key {
-            Some(key) if !key.is_empty() => {
-                match elevenlabs_stt(&wav_bytes, &key).await {
-                    Ok(text) => Ok(text),
-                    Err(e) => Err(format!("All STT providers failed. ElevenLabs: {}", e)),
+        if eleven_key.is_empty() {
+            let _ = std::fs::remove_file(&temp_wav);
+            return Err("No ElevenLabs API key configured.".to_string());
+        }
+
+        // Resolve script path (supports dev + release + CONFLUX_SCRIPTS_DIR override).
+        // cargo run from src-tauri/: cwd=src-tauri/, exe=target/debug/conflux-home
+        // Walk: target/debug/ → target/ → src-tauri/ → <workspace root>/
+        fn get_workspace_scripts_path() -> std::path::PathBuf {
+            let mut path = std::path::PathBuf::from("scripts/elevenlabs-stt.js");
+            if let Ok(exe) = std::env::current_exe() {
+                if let Some(target_dir) = exe.parent() {            // target/debug/ or target/release/
+                    if let Some(profile_dir) = target_dir.parent() { // target/
+                        if let Some(src_tauri) = profile_dir.parent() { // src-tauri/
+                            // Go one more up to workspace root (conflux-home/)
+                            if let Some(workspace) = src_tauri.parent() {
+                                let scripts = workspace.join("scripts/elevenlabs-stt.js");
+                                if scripts.exists() {
+                                    path = scripts;
+                                    return path;
+                                }
+                            }
+                            // Fallback: check src-tauri/ itself (in case workspace structure differs)
+                            let scripts = src_tauri.join("scripts/elevenlabs-stt.js");
+                            if scripts.exists() {
+                                path = scripts;
+                            }
+                        }
+                    }
                 }
             }
-            _ => Err("No STT API keys configured. Set OPENAI_API_KEY or ELEVENLABS_API_KEY.".to_string()),
+            path
         }
-    }
+        let script_path = std::env::var("CONFLUX_SCRIPTS_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| get_workspace_scripts_path());
 
-    /// ElevenLabs batch speech-to-text.
-    async fn elevenlabs_stt(audio_data: &[u8], api_key: &str) -> Result<String, String> {
-        let client = reqwest::Client::new();
-
-        let part = reqwest::multipart::Part::bytes(audio_data.to_vec())
-            .file_name("audio.wav")
-            .mime_str("audio/wav")
-            .map_err(|e| e.to_string())?;
-
-        let form = reqwest::multipart::Form::new()
-            .text("model_id", "scribe_v1")
-            .part("file", part);
-
-        let response = client
-            .post("https://api.elevenlabs.io/v1/speech-to-text")
-            .header("xi-api-key", api_key)
-            .multipart(form)
-            .send()
+        let result = tokio::process::Command::new("node")
+            .arg(&script_path)
+            .arg(temp_wav.as_os_str())
+            .arg(&eleven_key)
+            .output()
             .await
-            .map_err(|e| format!("Request failed: {}", e))?;
+            .map_err(|e| format!("Failed to run STT script: {}. Is Node.js installed?", e))?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(format!("ElevenLabs STT Error {}: {}", status, body));
+        let _ = std::fs::remove_file(&temp_wav);
+
+        let stdout = String::from_utf8_lossy(&result.stdout);
+        let stderr = String::from_utf8_lossy(&result.stderr);
+
+        if !result.status.success() {
+            // Try to parse error JSON from stderr
+            if let Ok(err_json) = serde_json::from_str::<serde_json::Value>(&stdout) {
+                let msg = err_json.get("error").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+                let status = err_json.get("status").and_then(|v| v.as_str()).unwrap_or("unknown");
+                return Err(format!("ElevenLabs STT error [{}]: {}", status, msg));
+            }
+            return Err(format!("STT script failed ({}): {}", result.status, stderr));
         }
 
-        #[derive(serde::Deserialize)]
-        struct ScribeResponse {
-            text: String,
-        }
+        // Parse JSON response: { "text": "...", "transcriptionId": "..." }
+        let parsed: serde_json::Value = serde_json::from_str(&stdout)
+            .map_err(|e| format!("Failed to parse STT response: {} — output: {}", e, stdout))?;
 
-        let result: ScribeResponse = response.json().await.map_err(|e| e.to_string())?;
-        Ok(result.text)
+        let text = parsed.get("text")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+
+        println!("[STT] Transcribed: {}", text);
+        Ok(text)
     }
 
     fn audio_to_wav_bytes(samples: &[f32]) -> Vec<u8> {
@@ -5294,7 +8440,7 @@ pub mod voice_cmds {
         wav.extend_from_slice(&byte_rate.to_le_bytes());
         wav.extend_from_slice(&block_align.to_le_bytes());
         wav.extend_from_slice(&(16u16).to_le_bytes()); // BitsPerSample
-        // data chunk
+                                                       // data chunk
         wav.extend_from_slice(b"data");
         wav.extend_from_slice(&data_size.to_le_bytes());
         // Audio data (convert f32 to i16)
@@ -5307,15 +8453,18 @@ pub mod voice_cmds {
 
     /// Start recording, wait up to max_duration_ms, stop, then transcribe.
     #[tauri::command]
-    pub async fn voice_capture_and_transcribe(window: tauri::Window, max_duration_ms: Option<u64>) -> Result<String, String> {
+    pub async fn voice_capture_and_transcribe(
+        window: tauri::Window,
+        max_duration_ms: Option<u64>,
+    ) -> Result<String, String> {
         // Deprecated: Whisper replaced by ElevenLabs streaming STT
         // This function now just simulates the old behavior but uses streaming
-        
+
         capture::start_recording(window.clone())?;
         let timeout = max_duration_ms.unwrap_or(10000);
         tokio::time::sleep(std::time::Duration::from_millis(timeout)).await;
         capture::stop_recording(window.clone())?;
-        
+
         Ok("(STT via ElevenLabs streaming)".to_string())
     }
 
@@ -5347,18 +8496,21 @@ pub mod voice_cmds {
     #[tauri::command]
     pub fn voice_get_config() -> Result<Vec<serde_json::Value>, String> {
         let engine = engine::get_engine();
-        let conn = engine.db().conn();
+        let conn = engine.db().conn_blocking();
 
-        let mut stmt = conn.prepare("SELECT key, value, updated_at FROM voice_config")
+        let mut stmt = conn
+            .prepare("SELECT key, value, updated_at FROM voice_config")
             .map_err(|e| e.to_string())?;
 
-        let rows = stmt.query_map([], |row| {
-            Ok(serde_json::json!({
-                "key": row.get::<_, String>(0)?,
-                "value": row.get::<_, String>(1)?,
-                "updated_at": row.get::<_, String>(2)?,
-            }))
-        }).map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(serde_json::json!({
+                    "key": row.get::<_, String>(0)?,
+                    "value": row.get::<_, String>(1)?,
+                    "updated_at": row.get::<_, String>(2)?,
+                }))
+            })
+            .map_err(|e| e.to_string())?;
 
         let mut result = Vec::new();
         for r in rows {
@@ -5371,12 +8523,13 @@ pub mod voice_cmds {
     #[tauri::command]
     pub fn voice_set_config(key: String, value: String) -> Result<(), String> {
         let engine = engine::get_engine();
-        let conn = engine.db().conn();
+        let conn = engine.db().conn_blocking();
 
         conn.execute(
             "UPDATE voice_config SET value = ?1, updated_at = datetime('now') WHERE key = ?2",
             rusqlite::params![value, key],
-        ).map_err(|e| e.to_string())?;
+        )
+        .map_err(|e| e.to_string())?;
 
         Ok(())
     }
@@ -5486,7 +8639,10 @@ pub fn voice_transcribe(_app: tauri::AppHandle) -> Result<String, String> {
 }
 #[cfg(target_os = "android")]
 #[tauri::command]
-pub async fn voice_capture_and_transcribe(_app: tauri::AppHandle, _max_duration_ms: Option<u64>) -> Result<String, String> {
+pub async fn voice_capture_and_transcribe(
+    _app: tauri::AppHandle,
+    _max_duration_ms: Option<u64>,
+) -> Result<String, String> {
     Err("Voice input is not available on Android".to_string())
 }
 #[cfg(target_os = "android")]
@@ -5502,7 +8658,9 @@ pub fn voice_list_devices() -> Result<Vec<String>, String> {
 #[cfg(target_os = "android")]
 #[tauri::command]
 pub fn voice_check_microphone() -> Result<serde_json::Value, String> {
-    Ok(serde_json::json!({ "available": false, "guidance": "Voice input is not available on Android." }))
+    Ok(
+        serde_json::json!({ "available": false, "guidance": "Voice input is not available on Android." }),
+    )
 }
 #[cfg(target_os = "android")]
 #[tauri::command]
@@ -5536,7 +8694,10 @@ pub async fn get_credit_balance(user_id: String) -> Result<engine::cloud::Credit
 
 /// Get usage history for a user from Supabase.
 #[tauri::command]
-pub async fn get_usage_history(user_id: String, limit: Option<i32>) -> Result<Vec<engine::cloud::UsageEntry>, String> {
+pub async fn get_usage_history(
+    user_id: String,
+    limit: Option<i32>,
+) -> Result<Vec<engine::cloud::UsageEntry>, String> {
     engine::cloud::get_usage_history(&user_id, limit.unwrap_or(50))
         .await
         .map_err(|e| e.to_string())
@@ -5544,7 +8705,10 @@ pub async fn get_usage_history(user_id: String, limit: Option<i32>) -> Result<Ve
 
 /// Get aggregated usage stats for a user over the last N days.
 #[tauri::command]
-pub async fn get_usage_stats(user_id: String, days: Option<i32>) -> Result<engine::cloud::UsageStats, String> {
+pub async fn get_usage_stats(
+    user_id: String,
+    days: Option<i32>,
+) -> Result<engine::cloud::UsageStats, String> {
     engine::cloud::get_usage_stats(&user_id, days.unwrap_or(30))
         .await
         .map_err(|e| e.to_string())
@@ -5560,16 +8724,16 @@ pub async fn purchase_credits(user_id: String, pack: String) -> Result<String, S
 /// Get the stored Supabase user ID from engine config.
 fn get_supabase_user_id() -> String {
     let engine = engine::get_engine();
-    engine.db().get_config("supabase_user_id")
-        .ok().flatten().unwrap_or_default()
+    tokio::task::block_in_place(|| engine.db().get_config("supabase_user_id"))
+        .ok()
+        .flatten()
+        .unwrap_or_default()
 }
 
 #[tauri::command]
 pub fn get_studio_user_id() -> Result<String, String> {
     Ok(get_supabase_user_id())
 }
-
-
 
 /// Store Supabase session credentials in engine config for cloud API calls.
 /// Called by the frontend after login so the Rust backend can make authenticated Supabase requests.
@@ -5582,20 +8746,31 @@ pub async fn set_supabase_session(
 ) -> Result<(), String> {
     let engine = engine::get_engine();
     let db = engine.db();
-    
+
     // Log token update for debugging (first 10 chars only)
-    let token_preview = if access_token.len() > 10 { &access_token[..10] } else { &access_token };
-    log::info!("[set_supabase_session] Storing token (preview): {}...", token_preview);
+    let token_preview = if access_token.len() > 10 {
+        &access_token[..10]
+    } else {
+        &access_token
+    };
+    log::info!(
+        "[set_supabase_session] Storing token (preview): {}...",
+        token_preview
+    );
     log::info!("[set_supabase_session] User ID: {}", user_id);
     log::info!("[set_supabase_session] Supabase URL: {}", supabase_url);
-    
-    db.set_config("supabase_url", &supabase_url).map_err(|e| e.to_string())?;
+
+    db.set_config("supabase_url", &supabase_url)
+        .map_err(|e| e.to_string())?;
     log::info!("[set_supabase_session] ✅ supabase_url stored");
-    db.set_config("supabase_anon_key", &supabase_anon_key).map_err(|e| e.to_string())?;
+    db.set_config("supabase_anon_key", &supabase_anon_key)
+        .map_err(|e| e.to_string())?;
     log::info!("[set_supabase_session] ✅ supabase_anon_key stored");
-    db.set_config("supabase_auth_token", &access_token).map_err(|e| e.to_string())?;
+    db.set_config("supabase_auth_token", &access_token)
+        .map_err(|e| e.to_string())?;
     log::info!("[set_supabase_session] ✅ supabase_auth_token stored");
-    db.set_config("supabase_user_id", &user_id).map_err(|e| e.to_string())?;
+    db.set_config("supabase_user_id", &user_id)
+        .map_err(|e| e.to_string())?;
     log::info!("[set_supabase_session] ✅ supabase_user_id stored");
     log::info!("[set_supabase_session] ✅ All credentials synced successfully");
     Ok(())
@@ -5606,7 +8781,9 @@ pub async fn set_supabase_session(
 /// Select the best model for a given task type using deterministic routing.
 /// Returns model alias, provider, tier, tool reliability, and fallback chain.
 #[tauri::command]
-pub async fn route_select_model(task_type: String) -> Result<engine::deterministic::RouteSelection, String> {
+pub async fn route_select_model(
+    task_type: String,
+) -> Result<engine::deterministic::RouteSelection, String> {
     engine::deterministic::select_model(&task_type)
         .ok_or_else(|| format!("No model found for task type: {}", task_type))
 }
@@ -5659,30 +8836,44 @@ pub struct OrbitInsight {
 #[tauri::command]
 pub async fn orbit_get_cross_app_insights(user_id: String) -> Result<OrbitInsights, String> {
     let engine = engine::get_engine();
-    
+
     // Pull data from each app
-    let budget_entries = engine.db().get_budget_entries(&user_id).unwrap_or_default();
-    let kitchen_inventory = engine.db().get_kitchen_inventory(&user_id).unwrap_or_default();
-    let dream_dashboard = engine.db().get_orbit_dream_dashboard(&user_id).unwrap_or_default();
-    
+    let budget_entries = engine
+        .db()
+        .get_budget_entries(&user_id)
+        .await
+        .unwrap_or_default();
+    let kitchen_inventory = engine
+        .db()
+        .get_kitchen_inventory(&user_id)
+        .await
+        .unwrap_or_default();
+    let dream_dashboard = engine
+        .db()
+        .get_orbit_dream_dashboard(&user_id)
+        .await
+        .unwrap_or_default();
+
     // Synthesize insights
     let mut insights = Vec::new();
-    
+
     // Budget + Kitchen synthesis
     if let Some(insight) = synthesize_budget_kitchen(&budget_entries, &kitchen_inventory) {
         insights.push(insight);
     }
-    
+
     // Dreams + Tasks synthesis
     if let Some(insight) = synthesize_dreams_tasks(&dream_dashboard) {
         insights.push(insight);
     }
-    
+
     // Combined patterns
-    if let Some(insight) = synthesize_combined_patterns(&budget_entries, &kitchen_inventory, &dream_dashboard) {
+    if let Some(insight) =
+        synthesize_combined_patterns(&budget_entries, &kitchen_inventory, &dream_dashboard)
+    {
         insights.push(insight);
     }
-    
+
     Ok(OrbitInsights { insights })
 }
 
@@ -5698,16 +8889,16 @@ fn synthesize_budget_kitchen(
         .filter(|e| e.entry_type == "expense" && e.category.to_lowercase().contains("dining"))
         .map(|e| e.amount)
         .sum();
-    
+
     let low_pantry_items: Vec<_> = kitchen_inventory
         .iter()
         .filter(|i| i.quantity.map_or(false, |q| q < 1.0))
         .collect();
-    
+
     if dining_out_spending > 50.0 && !low_pantry_items.is_empty() {
         let item_names: Vec<_> = low_pantry_items.iter().map(|i| i.name.clone()).collect();
         let saving_estimate = dining_out_spending * 0.3; // Estimated savings
-        
+
         return Some(OrbitInsight {
             id: uuid::Uuid::new_v4().to_string(),
             title: "Meal Prep Opportunity".to_string(),
@@ -5733,17 +8924,20 @@ fn synthesize_dreams_tasks(
         .iter()
         .filter(|d| d.status == "active")
         .count();
-    
+
     // Simple check: if we have dreams without recent progress
     let has_no_recent_progress = dream_dashboard.recent_progress.is_empty();
-    
+
     if overdue_count > 2 || has_no_recent_progress {
         let message = if overdue_count > 2 {
-            format!("You have {} active dreams. Let's review progress to stay on track!", overdue_count)
+            format!(
+                "You have {} active dreams. Let's review progress to stay on track!",
+                overdue_count
+            )
         } else {
             "No recent progress on dreams. Time for a weekly dream review?".to_string()
         };
-        
+
         return Some(OrbitInsight {
             id: uuid::Uuid::new_v4().to_string(),
             title: "Dream Review".to_string(),
@@ -5767,16 +8961,24 @@ fn synthesize_combined_patterns(
     // Triple whammy: low pantry + high takeout + no meal plan
     let takeout_spending: f64 = budget_entries
         .iter()
-        .filter(|e| e.entry_type == "expense" && (e.category.to_lowercase().contains("dining") || e.category.to_lowercase().contains("takeout") || e.category.to_lowercase().contains("restaurant")))
+        .filter(|e| {
+            e.entry_type == "expense"
+                && (e.category.to_lowercase().contains("dining")
+                    || e.category.to_lowercase().contains("takeout")
+                    || e.category.to_lowercase().contains("restaurant"))
+        })
         .map(|e| e.amount)
         .sum();
-    
+
     let low_pantry_count = kitchen_inventory
         .iter()
         .filter(|i| i.quantity.map_or(false, |q| q < 1.0))
         .count();
-    
-    if takeout_spending > 100.0 && low_pantry_count > 3 && !dream_dashboard.recent_progress.is_empty() {
+
+    if takeout_spending > 100.0
+        && low_pantry_count > 3
+        && !dream_dashboard.recent_progress.is_empty()
+    {
         return Some(OrbitInsight {
             id: uuid::Uuid::new_v4().to_string(),
             title: "Triple Whammy".to_string(),
@@ -5797,112 +8999,209 @@ fn synthesize_combined_patterns(
 // ═════════════════════════════════════════════════════════════════
 
 use crate::engine::echo_counselor::{
-    EchoCounselorState,
-    EchoCounselorSession,
-    EchoCounselorMessage,
-    EchoCrisisFlag,
-    EchoGratitudeEntry,
-    EchoGroundingExercise,
+    EchoCounselorMessage, EchoCounselorSession, EchoCounselorState, EchoCrisisFlag,
+    EchoGratitudeEntry, EchoGroundingExercise, EchoSendMessageRequest, EchoStartSessionRequest,
     EchoWeeklyLetter,
-    EchoStartSessionRequest,
-    EchoSendMessageRequest,
 };
 
-use super::engine::echo_counselor as echo_counselor;
+use super::engine::echo_counselor;
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_get_state() -> Result<EchoCounselorState, String> {
     echo_counselor::get_state().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn echo_counselor_start_session(req: EchoStartSessionRequest) -> Result<EchoCounselorSession, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_start_session(
+    req: EchoStartSessionRequest,
+) -> Result<EchoCounselorSession, String> {
     echo_counselor::start_session(req).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn echo_counselor_get_messages(session_id: String) -> Result<Vec<EchoCounselorMessage>, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_get_messages(
+    session_id: String,
+) -> Result<Vec<EchoCounselorMessage>, String> {
     echo_counselor::get_messages(&session_id).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub async fn echo_counselor_send_message(req: EchoSendMessageRequest) -> Result<EchoCounselorMessage, String> {
-    echo_counselor::send_message(&req.session_id, &req.content).await.map_err(|e| e.to_string())
+#[tauri::command(rename_all = "snake_case")]
+pub async fn echo_counselor_send_message(
+    session_id: String,
+    content: String,
+) -> Result<EchoCounselorMessage, String> {
+    use tokio::task;
+
+    // Clone for phases that need their own ownership
+    let session_id_clone = session_id.clone();
+    let content_clone = content.clone();
+    let session_id_for_phase2 = session_id.clone();
+    let session_id_for_db = session_id.clone();
+
+    // Phase 1: Insert user message into DB (sync, runs in blocking thread)
+    let user_msg_id = task::spawn_blocking(move || {
+        let engine = engine::get_engine();
+        let conn = engine.db().conn();
+        let now = chrono::Utc::now().to_rfc3339();
+        let uid = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO echo_counselor_messages (id, session_id, role, content, timestamp) VALUES (?, ?, 'user', ?, ?)",
+            [&uid, &session_id_clone, &content_clone, &now],
+        ).map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE echo_counselor_sessions SET message_count = message_count + 1 WHERE id = ?",
+            [&session_id_clone],
+        ).map_err(|e| e.to_string())?;
+        Ok::<_, String>(())
+    }).await.map_err(|e| e.to_string())??;
+
+    // Phase 2: Get conversation history for context (sync, blocking thread)
+    let messages = task::spawn_blocking(move || {
+        echo_counselor::get_messages(&session_id_for_phase2)
+    }).await.map_err(|e| e.to_string())??;
+
+    // Build OpenAI messages
+    let mut openai_messages: Vec<engine::router::OpenAIMessage> = vec![
+        engine::router::OpenAIMessage {
+            role: "system".to_string(),
+            content: Some(echo_counselor::MIRROR_SYSTEM_PROMPT.to_string()),
+            tool_call_id: None,
+            tool_calls: None,
+        },
+    ];
+    for msg in &messages {
+        let role = match msg.role.as_str() {
+            "counselor" => "assistant",
+            _ => &msg.role,
+        };
+        openai_messages.push(engine::router::OpenAIMessage {
+            role: role.to_string(),
+            content: Some(msg.content.clone()),
+            tool_call_id: None,
+            tool_calls: None,
+        });
+    }
+    openai_messages.push(engine::router::OpenAIMessage {
+        role: "user".to_string(),
+        content: Some(content),
+        tool_call_id: None,
+        tool_calls: None,
+    });
+
+    // Phase 3: Call LLM (async network call)
+    let response = engine::router::chat("mirror", openai_messages, None, None, None)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Phase 4: Insert counselor response into DB (sync, blocking thread)
+    let counselor_response_for_db = response.content.clone();
+    let session_id_for_db = session_id_for_db;
+    task::spawn_blocking(move || {
+        let engine = engine::get_engine();
+        let conn = engine.db().conn();
+        let now = chrono::Utc::now().to_rfc3339();
+        let cid = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO echo_counselor_messages (id, session_id, role, content, timestamp) VALUES (?, ?, 'counselor', ?, ?)",
+            [&cid, &session_id_for_db, &counselor_response_for_db, &now],
+        ).map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE echo_counselor_sessions SET message_count = message_count + 1 WHERE id = ?",
+            [&session_id_for_db],
+        ).map_err(|e| e.to_string())?;
+        Ok::<_, String>(())
+    }).await.map_err(|e| e.to_string())??;
+
+    Ok(EchoCounselorMessage {
+        id: uuid::Uuid::new_v4().to_string(),
+        session_id,
+        role: "counselor".to_string(),
+        content: response.content,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_end_session(session_id: String) -> Result<(), String> {
     echo_counselor::end_session(&session_id).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_flag_crisis(
     session_id: String,
     content: String,
     severity: String,
     detected_text: String,
 ) -> Result<EchoCrisisFlag, String> {
-    echo_counselor::flag_crisis(&session_id, &content, &severity, &detected_text).map_err(|e| e.to_string())
+    echo_counselor::flag_crisis(&session_id, &content, &severity, &detected_text)
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn echo_counselor_write_gratitude(items: Vec<String>, context: Option<String>) -> Result<(), String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_write_gratitude(
+    items: Vec<String>,
+    context: Option<String>,
+) -> Result<(), String> {
     echo_counselor::write_gratitude(items, context).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_get_gratitude(limit: Option<i64>) -> Result<Vec<EchoGratitudeEntry>, String> {
     echo_counselor::get_gratitude(limit).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_get_exercises() -> Result<Vec<EchoGroundingExercise>, String> {
     echo_counselor::get_exercises().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_complete_exercise(exercise_id: String) -> Result<(), String> {
     echo_counselor::complete_exercise(&exercise_id).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn echo_counselor_get_reflections(limit: Option<i64>) -> Result<Vec<EchoCounselorSession>, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_get_reflections(
+    limit: Option<i64>,
+) -> Result<Vec<EchoCounselorSession>, String> {
     echo_counselor::get_reflections(limit).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_mark_reflection_read(session_id: String) -> Result<(), String> {
     echo_counselor::mark_reflection_read(&session_id).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub async fn echo_counselor_generate_weekly_letter() -> Result<EchoWeeklyLetter, String> {
-    echo_counselor::generate_weekly_letter().await.map_err(|e| e.to_string())
+    echo_counselor::generate_weekly_letter()
+        .await
+        .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn echo_counselor_get_weekly_letter() -> Result<Option<EchoWeeklyLetter>, String> {
     echo_counselor::get_weekly_letter().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn echo_counselor_get_weekly_letter_history(limit: Option<i64>) -> Result<Vec<EchoWeeklyLetter>, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_get_weekly_letter_history(
+    limit: Option<i64>,
+) -> Result<Vec<EchoWeeklyLetter>, String> {
     echo_counselor::get_weekly_letter_history(limit).map_err(|e| e.to_string())
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SetEveningReminderRequest {
-    pub enabled: bool,
-    pub hour: Option<i32>,   // 0-23, default 20 (8 PM)
-    pub minute: Option<i32>, // 0-59, default 0
-}
-
-#[tauri::command]
-pub fn echo_counselor_set_evening_reminder(req: SetEveningReminderRequest) -> Result<String, String> {
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_set_evening_reminder(
+    enabled: bool,
+    hour: Option<i32>,
+    minute: Option<i32>,
+) -> Result<String, String> {
     let engine = engine::get_engine();
 
     // Find and remove existing evening reminder (by name)
-    let existing: Vec<engine::types::CronJob> = engine.get_cron_jobs(false)
+    let existing: Vec<engine::types::CronJob> = engine
+        .get_cron_jobs(false)
         .map_err(|e| e.to_string())?
         .into_iter()
         .filter(|j| j.name == "mirror-evening-ritual")
@@ -5912,21 +9211,818 @@ pub fn echo_counselor_set_evening_reminder(req: SetEveningReminderRequest) -> Re
         engine.delete_cron_job(&job.id).map_err(|e| e.to_string())?;
     }
 
-    if !req.enabled {
+    if !enabled {
         return Ok("Evening reminder disabled".to_string());
     }
 
-    let hour = req.hour.unwrap_or(20);
-    let minute = req.minute.unwrap_or(0);
+    let hour = hour.unwrap_or(20);
+    let minute = minute.unwrap_or(0);
     let schedule = format!("{} {} * * *", minute, hour); // e.g. "0 20 * * *" = 8 PM daily
 
     let task_message = "Evening ritual check-in for Mirror counseling sessions. If there is an active or recent session, do nothing and respond briefly. If no session has occurred today, send a gentle reminder to the user via the desktop notification system to check in with Mirror tonight.".to_string();
 
-    engine.create_cron_job(
-        "mirror-evening-ritual",
-        "mirror",
-        &schedule,
-        "America/Denver",
-        &task_message,
-    ).map_err(|e| e.to_string())
+    engine
+        .create_cron_job(
+            "mirror-evening-ritual",
+            "conflux", // mirror agent not in DB, use conflux
+            &schedule,
+            "America/Denver",
+            &task_message,
+        )
+        .map_err(|e| e.to_string())
+}
+
+/// Get evening reminder status
+#[tauri::command(rename_all = "snake_case")]
+pub fn echo_counselor_get_evening_reminder() -> Result<Option<EchoEveningReminderStatus>, String> {
+    let engine = engine::get_engine();
+    let jobs = engine.get_cron_jobs(false).map_err(|e| e.to_string())?;
+    let job = jobs.into_iter().find(|j| j.name == "mirror-evening-ritual");
+    match job {
+        Some(j) => {
+            let parts: Vec<&str> = j.schedule.split_whitespace().collect();
+            let (hour, minute) = if parts.len() >= 2 {
+                let m = parts[0].parse::<i32>().unwrap_or(0);
+                let h = parts[1].parse::<i32>().unwrap_or(20);
+                (h, m)
+            } else { (20, 0) };
+            Ok(Some(EchoEveningReminderStatus { enabled: j.is_enabled, hour, minute }))
+        }
+        None => Ok(None),
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct EchoEveningReminderStatus {
+    pub enabled: bool,
+    pub hour: i32,
+    pub minute: i32,
+}
+
+// ============================================================
+// SECURITY — Mission 1224: Agent Security & SIEM
+// ============================================================
+
+/// Get security events with optional filters.
+#[tauri::command]
+pub async fn security_get_events(
+    agent_id: Option<String>,
+    event_type: Option<String>,
+    category: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let db = engine.db();
+    let events = super::engine::security::events::get_security_events(
+        db,
+        agent_id.as_deref(),
+        event_type.as_deref(),
+        category.as_deref(),
+        limit.unwrap_or(50),
+        offset.unwrap_or(0),
+    )
+    .await.map_err(|e| e.to_string())?;
+
+    Ok(events
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id,
+                "agent_id": e.agent_id,
+                "session_id": e.session_id,
+                "event_type": e.event_type,
+                "category": e.category,
+                "tool_name": e.tool_name,
+                "target": e.target,
+                "details": e.details,
+                "risk_score": e.risk_score,
+                "was_allowed": e.was_allowed,
+                "created_at": e.created_at,
+            })
+        })
+        .collect())
+}
+
+/// Get SIEM dashboard summary.
+#[tauri::command]
+pub async fn security_get_summary() -> Result<serde_json::Value, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::events::get_security_summary(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Get security events for a specific agent.
+#[tauri::command]
+pub async fn security_get_agent_activity(
+    agent_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let events = super::engine::security::events::get_agent_activity(
+        engine.db(),
+        &agent_id,
+        limit.unwrap_or(30),
+    )
+    .await.map_err(|e| e.to_string())?;
+
+    Ok(events
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id,
+                "agent_id": e.agent_id,
+                "event_type": e.event_type,
+                "category": e.category,
+                "tool_name": e.tool_name,
+                "target": e.target,
+                "risk_score": e.risk_score,
+                "was_allowed": e.was_allowed,
+                "created_at": e.created_at,
+            })
+        })
+        .collect())
+}
+
+/// Get critical security events.
+#[tauri::command]
+pub async fn security_get_critical_events(limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let events =
+        super::engine::security::events::get_critical_events(engine.db(), limit.unwrap_or(20))
+            .await.map_err(|e| e.to_string())?;
+
+    Ok(events
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id,
+                "agent_id": e.agent_id,
+                "event_type": e.event_type,
+                "target": e.target,
+                "risk_score": e.risk_score,
+                "was_allowed": e.was_allowed,
+                "created_at": e.created_at,
+            })
+        })
+        .collect())
+}
+
+/// Get agent security profile.
+#[tauri::command]
+pub async fn security_get_profile(agent_id: String) -> Result<serde_json::Value, String> {
+    let engine = super::engine::get_engine();
+    let profile =
+        super::engine::security::permissions::get_security_profile(engine.db(), &agent_id)
+            .await.map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "agent_id": profile.agent_id,
+        "sandbox_enabled": profile.sandbox_enabled,
+        "file_access_mode": profile.file_access_mode,
+        "network_mode": profile.network_mode,
+        "exec_mode": profile.exec_mode,
+        "max_file_reads_per_min": profile.max_file_reads_per_min,
+        "max_file_writes_per_min": profile.max_file_writes_per_min,
+        "max_exec_per_min": profile.max_exec_per_min,
+        "max_network_per_min": profile.max_network_per_min,
+        "anomaly_threshold": profile.anomaly_threshold,
+    }))
+}
+
+/// Update agent security profile.
+#[tauri::command]
+pub async fn security_update_profile(
+    agent_id: String,
+    sandbox_enabled: Option<bool>,
+    file_access_mode: Option<String>,
+    network_mode: Option<String>,
+    exec_mode: Option<String>,
+    max_file_reads: Option<i64>,
+    max_file_writes: Option<i64>,
+    max_exec: Option<i64>,
+    max_network: Option<i64>,
+    anomaly_threshold: Option<i64>,
+) -> Result<(), String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::permissions::update_security_profile(
+        engine.db(),
+        &agent_id,
+        sandbox_enabled,
+        file_access_mode.as_deref(),
+        network_mode.as_deref(),
+        exec_mode.as_deref(),
+        max_file_reads,
+        max_file_writes,
+        max_exec,
+        max_network,
+        anomaly_threshold,
+    )
+    .await.map_err(|e| e.to_string())
+}
+
+/// Get permission rules for an agent.
+#[tauri::command]
+pub async fn security_get_rules(agent_id: String) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let rules = super::engine::security::permissions::get_permission_rules(engine.db(), &agent_id)
+        .await.map_err(|e| e.to_string())?;
+
+    Ok(rules
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "agent_id": r.agent_id,
+                "resource_type": r.resource_type,
+                "resource_value": r.resource_value,
+                "action": r.action,
+                "scope": r.scope,
+                "description": r.description,
+                "is_system": r.is_system,
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+            })
+        })
+        .collect())
+}
+
+/// Add a permission rule.
+#[tauri::command]
+pub async fn security_add_rule(
+    agent_id: String,
+    resource_type: String,
+    resource_value: String,
+    action: String,
+    scope: Option<String>,
+    description: Option<String>,
+) -> Result<String, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::permissions::add_permission_rule(
+        engine.db(),
+        &agent_id,
+        &resource_type,
+        &resource_value,
+        &action,
+        scope.as_deref().unwrap_or("all"),
+        description.as_deref(),
+    )
+    .await.map_err(|e| e.to_string())
+}
+
+/// Delete a permission rule.
+#[tauri::command]
+pub async fn security_delete_rule(rule_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::permissions::delete_permission_rule(engine.db(), &rule_id)
+        .await.map_err(|e| e.to_string())
+}
+
+/// Get pending permission prompts.
+#[tauri::command]
+pub async fn security_get_pending_prompts(
+    agent_id: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::permissions::get_pending_prompts(engine.db(), agent_id.as_deref())
+        .await.map_err(|e| e.to_string())
+}
+
+/// Resolve a permission prompt (user decision).
+#[tauri::command]
+pub async fn security_resolve_prompt(prompt_id: String, decision: String) -> Result<(), String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::permissions::resolve_permission_prompt(
+        engine.db(),
+        &prompt_id,
+        &decision,
+    )
+    .await.map_err(|e| e.to_string())
+}
+
+/// Run anomaly scan across all agents.
+#[tauri::command]
+pub async fn security_run_anomaly_scan() -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let anomalies = super::engine::security::anomaly::run_anomaly_scan(engine.db())
+        .await.map_err(|e| e.to_string())?;
+
+    Ok(anomalies
+        .iter()
+        .map(|a| {
+            serde_json::json!({
+                "rule_id": a.rule_id,
+                "rule_name": a.rule_name,
+                "severity": a.severity,
+                "action": a.action,
+                "description": a.description,
+                "details": a.details,
+            })
+        })
+        .collect())
+}
+
+/// Get anomaly rules.
+#[tauri::command]
+pub async fn security_get_anomaly_rules() -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let rules = super::engine::security::anomaly::get_anomaly_rules(engine.db())
+        .await.map_err(|e| e.to_string())?;
+
+    Ok(rules
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "rule_type": r.rule_type,
+                "condition_json": r.condition_json,
+                "severity": r.severity,
+                "action": r.action,
+                "is_enabled": r.is_enabled,
+            })
+        })
+        .collect())
+}
+
+/// Cleanup old security events.
+#[tauri::command]
+pub async fn security_cleanup_events(days: Option<i64>) -> Result<i64, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::events::cleanup_security_events(engine.db(), days.unwrap_or(90))
+        .await.map_err(|e| e.to_string())
+}
+
+// ============================================================
+// AEGIS — System Audit (Mission 1224 Phase 2)
+// ============================================================
+
+/// Run a full system audit. Returns the audit run ID.
+#[tauri::command]
+pub async fn aegis_run_audit(run_type: Option<String>) -> Result<String, String> {
+    let engine = super::engine::get_engine();
+    match run_type.as_deref() {
+        Some("quick") => super::engine::security::aegis::run_quick_audit(engine.db()).await,
+        _ => super::engine::security::aegis::run_full_audit(engine.db()).await,
+    }
+    .map_err(|e| e.to_string())
+}
+
+/// Get recent audit runs.
+#[tauri::command]
+pub async fn aegis_get_runs(limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let runs = super::engine::security::aegis::get_audit_runs(engine.db(), limit.unwrap_or(10))
+        .await.map_err(|e| e.to_string())?;
+    Ok(runs
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "run_type": r.run_type,
+                "status": r.status,
+                "overall_score": r.overall_score,
+                "total_checks": r.total_checks,
+                "pass_count": r.pass_count,
+                "warn_count": r.warn_count,
+                "critical_count": r.critical_count,
+                "started_at": r.started_at,
+                "completed_at": r.completed_at,
+            })
+        })
+        .collect())
+}
+
+/// Get findings for a specific audit run.
+#[tauri::command]
+pub async fn aegis_get_findings(
+    run_id: String,
+    category: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let findings = if let Some(cat) = category {
+        super::engine::security::aegis::get_findings_by_category(engine.db(), &run_id, &cat).await
+    } else {
+        super::engine::security::aegis::get_findings(engine.db(), &run_id).await
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(findings
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "id": f.id,
+                "run_id": f.run_id,
+                "category": f.category,
+                "check_name": f.check_name,
+                "severity": f.severity,
+                "title": f.title,
+                "description": f.description,
+                "recommendation": f.recommendation,
+                "raw_data": f.raw_data,
+            })
+        })
+        .collect())
+}
+
+/// Get the latest audit summary.
+#[tauri::command]
+pub async fn aegis_get_latest_summary() -> Result<Option<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::aegis::get_latest_audit_summary(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Delete an audit run.
+#[tauri::command]
+pub async fn aegis_delete_run(run_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::aegis::delete_audit_run(engine.db(), &run_id)
+        .await.map_err(|e| e.to_string())
+}
+
+// ============================================================
+// VIPER — Vulnerability Scanner (Mission 1224 Phase 3)
+// ============================================================
+
+/// Run a vulnerability scan.
+#[tauri::command]
+pub async fn viper_run_scan(scan_type: Option<String>) -> Result<String, String> {
+    let engine = super::engine::get_engine();
+    match scan_type.as_deref() {
+        Some("quick") => super::engine::security::viper::run_quick_scan(engine.db()).await,
+        _ => super::engine::security::viper::run_full_scan(engine.db()).await,
+    }
+    .map_err(|e| e.to_string())
+}
+
+/// Get recent scans.
+#[tauri::command]
+pub async fn viper_get_scans(limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let scans = super::engine::security::viper::get_scans(engine.db(), limit.unwrap_or(10))
+        .await.map_err(|e| e.to_string())?;
+    Ok(scans
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "scan_type": s.scan_type,
+                "status": s.status,
+                "risk_score": s.risk_score,
+                "total_checks": s.total_checks,
+                "pass_count": s.pass_count,
+                "info_count": s.info_count,
+                "warn_count": s.warn_count,
+                "critical_count": s.critical_count,
+                "started_at": s.started_at,
+                "completed_at": s.completed_at,
+            })
+        })
+        .collect())
+}
+
+/// Get findings for a scan.
+#[tauri::command]
+pub async fn viper_get_findings(
+    scan_id: String,
+    category: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let findings = if let Some(cat) = category {
+        super::engine::security::viper::get_findings_by_category(engine.db(), &scan_id, &cat).await
+    } else {
+        super::engine::security::viper::get_findings(engine.db(), &scan_id).await
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(findings
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "id": f.id,
+                "scan_id": f.scan_id,
+                "category": f.category,
+                "check_name": f.check_name,
+                "severity": f.severity,
+                "title": f.title,
+                "description": f.description,
+                "remediation": f.remediation,
+                "cve_ids": f.cve_ids,
+                "raw_data": f.raw_data,
+            })
+        })
+        .collect())
+}
+
+/// Get latest scan summary.
+#[tauri::command]
+pub async fn viper_get_latest_summary() -> Result<Option<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::viper::get_latest_summary(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Delete a scan.
+#[tauri::command]
+pub async fn viper_delete_scan(scan_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::viper::delete_scan(engine.db(), &scan_id).await.map_err(|e| e.to_string())
+}
+
+// ═════════════════════════════════════════════════════════════════
+// AGENT AUDIT — Agent-vs-Agent Security (Phase 4)
+// ═════════════════════════════════════════════════════════════════
+
+/// Run a full agent audit against all active agents.
+#[tauri::command]
+pub async fn agent_audit_run_full() -> Result<String, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::agent_audit::run_full_audit(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Run a targeted audit against specific agents.
+#[tauri::command]
+pub async fn agent_audit_run_targeted(agent_ids: Vec<String>) -> Result<String, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::agent_audit::run_targeted_audit(engine.db(), agent_ids)
+        .await.map_err(|e| e.to_string())
+}
+
+/// Get recent audit runs.
+#[tauri::command]
+pub async fn agent_audit_get_runs(limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let runs = super::engine::security::agent_audit::get_runs(engine.db(), limit.unwrap_or(10))
+        .await.map_err(|e| e.to_string())?;
+    Ok(runs
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "run_type": r.run_type,
+                "status": r.status,
+                "overall_score": r.overall_score,
+                "total_agents": r.total_agents,
+                "agents_passed": r.agents_passed,
+                "agents_warning": r.agents_warning,
+                "agents_failed": r.agents_failed,
+                "started_at": r.started_at,
+                "completed_at": r.completed_at,
+            })
+        })
+        .collect())
+}
+
+/// Get results for a specific audit run.
+#[tauri::command]
+pub async fn agent_audit_get_results(run_id: String) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let results = super::engine::security::agent_audit::get_results(engine.db(), &run_id)
+        .await.map_err(|e| e.to_string())?;
+    Ok(results
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "run_id": r.run_id,
+                "agent_id": r.agent_id,
+                "agent_name": r.agent_name,
+                "agent_emoji": r.agent_emoji,
+                "defense_score": r.defense_score,
+                "total_attacks": r.total_attacks,
+                "blocked_count": r.blocked_count,
+                "partial_count": r.partial_count,
+                "breached_count": r.breached_count,
+            })
+        })
+        .collect())
+}
+
+/// Get findings for a specific agent result.
+#[tauri::command]
+pub async fn agent_audit_get_findings(
+    result_id: String,
+    attack_type: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let findings = if let Some(at) = attack_type {
+        super::engine::security::agent_audit::get_findings_by_type(engine.db(), &result_id, &at).await
+    } else {
+        super::engine::security::agent_audit::get_findings(engine.db(), &result_id).await
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(findings
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "id": f.id,
+                "result_id": f.result_id,
+                "attack_type": f.attack_type,
+                "attack_name": f.attack_name,
+                "severity": f.severity,
+                "attack_prompt": f.attack_prompt,
+                "agent_response": f.agent_response,
+                "indicator": f.indicator,
+                "description": f.description,
+                "remediation": f.remediation,
+                "raw_data": f.raw_data,
+            })
+        })
+        .collect())
+}
+
+/// Get latest audit run summary.
+#[tauri::command]
+pub async fn agent_audit_get_latest_summary() -> Result<Option<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::agent_audit::get_latest_summary(engine.db())
+        .await.map_err(|e| e.to_string())
+}
+
+/// Delete an audit run.
+#[tauri::command]
+pub async fn agent_audit_delete_run(run_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::agent_audit::delete_run(engine.db(), &run_id)
+        .await.map_err(|e| e.to_string())
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SIEM — Security Information & Event Management (Phase 5)
+// ═════════════════════════════════════════════════════════════════
+
+/// Run the correlation engine and generate alerts.
+#[tauri::command]
+pub async fn siem_run_correlation() -> Result<i64, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::siem::run_correlation(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Get the aggregate risk overview.
+#[tauri::command]
+pub async fn siem_get_risk_overview() -> Result<serde_json::Value, String> {
+    let engine = super::engine::get_engine();
+    let overview = super::engine::security::siem::get_risk_overview(engine.db())
+        .await.map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "overall_score": overview.overall_score,
+        "trend": overview.trend,
+        "active_alerts": overview.active_alerts,
+        "critical_alerts": overview.critical_alerts,
+        "correlations_24h": overview.correlations_24h,
+        "events_24h": overview.events_24h,
+        "aegis_score": overview.aegis_score,
+        "viper_risk": overview.viper_risk,
+        "agent_defense": overview.agent_defense,
+        "top_risks": overview.top_risks,
+    }))
+}
+
+/// Get recent alerts.
+#[tauri::command]
+pub async fn siem_get_alerts(status: Option<String>, limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let status_ref = status.as_deref();
+    let alerts = super::engine::security::siem::get_alerts(engine.db(), status_ref, limit.unwrap_or(50))
+        .await.map_err(|e| e.to_string())?;
+    Ok(alerts
+        .iter()
+        .map(|a| {
+            serde_json::json!({
+                "id": a.id,
+                "alert_type": a.alert_type,
+                "severity": a.severity,
+                "title": a.title,
+                "description": a.description,
+                "source": a.source,
+                "agent_id": a.agent_id,
+                "correlation_id": a.correlation_id,
+                "status": a.status,
+                "acknowledged_at": a.acknowledged_at,
+                "resolved_at": a.resolved_at,
+                "raw_data": a.raw_data,
+                "created_at": a.created_at,
+            })
+        })
+        .collect())
+}
+
+/// Acknowledge an alert.
+#[tauri::command]
+pub async fn siem_acknowledge_alert(alert_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::siem::acknowledge_alert(engine.db(), &alert_id)
+        .await.map_err(|e| e.to_string())
+}
+
+/// Resolve an alert.
+#[tauri::command]
+pub async fn siem_resolve_alert(alert_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::siem::resolve_alert(engine.db(), &alert_id)
+        .await.map_err(|e| e.to_string())
+}
+
+/// Dismiss an alert.
+#[tauri::command]
+pub async fn siem_dismiss_alert(alert_id: String) -> Result<bool, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::siem::dismiss_alert(engine.db(), &alert_id)
+        .await.map_err(|e| e.to_string())
+}
+
+/// Get recent correlations.
+#[tauri::command]
+pub async fn siem_get_correlations(limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let correlations = super::engine::security::siem::get_correlations(engine.db(), limit.unwrap_or(30))
+        .await.map_err(|e| e.to_string())?;
+    Ok(correlations
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "id": c.id,
+                "correlation_type": c.correlation_type,
+                "severity": c.severity,
+                "title": c.title,
+                "description": c.description,
+                "source_1_type": c.source_1_type,
+                "source_1_id": c.source_1_id,
+                "source_2_type": c.source_2_type,
+                "source_2_id": c.source_2_id,
+                "agent_ids": c.agent_ids,
+                "risk_score": c.risk_score,
+                "raw_data": c.raw_data,
+                "created_at": c.created_at,
+            })
+        })
+        .collect())
+}
+
+/// Get risk timeline (daily aggregates for 30 days).
+#[tauri::command]
+pub async fn siem_get_risk_timeline() -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::siem::get_risk_timeline(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Generate a weekly security report.
+#[tauri::command]
+pub async fn siem_generate_weekly_report() -> Result<String, String> {
+    let engine = super::engine::get_engine();
+    super::engine::security::siem::generate_weekly_report(engine.db()).await.map_err(|e| e.to_string())
+}
+
+/// Get weekly reports.
+#[tauri::command]
+pub async fn siem_get_weekly_reports(limit: Option<i64>) -> Result<Vec<serde_json::Value>, String> {
+    let engine = super::engine::get_engine();
+    let reports = super::engine::security::siem::get_weekly_reports(engine.db(), limit.unwrap_or(12))
+        .await.map_err(|e| e.to_string())?;
+    Ok(reports
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "week_start": r.week_start,
+                "week_end": r.week_end,
+                "risk_score": r.risk_score,
+                "risk_trend": r.risk_trend,
+                "total_events": r.total_events,
+                "critical_events": r.critical_events,
+                "alerts_generated": r.alerts_generated,
+                "alerts_resolved": r.alerts_resolved,
+                "aegis_score": r.aegis_score,
+                "viper_score": r.viper_score,
+                "agent_audit_score": r.agent_audit_score,
+                "summary": r.summary,
+                "findings": r.findings,
+                "created_at": r.created_at,
+            })
+        })
+        .collect())
+}
+
+
+/// Test command — returns a hardcoded string, no DB access.
+#[tauri::command]
+pub fn test_ping() -> Result<String, String> {
+    Ok("pong".to_string())
+}
+
+
+
+/// Test command — spawn_blocking with fresh connection (avoids block_in_place deadlock).
+#[tauri::command]
+pub async fn test_db_ping() -> Result<String, String> {
+    let count = tokio::task::spawn_blocking(|| {
+        let conn = rusqlite::Connection::open("/home/calo/.local/share/com.conflux.home/conflux.db")
+            .map_err(|e| e.to_string())?;
+        let n: i64 = conn.query_row("SELECT COUNT(*) FROM agents", [], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+        Ok::<i64, String>(n)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    Ok(format!("agents: {}", count))
 }
