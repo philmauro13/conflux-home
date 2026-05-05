@@ -1,1 +1,117 @@
+# === PRIVATE / PERSONAL ===
+# Core identity files — never push
+MASTER_INSPIRATION_PROMPT.md
+MEMORY.md
+MEMORY_ARCHIVE.md
+SOUL.md
+USER.md
+IDENTITY.md
+ZigBot.md
+AGENTS.md
+TOOLS.md
+HEARTBEAT.md
+
+# Session logs and memory transcripts
+memory/
+MEMORY_2026_04_29.md
+NEXT_SESSION*.md
+NEXT_SESSION_PROMPT.md
+
+# Session handoffs
+SESSION_HANDOFF*.md
+SESSION-CONTEXT.md
+
+# Private specs and notes
+SPEC_*.md
+ORGANIZATION_SPEC.md
+SCHEDULER_README.md
+NIGHTLY_DISCOVERY_PIPELINE_SPEC.md
+ORBIT_BUILD_PLAN.md
+HEARTH_BUILD_PLAN.md
+REBUILD_SPEC.md
+TOWIN.txt
+
+# Agent manuals and personal docs
+AGENT_MANUALS.md
+DAILY_SCHEDULE_WALKTHROUGH.md
+MASTER_GROWTH_DOCTRINE.md
+MASTER_INSPIRATION_PROMPT.md
+NEURAL_MESH_VISION.md
+OPPORTUNITY_FEED.json
+ADVICE.md
+ARTIFACTS.md
+GROWTH_QUESTIONS.md
+TECHNICAL_SUMMARY.md
+UPCOMING_STEPS.md
+CONFLUX_PRESENCE_ROADMAP.md
+RELEASE_SUMMARY.md
+BUILD_REPORTS.md
+FINAL_AUDIT.md
+conflux-home-audit.md
+
+# Competitive / research (private strategy)
+COMPETITIVE_ANALYSIS.md
+GEMMA3N_MOBILE_PERFORMANCE_RESEARCH.md
+
+# Build artifacts (workspace level)
 .vercel
+dist/
+node_modules/
+.next/
+.vite/
+target/
+
+# Logs
+err.txt
+tree.txt
+tauri_screenshot.png
+
+# Embedded git repos (have their own remotes)
+conflux-landing/
+lead-followup-app/
+projects/audiorecordingschool/
+sketchie/
+studio-os/
+
+# Conflux home build artifacts
+conflux-home/dist/
+conflux-home/node_modules/
+conflux-home/.vite/
+conflux-home/src-tauri/target/
+conflux-home/src-tauri/models/*.bin
+conflux-home/src-tauri/models/*.gguf
+conflux-home/src-tauri/binaries/
+conflux-home/icons-generated/
+conflux-home/src-tauri/.env
+
+# Private / in-progress projects
+clickhereforcandy/node_modules/
+clickhereforcandy/.next/
+pack-smarter/node_modules/
+conflux-lens/
+dream-cycle-phase1.json
+dream-cycle-summary.txt
+fix_viper.py
+
+# Private scripts
+append_*.py
+add_*.py
+show_*.py
+update_*.py
+capitalize_agents.py
+check_*.py
+decode-jwt.js
+new_block.py
+
+# Config (private)
+android_keystore_base64.txt
+
+# Supabase / backend temp
+supabase/.temp/
+supabase/migrations/
+
+# Shared (some may be private — review individually)
+shared/CATALYST_WAKE_LOG.md
+shared/RUN_LOG.md
+shared/qmd_memory.db
+shared/.git/
