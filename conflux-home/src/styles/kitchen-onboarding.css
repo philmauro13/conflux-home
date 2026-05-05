@@ -1,0 +1,441 @@
+/* ═══════════════════════════════════════════════════════════════
+   Kitchen Onboarding — Hearth Theme
+   Boot sequence, setup modal, spotlight tour
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Boot Sequence ───────────────────────────────────────── */
+
+.hearth-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0c0a09;
+  transition: opacity 0.6s ease;
+}
+
+.hearth-boot.boot-3 {
+  animation: hearth-boot-fadeout 0.8s ease 2s forwards;
+}
+
+@keyframes hearth-boot-fadeout {
+  to { opacity: 0; pointer-events: none; }
+}
+
+.hearth-boot-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.hearth-boot-logo {
+  font-family: var(--hearth-font-mono, 'JetBrains Mono', monospace);
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: 12px;
+  color: #F59E0B;
+  text-shadow: 0 0 40px rgba(245, 158, 11, 0.4), 0 0 80px rgba(245, 158, 11, 0.2);
+  animation: hearth-logo-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes hearth-logo-glow {
+  from { text-shadow: 0 0 40px rgba(245, 158, 11, 0.3), 0 0 80px rgba(245, 158, 11, 0.1); }
+  to { text-shadow: 0 0 60px rgba(245, 158, 11, 0.6), 0 0 120px rgba(245, 158, 11, 0.3); }
+}
+
+.hearth-boot-icon {
+  width: 80px;
+  height: 80px;
+  animation: hearth-flame-flicker 2s ease-in-out infinite;
+}
+
+@keyframes hearth-flame-flicker {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
+  25% { transform: scale(1.05) rotate(-2deg); opacity: 1; }
+  50% { transform: scale(0.98) rotate(1deg); opacity: 0.85; }
+  75% { transform: scale(1.03) rotate(-1deg); opacity: 1; }
+}
+
+.hearth-boot-flame-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.hearth-boot-flame-path {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: hearth-flame-draw 1.8s ease forwards;
+}
+
+@keyframes hearth-flame-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.hearth-boot-tagline {
+  font-family: var(--hearth-font, sans-serif);
+  font-size: 16px;
+  color: #A8A29E;
+  letter-spacing: 2px;
+  opacity: 0;
+  animation: hearth-tagline-in 0.8s ease 0.3s forwards;
+}
+
+@keyframes hearth-tagline-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Embers */
+.hearth-boot-embers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hearth-ember {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #F59E0B;
+  opacity: 0;
+  animation: hearth-ember-float 4s ease-in-out infinite;
+}
+
+.ember-1  { left: 15%; animation-delay: 0s; }
+.ember-2  { left: 25%; animation-delay: 0.4s; }
+.ember-3  { left: 35%; animation-delay: 0.8s; }
+.ember-4  { left: 45%; animation-delay: 1.2s; }
+.ember-5  { left: 55%; animation-delay: 0.2s; }
+.ember-6  { left: 65%; animation-delay: 0.6s; }
+.ember-7  { left: 75%; animation-delay: 1.0s; }
+.ember-8  { left: 85%; animation-delay: 1.4s; }
+.ember-9  { left: 20%; animation-delay: 0.3s; }
+.ember-10 { left: 40%; animation-delay: 0.7s; }
+.ember-11 { left: 60%; animation-delay: 1.1s; }
+.ember-12 { left: 80%; animation-delay: 1.5s; }
+
+@keyframes hearth-ember-float {
+  0% {
+    bottom: -10px;
+    opacity: 0;
+    transform: translateX(0) scale(1);
+  }
+  10% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.4;
+    transform: translateX(20px) scale(0.8);
+  }
+  100% {
+    bottom: 110%;
+    opacity: 0;
+    transform: translateX(-10px) scale(0.3);
+  }
+}
+
+/* ─── Setup Modal ───────────────────────────────────────────── */
+
+.hearth-setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 10, 9, 0.95);
+  animation: hearth-fade-in 0.5s ease;
+}
+
+@keyframes hearth-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hearth-setup-bg-glow {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  animation: hearth-glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes hearth-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+}
+
+.hearth-setup-card {
+  position: relative;
+  width: 90%;
+  max-width: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: #1C1917;
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(245, 158, 11, 0.05);
+  overflow: hidden;
+  animation: hearth-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes hearth-card-in {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hearth-setup-header {
+  padding: 32px 32px 20px;
+  text-align: center;
+}
+
+.hearth-setup-icon-row {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.hearth-setup-icon {
+  font-size: 40px;
+  z-index: 1;
+}
+
+.hearth-setup-icon-pulse {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  animation: hearth-icon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hearth-icon-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.4); opacity: 0; }
+}
+
+.hearth-setup-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #FEF3C7;
+  margin: 0 0 8px;
+}
+
+.hearth-setup-subtitle {
+  font-size: 14px;
+  color: #A8A29E;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hearth-setup-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 32px 24px;
+}
+
+.hearth-setup-section {
+  margin-bottom: 28px;
+}
+
+.hearth-setup-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FDE68A;
+  margin-bottom: 12px;
+}
+
+.hearth-setup-step-num {
+  font-family: var(--hearth-font-mono, monospace);
+  font-size: 11px;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+.hearth-setup-hint {
+  font-size: 12px;
+  color: #78716C;
+  margin: 8px 0 0;
+}
+
+/* Household Size */
+.hearth-setup-size-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hearth-size-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid #44403C;
+  background: #292524;
+  color: #A8A29E;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hearth-size-btn:hover {
+  border-color: #F59E0B;
+  color: #FEF3C7;
+}
+
+.hearth-size-btn.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #F59E0B;
+  color: #F59E0B;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+/* Chip Grid (Dietary + Cuisines) */
+.hearth-setup-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hearth-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  border: 1px solid #44403C;
+  background: #292524;
+  color: #A8A29E;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hearth-chip:hover {
+  border-color: #F59E0B;
+  color: #FEF3C7;
+}
+
+.hearth-chip.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #F59E0B;
+  color: #F59E0B;
+}
+
+.hearth-chip-icon {
+  font-size: 16px;
+}
+
+/* Skill Level */
+.hearth-setup-skill-row {
+  display: flex;
+  gap: 10px;
+}
+
+.hearth-skill-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  border: 1px solid #44403C;
+  background: #292524;
+  color: #A8A29E;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hearth-skill-btn:hover {
+  border-color: #F59E0B;
+}
+
+.hearth-skill-btn.active {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #F59E0B;
+  color: #FEF3C7;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.15);
+}
+
+.hearth-skill-icon {
+  font-size: 24px;
+}
+
+.hearth-skill-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hearth-skill-desc {
+  font-size: 11px;
+  color: #78716C;
+}
+
+/* Footer */
+.hearth-setup-footer {
+  padding: 20px 32px 28px;
+  text-align: center;
+}
+
+.hearth-setup-error {
+  color: #EF4444;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.hearth-setup-finish {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  color: #1C1917;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+}
+
+.hearth-setup-finish:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
+}
+
+.hearth-setup-finish:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ─── Spotlight Tour Root ─────────────────────────────────── */
+
+.kitchen-tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+.kitchen-tour-root > * {
+  pointer-events: auto;
+}

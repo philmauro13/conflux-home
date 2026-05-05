@@ -1,11 +1,11 @@
 # INTEL Dashboard — Heartbeat Interval Knob + Autonomous Mode
 
-## Spec v0.2
+## Spec v0.3
 
-> **Date:** 2026-04-11
-> **Status:** Build this first
-> **Affected files:** `src/components/DesktopQuadrants.tsx`, `src-tauri/src/engine/mod.rs`, `src-tauri/src/engine/db.rs`, `src-tauri/src/lib.rs`, `src/styles-quadrants.css`
-> **Vision note (v0.2):** The heartbeat is not a settings toggle. It is the **autonomous driving mode**. Most users will install, see the agents wake up and start working, and never touch a single setting. The knob is the visible control for a deeply personal system they can trust is always running. This is what makes them NEED the app, not want it.
+> **Date:** 2026-04-12
+> **Status:** Built
+> **Affected files:** `src/components/PulseKnob.tsx`, `src/components/DesktopQuadrants.tsx`, `src-tauri/src/commands.rs`, `src-tauri/src/lib.rs`, `src/styles-quadrants.css`
+> **Vision note (v0.3):** The heartbeat is not a settings toggle. It is the **autonomous driving mode**. The red heart is the emotional center of the panel — it breathes, it pulses with each beat, it makes the system feel alive. Users don't configure a timer; they choose how often their AI family heartbeats.
 
 ---
 
@@ -24,32 +24,34 @@ The heartbeat is the engine that makes the AI family feel alive — always worki
 
 ## 1. Concept & Vision
 
-The INTEL panel in the desktop shell is a live cockpit — system overview, agent status, credits at a glance. It already has a "LIVE" indicator that pulses green. The heartbeat interval knob completes the picture: a tactile control that lets the user decide how often their AI team "breathes" — how often the background scheduler fires, data refreshes, and the whole system feels alive.
+The INTEL panel in the desktop shell is a live cockpit — system overview, agent status, credits at a glance. The red heart in the center of the PulseKnob is the emotional anchor of the entire desktop: it breathes when the system is alive, it flashes with a ripple on each beat, and it goes still when the system is paused. This transforms the knob from a settings control into a living presence.
 
-The knob should feel like adjusting a precision instrument. Not a slider, not a dropdown — a rotating dial with real physicality: detents at each position, a countdown ring that depletes as time passes, a satisfying snap when you release.
+The knob feels like adjusting a precision instrument. Not a slider, not a dropdown — a rotating dial with real physicality: detents at each position, a countdown ring that depletes as time passes, a satisfying snap when you release, and a beating heart at the center.
 
 ---
 
 ## 2. Design Language
 
 ### Aesthetic
-Cockpit / precision instrument. Dark glass panel with subtle grid lines. Monospace labels. Neon accents.
+Cockpit / precision instrument with organic emotional center. Dark glass panel with subtle grid lines. Monospace labels. The red heart breaks the cold instrument aesthetic with warmth and life.
 
 ### Color
 | Role | Value |
 |------|-------|
 | Panel background | `rgba(12, 12, 22, 0.7)` |
 | Ring track | `rgba(255, 255, 255, 0.06)` |
-| Ring fill (active) | `#6366f1` (indigo) |
-| Ring fill (paused/off) | `#4b5563` (muted) |
-| Accent glow | `rgba(99, 102, 241, 0.4)` |
+| Ring fill (active) | `#ef4444` (red — matches heart) |
+| Ring fill (off) | `#4b5563` (muted gray) |
+| Heart body | `#ef4444` → `#b91c1c` gradient |
+| Heart shadow | `#7f1d1d` (deep red) |
+| Heart highlight | `rgba(255,255,255,0.25)` |
 | Text primary | `#fff` |
 | Text muted | `rgba(255, 255, 255, 0.4)` |
 
 ### Typography
 - Font: `var(--radar-font-mono)` — already used in INTEL panel
-- Labels: 9px uppercase, 2px letter-spacing
-- Value: 18px bold
+- Notch labels: 5.5–6.5px monospace, positioned outside detent ticks
+- Value: bold, 16px
 
 ---
 
@@ -60,21 +62,15 @@ Cockpit / precision instrument. Dark glass panel with subtle grid lines. Monospa
 │ 🧠 INTEL            ● LIVE      │  ← existing header
 ├─────────────────────────────────┤
 │                                 │
-│   ╭───────────╮                 │
-│   │  PULSE    │  ← NEW: knob    │
-│   │   ⏱ 5m   │     above rings │
-│   ╰───────────╯                 │
+│   HEARTBEAT    [notch labels]   │
+│   ╭─────────╮  OFF  15m  1hr   │
+│   │  ♥ 5m  │   ↓    ↓    ↓     │
+│   ╰─────────╯                   │
+│   every 1hr  (below knob)       │
 │                                 │
-│   ┌────┐ ┌────┐ ┌────┐         │  ← existing ring gauges
+│   ┌────┐ ┌────┐ ┌────┐         │  ← flanking ring gauges
 │   │  3 │ │ 2  │ │ 75%│         │
-│   │online│ │work│ │health│     │
 │   └────┘ └────┘ └────┘         │
-│                                 │
-│   AGENT STATUS                   │  ← existing sections
-│   ...                           │
-│                                 │
-│   CREDITS                        │
-│   ...                           │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -84,225 +80,112 @@ Cockpit / precision instrument. Dark glass panel with subtle grid lines. Monospa
 ## 4. Knob Component — `PulseKnob`
 
 ### Visual Design
-- **Outer ring:** SVG circle, `r=40`, `stroke-width=5`. Track color when off, fill color when on.
-- **Countdown arc:** The outer ring depletes clockwise as time passes (strokeDashoffset animation). Full at start → empty at next beat.
-- **Detent ticks:** 6 small tick marks at 60° intervals around the ring (at 12, 2, 4, 6, 8, 10 o'clock positions for Off, 30s, 1m, 5m, 30m, 60m).
-- **Center:** Current value label — e.g., `⏱ 5m` or `⏸ OFF`
-- **Interaction:** Click and drag in a circular gesture. Dragging clockwise increases value, counter-clockwise decreases. Snaps to nearest detent on release.
-- **Visual feedback:** Ring color shifts from indigo to amber when at "30s" (fast), stays indigo at default "30m", dims to muted at "Off".
 
-### Presets (snap positions, counterclockwise)
+**Outer ring:** SVG circle, `r=44`, stroke-width=4. Red fill (depleting countdown arc) on dark track.
+
+**Countdown arc:** Depletes clockwise from full to empty over the current interval. Resets instantly on each Rust `conflux:heartbeat-beat` event.
+
+**Detent ticks:** 6 tick marks at 60° intervals. Red tick at 12 o'clock (OFF position). White ticks at other positions.
+
+**Notch labels:** Text labels outside the tick ring at each detent position. Active preset label turns red; current committed preset is bright white; inactive labels are dim.
+
+**Center:** 3D red heart (SVG path). Neumorphic — layered gradients, top-left highlight, bottom-right shadow. Slow breathing scale animation (1 → 1.06 → 1, 2.4s loop). On each Rust beat event, a ripple ring expands outward and fades.
+
+**OFF state:** Heart replaced by two flat gray pause bars. Ring shows no arc.
+
+### Presets (snap positions, clockwise from 12 o'clock)
 | Position | Label | Milliseconds | Use case |
 |----------|-------|-------------|----------|
-| 0 (12 o'clock) | `⏸ OFF` | `0` (disabled) | Paused |
-| 1 (2 o'clock) | `⏱ 30s` | `30_000` | Dev/testing |
-| 2 (4 o'clock) | `⏱ 1m` | `60_000` | Dev/testing |
-| 3 (6 o'clock) | `⏱ 5m` | `300_000` | Balanced |
-| 4 (8 o'clock) | `⏱ 30m` | `1_800_000` | **Default** |
-| 5 (10 o'clock) | `⏱ 60m` | `3_600_000` | Power saver |
+| 0 (12 o'clock) | `OFF` | `0` | Paused |
+| 1 (2 o'clock) | `15m` | `900_000` | Frequent checks |
+| 2 (4 o'clock) | `1hr` | `3_600_000` | **Default — sweet spot** |
+| 3 (6 o'clock) | `4hr` | `14_400_000` | Moderate |
+| 4 (8 o'clock) | `8hr` | `28_800_000` | Low maintenance |
+| 5 (10 o'clock) | `12hr` | `43_200_000` | Nightly / power saver |
 
 ### Countdown Behavior
-- On each beat (interval fires), the panel data (ring gauges, agent status, credits) auto-refreshes
-- The countdown arc resets immediately after each beat
-- When `Off`, the ring is muted gray and shows no arc
+- On each beat (interval fires), the countdown arc resets to full instantly
+- The heart flashes a ripple ring animation on each beat
+- When `Off`, the ring is muted gray and shows no arc; heart becomes pause bars
 
-### Knob States
-| State | Appearance |
-|-------|------------|
-| Idle | Indigo ring, countdown arc depleting |
-| Hover | Ring glows brighter, cursor: grab |
-| Dragging | cursor: grabbing, ring brightens, snap preview |
-| Just-snapped | Brief flash on the ring fill |
-| Off | Muted gray ring, no arc |
+### Interaction
+- Click and drag circularly to select preset
+- Clockwise = higher interval, counter-clockwise = lower
+- On release, snaps to nearest detent
+- "release to set" hint appears during drag
 
 ---
 
-## 5. Data Refresh — On Beat
+## 5. Rust Scheduler — Instant Apply
 
-On each heartbeat tick, the following data in the INTEL panel refreshes:
-- Ring gauges (online agents, working agents, health %)
-- Agent status bars
-- Credits (balance, plan, monthly/daily usage)
-- Last pulse timestamp (displayed below knob)
+When `engine_set_heartbeat_interval` is called:
+1. Writes new interval to `config` table in SQLite
+2. Sends new interval through an `mpsc` channel to the scheduler
+3. Scheduler wakes up via `tokio::select!` and immediately restarts its sleep timer with the new value — no waiting for the old interval to expire
+4. Emits `conflux:heartbeat-interval-changed` event to frontend so animation syncs instantly
 
-This is a client-side refresh only — no new Rust command needed for reading. The React components already poll or pull data via existing hooks (`useCredits`, etc.). We just trigger a refresh call on each beat.
-
----
-
-## 5b. What Fires On Each Beat — Autonomous Actions
-
-On each heartbeat tick, the system performs these actions in order (all using free-tier model calls):
-
-| # | Action | Agent | Free Tier | What Happens |
-|---|--------|-------|-----------|-------------|
-| 1 | Morning brief | Conflux | `conflux-core` | If it's morning and no brief today → generate and store brief |
-| 2 | Pantry check | Hearth | `conflux-core` | Items expiring in 3 days → recipe suggestion stored as feed item |
-| 3 | Budget nudge | Pulse | `conflux-core` | If spending > threshold today → gentle nudge stored |
-| 4 | Dream nudge | Horizon | `conflux-core` | Tasks due soon → motivational note stored |
-| 5 | Feed refresh | Current | `conflux-core` | Cross-app pattern scan → insights card generated |
-| 6 | Agent diary | Conflux | `conflux-core` | End of day → reflective diary entry stored |
-
-**Total per beat: ~6 free-tier calls** (~$0 marginal cost)
-
-
-### Beat Behavior by Interval
-
-| Interval | Behavior |
-|----------|----------|
-| `30s` | Dev/testing only. Fires constantly. Panel refreshes. Not sustainable at scale. |
-| `1m` | Dev/testing. Useful for watching the system breathe in real time. |
-| `5m` | Balanced. Good for active development. Too frequent for production free tier at scale. |
-| `30m` | **Default — sweet spot.** One beat every half hour. Real autonomous value. Scales well. |
-| `60m` | Power-user. For users who just want the AI to check in once an hour. |
-| `Off` | Scheduler silent. Panel still shows data but no autonomous actions fire. |
-
-
-### The Morning Brief — First Beat Is the Moment
-
-The most important autonomous moment is the **first beat after a user wakes up**. When the user opens their laptop, the Morning Brief should already be waiting — generated during the night or early morning beat. This is the product demo that sells itself.
-
-
----
-
-## 6. Rust Backend Changes
-
-### DB — `engine_settings` table
-Add column if not exists:
-```sql
-ALTER TABLE engine_settings ADD COLUMN heartbeat_interval_ms INTEGER DEFAULT 1800000;
+### Beat Event Flow
+```
+Rust scheduler (tokio select! on mpsc channel + sleep timer)
+    → tick_cron() fires
+    → emits "conflux:heartbeat-beat" to frontend
+    → frontend: lastBeat updates → countdown arc resets → heart ripple fires
 ```
 
-### New Tauri Commands (`src-tauri/src/engine/mod.rs` + `commands.rs`)
-
-```rust
-// engine_get_heartbeat_interval → i64 (ms)
-fn get_heartbeat_interval(&self) -> i64 {
-    self.db.get_heartbeat_interval().unwrap_or(1_800_000)
-}
-
-// engine_set_heartbeat_interval(ms: i64) → ()
-fn set_heartbeat_interval(&self, ms: i64) -> Result<()> {
-    self.db.set_heartbeat_interval(ms)
-}
-```
-
-### `lib.rs` — Scheduler uses configurable interval
-```rust
-let interval_secs = engine::get_engine()
-    .map(|e| e.get_heartbeat_interval() / 1000)
-    .unwrap_or(1800); // fallback 30 min
-
-let mut interval = tokio::time::interval(std::time::Duration::from_secs(interval_secs));
-```
-
-If interval is `0` (disabled), the scheduler loop still runs but `tick_cron()` is only called manually or never — skip it silently when disabled.
-
 ---
 
-## 7. React Component — `PulseKnob`
+## 6. React Component — `PulseKnob`
 
 ### Props
 ```typescript
 interface PulseKnobProps {
   value: number;          // current interval in ms (0 = off)
   onChange: (ms: number) => void;
+  lastBeat?: number;     // timestamp of last beat — drives heart ripple
 }
 ```
 
-### Internal State
-- `dragAngle`: current angle during drag (degrees)
-- `isDragging`: bool
-- `displayValue`: the snapped preset value
-- `lastBeat`: timestamp of last tick (for countdown arc calculation)
+### Key States
+| State | Heart | Ring | Animation |
+|-------|-------|------|-----------|
+| Idle (beating) | 3D heart breathing slowly | Red arc depleting | `animateTransform scale 1→1.06→1` loop |
+| On beat fire | Heart + ripple ring expanding | Arc resets to full | Ripple ring `r: 14→26, opacity: 0.7→0` |
+| Dragging | Heart visible | Dot previews nearest preset | "release to set" hint shown |
+| Just-snapped | Brief ring flash | Flash on fill | CSS `.snapped` class, 400ms |
+| Off | Pause bars (two vertical lines) | Muted gray, no arc | No animation |
 
-### Key Implementation Details
-- Circular drag detection: compute angle from center using `atan2(mouseY - centerY, mouseX - centerX)`
-- 6 detents at 60° intervals, starting from -90° (top)
-- `transition: stroke-dashoffset 1s linear` for countdown arc
-- `requestAnimationFrame` for smooth countdown arc depletion (not CSS, so it works when tab is backgrounded briefly)
-- After each beat (interval fires), reset `lastBeat` to now
-
-### Placement in `IntelDashboard`
-```tsx
-<div className="intel-body">
-  <div className="intel-section">
-    <PulseKnob
-      value={heartbeatInterval}
-      onChange={handleHeartbeatChange}
-    />
-  </div>
-
-  {/* Ring Gauges */}
-  <div className="intel-section">
-    <div className="intel-section-title">SYSTEM OVERVIEW</div>
-    ...
-```
+### Architecture Notes
+- `lastBeatRef` used in rAF loop to avoid stale closures — only `lastBeat` state triggers resets
+- `isBeating` state: set to `true` on each new `lastBeat`, auto-cleared after 700ms via `setTimeout`
+- `handleMouseDown` fully delegates to `window` listeners (not SVG inline) — prevents duplicate handler issues
+- Notch label font-size and color driven by `activePreset` vs `currentPreset` distinction
 
 ---
 
-## 8. Files Modified
+## 7. Files Modified
 
 | File | Changes |
 |------|---------|
-| `src-tauri/src/engine/db.rs` | `get_heartbeat_interval()`, `set_heartbeat_interval()`, migration SQL |
-| `src-tauri/src/engine/mod.rs` | expose new DB methods |
-| `src-tauri/src/lib.rs` | read interval from engine, use for scheduler |
-| `src/components/DesktopQuadrants.tsx` | import `PulseKnob`, wire it above rings, add `useHeartbeatInterval` hook |
-| `src/styles-quadrants.css` | `.intel-pulse-knob`, `.intel-knob-ring`, `.intel-knob-tick`, `.intel-knob-label` |
-| New: `src/components/PulseKnob.tsx` | full knob component |
+| `src/components/PulseKnob.tsx` | Full redesign: 3D heart, notch labels, new presets, beat ripple, `isBeating` state |
+| `src/components/DesktopQuadrants.tsx` | Default 1hr; `listen` cleanup fixed; added `conflux:heartbeat-interval-changed` listener |
+| `src-tauri/src/commands.rs` | `engine_set_heartbeat_interval` sends through scheduler mpsc channel |
+| `src-tauri/src/lib.rs` | Scheduler uses `tokio::select!` on mpsc channel + sleep; instant apply on interval change |
+| `src/styles-quadrants.css` | Minor tweaks to `.snapped` and `.intel-knob-value` for red color |
+| `SPEC_HEARTBEAT_KNOB.md` | Updated to v0.3 |
 
 ---
 
-## 9. New Hook — `useHeartbeatInterval`
+## 8. Acceptance Criteria
 
-```typescript
-function useHeartbeatInterval() {
-  const [interval, setInterval] = useState(1_800_000); // default 30m
-
-  useEffect(() => {
-    invoke<number>('engine_get_heartbeat_interval').then(ms => {
-      if (ms > 0) setInterval(ms);
-    }).catch(() => {});
-  }, []);
-
-  const save = useCallback(async (ms: number) => {
-    await invoke('engine_set_heartbeat_interval', { ms });
-    setInterval(ms);
-  }, []);
-
-  return { interval, save };
-}
-```
-
----
-
-## 10. Acceptance Criteria
-
-- [ ] Knob renders above ring gauges in INTEL panel
-- [ ] Dragging circularly snaps to nearest preset (6 detents)
-- [ ] Countdown arc depletes from full to empty over the current interval
-- [ ] Arc resets on each simulated beat / on actual cron tick
-- [ ] Value persists across app restart (saved to engine_settings DB)
-- [ ] Rust scheduler uses the configured interval (not hardcoded 60s)
-- [ ] `Off` position disables the arc and dims the ring
-- [ ] All 6 presets selectable and labeled correctly
-- [ ] On beat: panel data refreshes (ring gauges, agents, credits)
-- [ ] On beat: autonomous actions fire (morning brief, pantry check, budget nudge, dream nudge, insights) — using free tier
-- [ ] Morning brief generated and ready before user opens laptop (first morning beat)
-- [ ] No new dependencies added
-- [ ] Build passes without errors
-- [ ] Default interval: 30m — ships ready to impress without manual configuration
-
----
-
-## 11. Deferred: Bringing It to Life (Post-App Audit)
-
-
-After all 16 apps are audited and verified working, return here to add the magic:
-
-- **Boot cards:** Each agent shows a 3-second "what I'm working on" card on startup
-- **Morning Brief overlay:** The glassmorphism card from `MorningBrief.tsx` slides in before desktop loads, once per day
-- **Agent nudge system:** When user is idle 2+ minutes, a dismissible card slides in from bottom-right
-- **Sound cues:** Each beat triggers a subtle audio pulse (like a heartbeat — see `playHeartbeatPulse()` in `sounds.ts`)
-- **Animated fairy:** `ConfluxOrbit` pulses with a wave when a beat fires
-- **INTEL live indicator:** The LIVE dot already pulses — confirm it syncs to actual beat events
+- [x] 3D red heart in center with neumorphic depth (gradient + highlight + shadow)
+- [x] Heart breathes slowly when system is alive (scale 1→1.06→1, 2.4s loop)
+- [x] On each Rust beat event, heart flashes a ripple ring that expands and fades
+- [x] Notch labels visible at each detent position outside the ring
+- [x] Label "PULSE" renamed to "HEARTBEAT"
+- [x] Presets updated to: OFF / 15m / 1hr / 4hr / 8hr / 12hr
+- [x] Default changed from 30m → 1hr
+- [x] Ring color is always red (matches heart) — not indigo/amber
+- [x] Changing preset takes effect immediately (scheduler woken via mpsc, not on next tick)
+- [x] Value persists across app restart
+- [x] TypeScript compiles clean
+- [x] Rust compiles clean

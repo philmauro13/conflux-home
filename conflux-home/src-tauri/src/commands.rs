@@ -9,6 +9,8 @@ use chrono::{Datelike, Timelike};
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 use uuid::Uuid;
+use std::io::{Cursor, Write};
+use tauri_plugin_dialog::{DialogExt, FileDialogBuilder};
 
 // ── Request/Response Types ──
 
@@ -115,70 +117,56 @@ pub struct EchoDailyBrief {
 
 #[tauri::command]
 pub async fn engine_chat(window: tauri::Window, req: ChatRequest) -> Result<ChatResponse, String> {
-    let engine = engine::get_engine();
+    let is_offline = engine::is_offline_mode();
 
-    // Get real Supabase user ID for cloud credit operations
-    let user_id = get_supabase_user_id();
-
-    // Check quota (cloud-aware)
-    let quota = engine
-        .has_quota(&user_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    if !quota.allowed {
-        return Err(format!(
-            "{} limit reached. Upgrade for more credits.",
-            quota.source
-        ));
-    }
+    // Cloud quota check — skip entirely in offline mode
+    let quota_source = if !is_offline {
+        let engine = engine::get_engine();
+        let user_id = get_supabase_user_id();
+        let quota = engine.has_quota(&user_id).await.map_err(|e| e.to_string())?;
+        if !quota.allowed {
+            return Err(format!("{} limit reached. Upgrade for more credits.", quota.source));
+        }
+        quota.source.clone()
+    } else {
+        "local".to_string()
+    };
 
     let _ = window.emit("engine:thinking", ());
 
-    let response = engine
+    let response = engine::get_engine()
         .chat(&req.session_id, &req.agent_id, &req.message, req.max_tokens)
         .await
         .map_err(|e| e.to_string())?;
 
-    let calls = engine
-        .increment_quota(&user_id, response.tokens_used, &response.provider_id)
-        .map_err(|e| e.to_string())?;
+    // Cloud accounting — skip in offline mode
+    let (calls_remaining, credits_remaining) = if !is_offline {
+        let engine = engine::get_engine();
+        let user_id = get_supabase_user_id();
 
-    let limit = get_daily_limit(engine);
+        let calls = engine.increment_quota(&user_id, response.tokens_used, &response.provider_id)
+            .map_err(|e| e.to_string())?;
+        let limit = get_daily_limit(engine);
 
-    // Log to cloud and charge credits (fire and forget)
-    let credit_costs = super::engine::cloud::get_credit_costs()
-        .await
-        .unwrap_or_default();
-    let credits = super::engine::cloud::credit_cost_for_model(
-        &response.model,
-        &response.provider_id,
-        "core",
-        &credit_costs,
-    );
+        let credit_costs = super::engine::cloud::get_credit_costs().await.unwrap_or_default();
+        let credits = super::engine::cloud::credit_cost_for_model(
+            &response.model, &response.provider_id, "core", &credit_costs,
+        );
+        let _ = super::engine::cloud::log_usage_to_cloud(
+            &user_id, &req.session_id, &req.agent_id,
+            &response.model, &response.provider_id, "core",
+            response.tokens_used, response.latency_ms, "success", credits,
+        ).await;
 
-    let _ = super::engine::cloud::log_usage_to_cloud(
-        &user_id,
-        &req.session_id,
-        &req.agent_id,
-        &response.model,
-        &response.provider_id,
-        "core",
-        response.tokens_used,
-        response.latency_ms,
-        "success",
-        credits,
-    )
-    .await;
-
-    // Charge credits (don't fail the response if this fails for free users)
-    let (credits_remaining, credit_source) =
-        match super::engine::cloud::charge_credits(&user_id, credits, "").await {
-            Ok(new_balance) => (Some(new_balance), Some(quota.source.clone())),
-            Err(e) => {
-                log::warn!("[Engine] Credit charge failed: {}", e);
-                (None, None)
-            }
+        let credits_remaining = match super::engine::cloud::charge_credits(&user_id, credits, "").await {
+            Ok(new_balance) => Some(new_balance),
+            Err(e) => { log::warn!("[Engine] Credit charge failed: {}", e); None }
         };
+
+        ((limit - calls).max(0), credits_remaining)
+    } else {
+        (0, None)
+    };
 
     Ok(ChatResponse {
         content: response.content,
@@ -187,9 +175,9 @@ pub async fn engine_chat(window: tauri::Window, req: ChatRequest) -> Result<Chat
         provider_name: response.provider_name,
         tokens_used: response.tokens_used,
         latency_ms: response.latency_ms,
-        calls_remaining: (limit - calls).max(0),
+        calls_remaining,
         credits_remaining,
-        credit_source,
+        credit_source: Some(quota_source),
     })
 }
 
@@ -204,27 +192,31 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
     let engine = engine::get_engine();
     log::info!("[engine_chat_stream] ✅ Engine instance obtained");
 
+    let is_offline = engine::is_offline_mode();
+
     // Get real Supabase user ID for cloud credit operations
     let user_id = get_supabase_user_id();
     log::info!("[engine_chat_stream] Supabase user ID: {}", user_id);
 
-    // Check quota (cloud-aware)
-    log::info!("[engine_chat_stream] Checking quota for user: {}", user_id);
-    let quota = engine
-        .has_quota(&user_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    log::info!(
-        "[engine_chat_stream] Quota check result: allowed={}, source={}",
-        quota.allowed,
-        quota.source
-    );
-    if !quota.allowed {
-        let msg = format!("{} limit reached. Upgrade for more credits.", quota.source);
-        window
-            .emit("engine:error", &msg)
+    // Check quota (cloud-only — skip in offline mode)
+    if !is_offline {
+        log::info!("[engine_chat_stream] Checking quota for user: {}", user_id);
+        let quota = engine
+            .has_quota(&user_id)
+            .await
             .map_err(|e| e.to_string())?;
-        return Err(msg);
+        log::info!(
+            "[engine_chat_stream] Quota check result: allowed={}, source={}",
+            quota.allowed,
+            quota.source
+        );
+        if !quota.allowed {
+            let msg = format!("{} limit reached. Upgrade for more credits.", quota.source);
+            window
+                .emit("engine:error", &msg)
+                .map_err(|e| e.to_string())?;
+            return Err(msg);
+        }
     }
 
     let _ = window.emit("engine:thinking", ());
@@ -249,55 +241,41 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
                 response.content.len()
             );
 
-            let calls = engine
-                .increment_quota(&user_id, response.tokens_used, &response.provider_id)
-                .map_err(|e| e.to_string())?;
-            log::info!("[engine_chat_stream] Quota incremented: {} calls", calls);
+            // Cloud-only: quota increment, logging, credit charging
+            let (calls, credits_remaining, limit, quota_source) = if !is_offline {
+                let calls = engine
+                    .increment_quota(&user_id, response.tokens_used, &response.provider_id)
+                    .map_err(|e| e.to_string())?;
+                log::info!("[engine_chat_stream] Quota incremented: {} calls", calls);
 
-            let limit = get_daily_limit(engine);
+                let limit = get_daily_limit(engine);
 
-            // Log to cloud and charge credits (fire and forget)
-            let credit_costs = super::engine::cloud::get_credit_costs()
-                .await
-                .unwrap_or_default();
-            let credits = super::engine::cloud::credit_cost_for_model(
-                &response.model,
-                &response.provider_id,
-                "core",
-                &credit_costs,
-            );
-            log::info!(
-                "[engine_chat_stream] Credit cost for this request: {}",
-                credits
-            );
+                let credit_costs = super::engine::cloud::get_credit_costs()
+                    .await
+                    .unwrap_or_default();
+                let credits = super::engine::cloud::credit_cost_for_model(
+                    &response.model,
+                    &response.provider_id,
+                    "core",
+                    &credit_costs,
+                );
+                log::info!("[engine_chat_stream] Credit cost: {}", credits);
 
-            let _ = super::engine::cloud::log_usage_to_cloud(
-                &user_id,
-                &req.session_id,
-                &req.agent_id,
-                &response.model,
-                &response.provider_id,
-                "core",
-                response.tokens_used,
-                response.latency_ms,
-                "success",
-                credits,
-            )
-            .await;
-            log::info!("[engine_chat_stream] ✅ Logged usage to cloud");
+                let _ = super::engine::cloud::log_usage_to_cloud(
+                    &user_id, &req.session_id, &req.agent_id,
+                    &response.model, &response.provider_id, "core",
+                    response.tokens_used, response.latency_ms, "success", credits,
+                ).await;
 
-            let credits_remaining =
-                match super::engine::cloud::charge_credits(&user_id, credits, "").await {
+                let credits_remaining = match super::engine::cloud::charge_credits(&user_id, credits, "").await {
                     Ok(new_balance) => Some(new_balance),
-                    Err(e) => {
-                        log::warn!("[Engine] Credit charge failed: {}", e);
-                        None
-                    }
+                    Err(e) => { log::warn!("[Engine] Credit charge failed: {}", e); None }
                 };
-            log::info!(
-                "[engine_chat_stream] Credits remaining: {:?}",
-                credits_remaining
-            );
+                (calls, credits_remaining, limit, "cloud".to_string())
+            } else {
+                log::info!("[engine_chat_stream] Offline mode — skipping quota/cloud logging");
+                (0i64, None, 0i64, "local".to_string())
+            };
 
             // Emit response in word-chunks for streaming feel
             let words: Vec<&str> = response.content.split_whitespace().collect();
@@ -324,7 +302,7 @@ pub async fn engine_chat_stream(window: tauri::Window, req: ChatRequest) -> Resu
                         "latency_ms": response.latency_ms,
                         "calls_remaining": (limit - calls).max(0),
                         "credits_remaining": credits_remaining,
-                        "credit_source": quota.source,
+                        "credit_source": quota_source,
                     }),
                 )
                 .map_err(|e| e.to_string())?;
@@ -489,6 +467,35 @@ pub fn engine_get_quota() -> Result<serde_json::Value, String> {
     let user_id = get_supabase_user_id();
     let quota = engine.get_quota(&user_id).map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(quota).map_err(|e| e.to_string())?)
+}
+
+// ── Offline Mode Commands ──
+
+#[tauri::command]
+pub fn engine_set_offline_mode(offline: bool) -> Result<(), String> {
+    engine::set_offline_mode(offline);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn engine_get_offline_mode() -> Result<bool, String> {
+    Ok(engine::is_offline_mode())
+}
+
+#[tauri::command]
+pub async fn engine_preload_local_ai() -> Result<serde_json::Value, String> {
+    use engine::local_ai::get_or_init_local_ai;
+    log::info!("[Engine] engine_preload_local_ai() called — starting background warm-up...");
+    match get_or_init_local_ai().await {
+        Some(_manager) => {
+            log::info!("[Engine] Local AI ready");
+            Ok(serde_json::json!({ "status": "ready" }))
+        }
+        None => {
+            log::warn!("[Engine] Local AI not available — llama-server failed to start");
+            Err("Local AI not available — check if llama-server binary and model exist".to_string())
+        }
+    }
 }
 
 // ── Memory Commands ──
@@ -1369,7 +1376,186 @@ pub fn engine_google_get_credentials() -> Result<serde_json::Value, String> {
     }))
 }
 
+// ── Self-Improvement: Guided Skill Creation ─────────────────────────
+
+#[tauri::command]
+pub fn engine_accept_skill_prompt(
+    skill_name: String,
+    description: String,
+    triggers: String,
+    procedure: String,
+) -> Result<String, String> {
+    use std::fs;
+    let engine = engine::get_engine();
+
+    // Slugify the skill name
+    let slug = skill_name.to_lowercase().replace(" ", "-").replace("_", "-");
+    let dir = std::path::Path::new("/tmp/conflux-skills").join(&slug);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+
+    let content = format!(
+        r#"---
+name: {name}
+description: {description}
+version: 1.0.0
+skill_type: learned
+triggers: {triggers}
+agents: [conflux]
+emoji: 🧩
+---
+
+# {name}
+
+## When to Use
+{procedure}
+"#,
+        name = skill_name,
+        description = description,
+        procedure = procedure,
+        triggers = triggers,
+    );
+
+    let path = dir.join("SKILL.md");
+    fs::write(&path, &content).map_err(|e| e.to_string())?;
+    log::info!("[SkillPrompt] Wrote skill to {}", path.display());
+
+    let skill_id = engine
+        .install_skill_from_file(&path.to_string_lossy())
+        .map_err(|e| e.to_string())?;
+
+
+    // Emit skill-created event
+    engine.emit_tauri_event("conflux:skill-created", serde_json::json!({
+        "skill_name": skill_name,
+        "skill_id": skill_id,
+    }));
+
+    // Clear pending draft
+    let _ = engine.db().set_config("pending_skill_draft", "");
+
+
+    Ok(skill_id)
+}
+
+#[tauri::command]
+pub fn engine_dismiss_skill_prompt() -> Result<(), String> {
+    let engine = engine::get_engine();
+    engine.db().set_config("pending_skill_draft", "").map_err(|e| e.to_string())
+}
+
+// ── Self-Improvement: Trajectory Mining ───────────────────────────
+
+#[tauri::command]
+pub fn engine_get_skill_fragments() -> Result<serde_json::Value, String> {
+    let engine = engine::get_engine();
+    let fragments = engine
+        .db()
+        .get_skill_fragments()
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::to_value(fragments).map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+pub fn engine_get_trajectory_patterns(
+    agent_id: String,
+    min_count: Option<i64>,
+) -> Result<serde_json::Value, String> {
+    let engine = engine::get_engine();
+    let patterns = engine
+        .db()
+        .get_trajectory_patterns(&agent_id, min_count.unwrap_or(3))
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::to_value(patterns).map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+pub fn engine_get_today_lessons(agent_id: String) -> Result<serde_json::Value, String> {
+    let engine = engine::get_engine();
+    let lessons = engine
+        .db()
+        .get_today_lessons(&agent_id)
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::to_value(lessons).map_err(|e| e.to_string())?)
+}
+
+// ── Self-Improvement: Dream Skill Synthesis + Trajectory Mining ───
+
+/// Write a synthesized skill from dream-cycle or trajectory-mining to a SKILL.md file
+/// and auto-install it via install_skill_from_file().
+#[tauri::command]
+pub fn engine_write_lesson_skill(
+    skill_id: String,
+    name: String,
+    description: String,
+    triggers: String,
+    procedure: String,
+    skill_type: String,
+) -> Result<String, String> {
+    use std::fs;
+    let engine = engine::get_engine();
+
+
+    // Determine subdir based on skill_type
+    let subdir = match skill_type.as_str() {
+        "synthesized" => "auto",
+        "mined" => "mined",
+        _ => "learned",
+    };
+
+
+    let slug = name.to_lowercase().replace(" ", "-").replace("_", "-");
+    let dir = std::path::Path::new("/tmp/conflux-skills").join(subdir).join(&slug);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    let content = format!(
+        r#"---
+name: {name}
+description: {description}
+version: 1.0.0
+skill_type: {skill_type}
+triggers: {triggers}
+agents: [conflux]
+emoji: 🧩
+---
+
+# {name}
+
+## When to Use
+{trigger_text}
+
+## Procedure
+{procedure}
+"#,
+        name = name,
+        description = description,
+        skill_type = skill_type,
+        triggers = triggers,
+        trigger_text = triggers,
+        procedure = procedure,
+    );
+
+
+    let path = dir.join("SKILL.md");
+    fs::write(&path, &content).map_err(|e| e.to_string())?;
+    log::info!("[SkillSynthesis] Wrote skill to {}", path.display());
+
+    let installed_id = engine
+        .install_skill_from_file(&path.to_string_lossy())
+        .map_err(|e| e.to_string())?;
+
+
+    // Emit skill-created for bloom animation
+    engine.emit_tauri_event("conflux:skill-created", serde_json::json!({
+        "skill_name": name,
+        "skill_id": installed_id,
+    }));
+
+    Ok(installed_id)
+}
+
 // ── Health ──
+
 
 #[tauri::command]
 pub fn engine_health() -> Result<serde_json::Value, String> {
@@ -1571,6 +1757,10 @@ pub async fn story_generate_next_chapter(
     game_id: String,
     choice_id: String,
 ) -> Result<engine::types::StoryChapter, String> {
+    if engine::is_offline_mode() {
+        return Err("Story generation requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     // Load game state
@@ -2202,6 +2392,10 @@ pub async fn kitchen_ai_add_meal(
     description: String,
     member_id: Option<String>,
 ) -> Result<engine::types::MealWithIngredients, String> {
+    if engine::is_offline_mode() {
+        return Err("Meal additions require cloud mode.".to_string());
+    }
+    
     let _member_id = member_id;
     let engine = engine::get_engine();
 
@@ -2534,6 +2728,10 @@ pub async fn kitchen_nl_add_inventory(
     text: String,
     member_id: Option<String>,
 ) -> Result<NlInventoryResult, String> {
+    if engine::is_offline_mode() {
+        return Err("Inventory updates require cloud mode.".to_string());
+    }
+    
     let user_id = member_id.unwrap_or_else(|| get_supabase_user_id());
     let engine = engine::get_engine();
     let family_member_id = engine
@@ -3408,6 +3606,10 @@ pub async fn feed_generate(
     member_id: Option<String>,
     interests: Option<String>,
 ) -> Result<Vec<engine::types::ContentFeedItem>, String> {
+    if engine::is_offline_mode() {
+        return Err("Feed generation requires cloud mode.".to_string());
+    }
+    
     #[allow(unused_variables)]
     let _uid = user_id;
     let engine = engine::get_engine();
@@ -3445,6 +3647,10 @@ Respond in this EXACT JSON format (no markdown, no code fences, just raw JSON):
 
 Make the content genuinely useful and interesting. Not generic filler."
     );
+
+    if engine::is_offline_mode() {
+        return Err("Fridge scanning requires cloud mode.".to_string());
+    }
 
     let messages = vec![OpenAIMessage {
         role: "user".to_string(),
@@ -3546,6 +3752,10 @@ Be specific with ingredient names. Use standard grocery terms."
         tool_call_id: None,
         tool_calls: None,
     }];
+
+    if engine::is_offline_mode() {
+        return Err("Fridge scan requires cloud mode.".to_string());
+    }
 
     let response = cloud::cloud_chat(Some("simple_chat"), messages, Some(1500), None, None)
         .await
@@ -3823,6 +4033,10 @@ pub async fn life_analyze_document(
     text: String,
     doc_type: Option<String>,
 ) -> Result<engine::types::LifeDocument, String> {
+    if engine::is_offline_mode() {
+        return Err("Document analysis requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     let doc_type_str = doc_type.as_deref().unwrap_or("unknown");
@@ -4110,6 +4324,10 @@ USER QUESTION: {question}
 
 Provide a helpful, specific answer based on the information above. If you don't have the information, say so honestly and suggest how to find out."
     );
+
+    if engine::is_offline_mode() {
+        return Err("Life Q&A requires cloud mode.".to_string());
+    }
 
     let messages = vec![OpenAIMessage {
         role: "user".to_string(),
@@ -4726,6 +4944,10 @@ pub async fn home_get_appliances() -> Result<Vec<engine::types::HomeAppliance>, 
 
 #[tauri::command]
 pub async fn home_get_insights() -> Result<Vec<engine::types::HomeInsight>, String> {
+    if engine::is_offline_mode() {
+        return Err("Home insights require cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
     let dashboard = engine
         .db()
@@ -5718,6 +5940,10 @@ pub async fn dream_ai_plan(
     category: String,
     target_date: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("Dream planning requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
     let member_id = engine.db().get_or_create_family_member_id(&user_id).await.map_err(|e| e.to_string())?;
     let prompt = format!(
@@ -5892,6 +6118,10 @@ pub async fn dream_ai_narrate(user_id: String, dream_id: String) -> Result<Strin
 
 #[tauri::command]
 pub async fn diary_generate_entry(agent_id: String) -> Result<engine::types::DiaryEntry, String> {
+    if engine::is_offline_mode() {
+        return Err("Diary generation requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     // Get agent info
@@ -6137,6 +6367,10 @@ pub async fn echo_get_entries_by_date(date: String) -> Result<Vec<EchoEntry>, St
 pub async fn current_daily_briefing(
     member_id: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("Daily briefings require cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     // Pull feed context before the await
@@ -6247,6 +6481,10 @@ Make items genuinely insightful, not generic filler."
 pub async fn current_detect_ripples(
     member_id: Option<String>,
 ) -> Result<Vec<serde_json::Value>, String> {
+    if engine::is_offline_mode() {
+        return Err("Ripple detection requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     let prompt = "You are Current, an intelligence analyst AI. Detect weak signals and emerging trends that most people haven't noticed yet.
@@ -6360,6 +6598,10 @@ pub async fn current_create_signal_thread(
     topic: String,
     initial_content: String,
 ) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("This feature requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     let prompt = format!(
@@ -6434,6 +6676,10 @@ pub async fn current_ask(
     member_id: Option<String>,
     question: String,
 ) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("This feature requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     // Pull feed context before the await
@@ -6577,6 +6823,10 @@ pub async fn current_cognitive_patterns(
     member_id: Option<String>,
     time_range: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("Cognitive analysis requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     // Pull feed data before the await
@@ -6697,6 +6947,10 @@ pub async fn current_synthesize(
     _member_id: Option<String>,
     topic: String,
 ) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("This feature requires cloud mode.".to_string());
+    }
+    
     let engine = engine::get_engine();
 
     // Pull relevant feed items before the await
@@ -6906,6 +7160,10 @@ pub fn google_get_tasks() -> Result<serde_json::Value, String> {
 /// Create a calendar event from natural language
 #[tauri::command]
 pub async fn google_create_event_nl(nl_text: String) -> Result<serde_json::Value, String> {
+    if engine::is_offline_mode() {
+        return Err("Calendar events require cloud mode.".to_string());
+    }
+    
     use crate::engine::cloud;
     use crate::engine::router::OpenAIMessage;
 
@@ -7502,6 +7760,21 @@ pub async fn studio_get_usage(
     engine::db::studio_get_usage(&user_id, &month).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn studio_create_project(id: String, name: String) -> Result<(), String> {
+    engine::db::studio_create_project(&id, &name).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn studio_get_projects() -> Result<Vec<engine::types::StudioProject>, String> {
+    engine::db::studio_get_projects().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn studio_set_generation_project(generation_id: String, project_id: String) -> Result<(), String> {
+    engine::db::studio_set_generation_project(&generation_id, &project_id).map_err(|e| e.to_string())
+}
+
 // ── Studio: API Key Management ──
 
 #[tauri::command]
@@ -7907,6 +8180,8 @@ pub async fn studio_generate_voice(
     generation_id: String,
     text: String,
     voice_id: Option<String>,
+    speed: Option<f64>,
+    stability: Option<f64>,
 ) -> Result<serde_json::Value, String> {
     let api_key = {
         let engine = engine::get_engine();
@@ -7977,8 +8252,9 @@ pub async fn studio_generate_voice(
             "text": text,
             "model_id": "eleven_multilingual_v2",
             "voice_settings": {
-                "stability": 0.5,
-                "similarity_boost": 0.75
+                "stability": stability.unwrap_or(0.5),
+                "similarity_boost": 0.75,
+                "speed": speed.unwrap_or(1.0)
             }
         }))
         .send()
@@ -8259,6 +8535,108 @@ pub async fn studio_save_to_vault(generation_id: String) -> Result<serde_json::V
     }))
 }
 
+// ── Studio: Bulk Export (ZIP) ──
+
+#[tauri::command]
+pub async fn studio_export_generations_zip(
+    generation_ids: Vec<String>,
+    app_handle: tauri::AppHandle,
+) -> Result<String, String> {
+    use std::path::PathBuf;
+    use zip::{ZipWriter, write::FileOptions};
+    use zip::CompressionMethod;
+
+    let engine = engine::get_engine();
+
+    // Collect (filename, bytes) pairs
+    let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+
+    for id in &generation_ids {
+        let gen = engine::db::studio_get_generation(id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Generation {} not found", id))?;
+
+        if gen.status != "complete" {
+            return Err(format!("Generation {} is not complete", id));
+        }
+
+        let (ext, filename) = match gen.module.as_str() {
+            "image" => ("png", format!("image_{}.png", &id[..8])),
+            "voice" => ("mp3", format!("voice_{}.mp3", &id[..8])),
+            _ => ("bin", format!("{}_{}.bin", gen.module, &id[..8])),
+        };
+
+        // Acquire file bytes (download or copy)
+        let data = if let Some(url) = &gen.output_url {
+            if url.starts_with("http") {
+                // Download from remote URL
+                let client = reqwest::Client::new();
+                let resp = client.get(url).send().await.map_err(|e| e.to_string())?;
+                let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+                bytes.to_vec()
+            } else {
+                return Err(format!("Unsupported output_url scheme for {}", id));
+            }
+        } else if let Some(path) = &gen.output_path {
+            // Read local file (async)
+            tokio::fs::read(path).await.map_err(|e| e.to_string())?
+        } else {
+            return Err(format!("Generation {} has no output", id));
+        };
+
+        files.push((filename, data));
+    }
+
+    // Build ZIP in memory
+    let mut zip_buf: Vec<u8> = Vec::new();
+    {
+        let mut writer = ZipWriter::new(Cursor::new(&mut zip_buf));
+        let options = FileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o644);
+
+        for (filename, data) in &files {
+            writer
+                .start_file(filename, options)
+                .map_err(|e| e.to_string())?;
+            writer.write_all(data).map_err(|e| e.to_string())?;
+        }
+        writer.finish().map_err(|e| e.to_string())?;
+    }
+
+    // Write ZIP to temp file
+    let temp_dir = std::env::temp_dir();
+    let zip_filename = format!("studio_export_{}.zip", Uuid::new_v4().as_u128());
+    let zip_temp_path = temp_dir.join(&zip_filename);
+    tokio::fs::write(&zip_temp_path, &zip_buf)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Prompt user to choose save location using dialog plugin
+    let dialog = app_handle.dialog().clone();
+    let chosen_path = dialog
+        .file()
+        .set_title("Export Studio Generations")
+        .set_file_name(&zip_filename)
+        .blocking_save_file();
+
+    if let Some(file_path) = chosen_path {
+        // Convert FilePath to PathBuf
+        let dest: std::path::PathBuf = file_path.into_path().map_err(|e| format!("Invalid file path: {}", e))?;
+        // Copy temp to chosen destination
+        tokio::fs::copy(&zip_temp_path, &dest)
+            .await
+            .map_err(|e| e.to_string())?;
+        // Clean up temp
+        let _ = tokio::fs::remove_file(&zip_temp_path).await;
+        Ok(dest.to_string_lossy().to_string())
+    } else {
+        // User cancelled — clean up temp
+        let _ = tokio::fs::remove_file(&zip_temp_path).await;
+        Err("User cancelled save dialog".to_string())
+    }
+}
+
 // ═══════════════════════════════════════════════════════
 // Voice Input — Local speech capture & transcription
 // ═══════════════════════════════════════════════════════
@@ -8274,6 +8652,41 @@ pub mod voice_cmds {
 
     /// Flag to prevent Whisper fallback when realtime STT already delivered a transcript.
     static ELEVENLABS_TRANSCRIPT_RECEIVED: AtomicBool = AtomicBool::new(false);
+
+    /// Set the voice mode: "cloud", "offline", or "hybrid".
+    /// Controls whether STT/TTS uses ElevenLabs, local engines, or both.
+    #[tauri::command]
+    pub fn voice_set_mode(mode: String) -> Result<(), String> {
+        match mode.as_str() {
+            "cloud" | "offline" | "hybrid" => {}
+            _ => return Err(format!("Invalid voice mode '{}'. Use: cloud, offline, hybrid", mode)),
+        }
+        let engine = crate::engine::get_engine();
+        engine.db().set_config("voice_mode", &mode).map_err(|e| e.to_string())?;
+        log::info!("[Voice] Mode set to: {}", mode);
+        Ok(())
+    }
+
+    /// Get the current voice mode setting.
+    #[tauri::command]
+    pub fn voice_get_mode() -> Result<String, String> {
+        let engine = crate::engine::get_engine();
+        let mode = engine.db().get_config("voice_mode")
+            .ok().flatten().unwrap_or_else(|| "cloud".to_string());
+        Ok(mode)
+    }
+
+    /// Check if local whisper model is available for offline STT.
+    #[tauri::command]
+    pub fn voice_local_stt_available(app: tauri::AppHandle) -> Result<bool, String> {
+        Ok(crate::voice::stt::local::is_model_available(Some(&app)))
+    }
+
+    /// Check if local Kokoro TTS is available for offline speech synthesis.
+    #[tauri::command]
+    pub fn voice_local_tts_available() -> Result<bool, String> {
+        Ok(crate::voice::tts::is_available())
+    }
 
     /// Start recording from the default microphone and begin volume monitoring.
     #[tauri::command]
@@ -8306,12 +8719,13 @@ pub mod voice_cmds {
         }))
     }
 
-    /// Transcribe the current audio buffer using the ElevenLabs SDK (via Node.js script).
-    /// This is the primary STT path. The realtime WebSocket (stream.rs) handles live transcripts;
+    /// Transcribe the current audio buffer.
+    /// Routing: Local whisper (if offline/preferred) → ElevenLabs SDK → error.
+    /// The realtime WebSocket (stream.rs) handles live transcripts;
     /// this batch path is the fallback when realtime didn't capture a final result.
     #[tauri::command]
-    pub async fn voice_transcribe() -> Result<String, String> {
-        println!("[STT] Transcribing via ElevenLabs SDK...");
+    pub async fn voice_transcribe(app: tauri::AppHandle) -> Result<String, String> {
+        println!("[STT] voice_transcribe called");
 
         let audio = {
             let buf = AUDIO_BUFFER.lock().map_err(|e| e.to_string())?;
@@ -8321,6 +8735,47 @@ pub mod voice_cmds {
         if audio.is_empty() {
             return Err("No audio recorded.".to_string());
         }
+
+        // ── Route based on voice mode setting ──
+        // Engine offline mode overrides voice_mode config
+        let voice_mode = if crate::engine::is_offline_mode() {
+            println!("[STT] Engine offline mode active — forcing offline routing");
+            "offline".to_string()
+        } else {
+            let engine = crate::engine::get_engine();
+            engine.db().get_config("voice_mode")
+                .ok().flatten().unwrap_or_else(|| "cloud".to_string())
+        };
+
+        match voice_mode.as_str() {
+            "offline" => {
+                // Offline mode: local whisper only
+                println!("[STT] Offline mode — using local whisper");
+                let app_handle = app.clone();
+                let result = tokio::task::spawn_blocking(move || {
+                    crate::voice::stt::local::transcribe_buffer(Some(&app_handle), Some("en"))
+                }).await.map_err(|e| format!("Local STT task failed: {}", e))?;
+                return result;
+            }
+            "hybrid" => {
+                // Hybrid: try local first, fall back to cloud
+                println!("[STT] Hybrid mode — trying local whisper first");
+                let app_handle = app.clone();
+                let local_result = tokio::task::spawn_blocking(move || {
+                    crate::voice::stt::local::transcribe_buffer(Some(&app_handle), Some("en"))
+                }).await.map_err(|e| format!("Local STT task failed: {}", e))?;
+                match local_result {
+                    Ok(text) if !text.is_empty() => return Ok(text),
+                    _ => println!("[STT] Local whisper failed or empty, falling back to cloud"),
+                }
+            }
+            _ => {
+                // Cloud mode (default): try ElevenLabs, fall back to local
+                println!("[STT] Cloud mode — trying ElevenLabs first");
+            }
+        }
+
+        // ── Cloud STT path (ElevenLabs) ──
 
         // Convert f32 samples to WAV bytes
         let wav_bytes = audio_to_wav_bytes(&audio);

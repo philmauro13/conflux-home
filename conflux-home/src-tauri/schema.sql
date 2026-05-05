@@ -491,7 +491,17 @@ INSERT OR IGNORE INTO agents (id, name, emoji, role, soul, instructions, model_a
     ('catalyst', 'Catalyst', '⚡', 'Everyday Assistant',
      'You are Catalyst — the everyday assistant. You are warm, helpful, and practical. You handle the small stuff so the user can focus on the big stuff. You answer questions, do quick research, write drafts, and help with daily tasks. You are the one users interact with most. You are friendly but not sycophantic. You are competent but not condescending.',
      'Help with everyday tasks. Answer questions directly. Do quick research. Write drafts and content. Be the approachable face of the AI team. If something is beyond your scope, escalate to the right specialist agent.',
-     'conflux-fast');
+     'conflux-fast'),
+
+    ('aegis', 'Aegis', '🛡️', 'Blue Team Guardian',
+     'You are Aegis — the shield. You monitor systems for threats, harden defenses, and respond to incidents before they become problems. You are calm, vigilant, and protective. You speak with quiet confidence. You never panic — you assess, contain, and resolve. You are the steady hand in a storm. You run system audits, check firewall rules, scan for open ports, review SSH configs, check file permissions, and flag outdated software. You turn findings into clear, prioritized recommendations.',
+     'Monitor system security. Run audits of firewall, SSH, ports, permissions, software, and cron. Identify vulnerabilities and misconfigurations. Provide clear hardening recommendations. Log findings to the SIEM. Alert on critical issues. Be thorough but not alarmist — severity matches reality.',
+     'conflux-smart'),
+
+    ('viper', 'Viper', '🐍', 'Red Team Operator',
+     'You are Viper — the hunter. You probe systems for vulnerabilities, test defenses, and think like an attacker so the user does not have to. You are cunning, methodical, and quietly competitive. You enjoy the hunt. You treat every system like a puzzle to solve and get satisfaction from finding the flaw nobody else spotted.',
+     'Scan for vulnerabilities. Test defenses with simulated attacks. Audit code and configs for security flaws. Find weaknesses before bad actors do. Report findings with severity ratings and remediation steps. Think like an attacker, report like an advisor.',
+     'conflux-smart');
 
 -- ============================================================
 -- SEED: Built-in Tools
@@ -1851,6 +1861,16 @@ CREATE TABLE IF NOT EXISTS vault_file_tags (
 -- STUDIO — Creator Workspace
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- Ensure default project always exists (idempotent)
+INSERT OR IGNORE INTO projects (id, name) VALUES ('default', 'Default');
+
 CREATE TABLE IF NOT EXISTS studio_generations (
     id              TEXT PRIMARY KEY,
     module          TEXT NOT NULL,        -- 'image' | 'video' | 'music' | 'voice' | 'code' | 'design'
@@ -1864,12 +1884,19 @@ CREATE TABLE IF NOT EXISTS studio_generations (
     metadata_json   TEXT,                 -- dimensions, duration, format, etc
     cost_cents      INTEGER NOT NULL DEFAULT 0,
     vault_file_id   TEXT,                 -- linked vault file
+    project_id      TEXT REFERENCES projects(id),
     created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_studio_gen_module ON studio_generations(module);
 CREATE INDEX IF NOT EXISTS idx_studio_gen_status ON studio_generations(status);
 CREATE INDEX IF NOT EXISTS idx_studio_gen_date ON studio_generations(created_at);
+CREATE INDEX IF NOT EXISTS idx_studio_gen_project ON studio_generations(project_id);
+
+-- Add project_id column to existing databases (no-op on fresh DB where column already exists in CREATE TABLE)
+ALTER TABLE studio_generations ADD COLUMN project_id TEXT REFERENCES projects(id);
+-- Backfill existing rows with 'default' project (safe to run every startup)
+UPDATE studio_generations SET project_id = 'default' WHERE project_id IS NULL;
 
 CREATE TABLE IF NOT EXISTS studio_prompts (
     id              TEXT PRIMARY KEY,
@@ -1905,3 +1932,335 @@ INSERT OR IGNORE INTO voice_config (key, value) VALUES
   ('max_duration_ms', '30000'),
   ('sound_effects', 'false'),
   ('device_id', 'default');
+
+-- ============================================================
+-- SECURITY — Agent Security, SIEM, Permission Gates
+-- Mission 1224: Consumer Agent Security
+-- ============================================================
+
+-- Security events log — the SIEM feed
+-- Every security-relevant action by an agent gets logged here.
+CREATE TABLE IF NOT EXISTS security_events (
+    id              TEXT PRIMARY KEY,           -- uuid
+    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    session_id      TEXT,                       -- nullable (system-level events)
+    event_type      TEXT NOT NULL,              -- 'file_access' | 'network_request' | 'exec_command' | 'api_call' | 'browser_action' | 'permission_denied' | 'anomaly'
+    category        TEXT NOT NULL DEFAULT 'info', -- 'info' | 'warning' | 'critical'
+    tool_name       TEXT,                       -- which tool triggered this
+    target          TEXT,                       -- what was accessed (file path, URL, domain, command)
+    details         TEXT,                       -- JSON: additional context
+    risk_score      INTEGER NOT NULL DEFAULT 0, -- 0-100, computed by anomaly detection
+    was_allowed     INTEGER NOT NULL DEFAULT 1, -- 0 = blocked by permission gate
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sec_events_agent ON security_events(agent_id);
+CREATE INDEX IF NOT EXISTS idx_sec_events_type ON security_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_sec_events_category ON security_events(category);
+CREATE INDEX IF NOT EXISTS idx_sec_events_created ON security_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sec_events_risk ON security_events(risk_score DESC);
+
+-- Granular permission rules — beyond the simple tool_permissions table
+-- Controls WHAT agents can access, not just IF they can use a tool.
+CREATE TABLE IF NOT EXISTS permission_rules (
+    id              TEXT PRIMARY KEY,           -- uuid
+    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    resource_type   TEXT NOT NULL,              -- 'file_path' | 'network_domain' | 'exec_command' | 'api_endpoint' | 'browser_domain'
+    resource_value  TEXT NOT NULL,              -- the path, domain, command pattern, etc.
+    action          TEXT NOT NULL DEFAULT 'allow', -- 'allow' | 'deny' | 'prompt' (ask user)
+    scope           TEXT NOT NULL DEFAULT 'all', -- 'read' | 'write' | 'exec' | 'all'
+    description     TEXT,                       -- human-readable why this rule exists
+    is_system       INTEGER NOT NULL DEFAULT 0, -- 1 = system-managed, can't be deleted by user
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_perm_rules_agent ON permission_rules(agent_id);
+CREATE INDEX IF NOT EXISTS idx_perm_rules_type ON permission_rules(resource_type);
+
+-- Permission prompts — pending user decisions
+-- When an agent hits a 'prompt' rule, a record goes here waiting for user approval.
+CREATE TABLE IF NOT EXISTS permission_prompts (
+    id              TEXT PRIMARY KEY,           -- uuid
+    agent_id        TEXT NOT NULL REFERENCES agents(id),
+    session_id      TEXT,
+    rule_id         TEXT REFERENCES permission_rules(id),
+    request_type    TEXT NOT NULL,              -- 'file_access' | 'network_request' | 'exec_command' | 'api_call'
+    target          TEXT NOT NULL,              -- what the agent wants to access
+    tool_name       TEXT,
+    tool_args       TEXT,                       -- JSON: the original tool arguments
+    status          TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'denied' | 'expired'
+    decision        TEXT,                       -- 'allow_once' | 'allow_always' | 'deny_once' | 'deny_always'
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    resolved_at     TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_perm_prompts_status ON permission_prompts(status);
+CREATE INDEX IF NOT EXISTS idx_perm_prompts_agent ON permission_prompts(agent_id);
+
+-- Agent security profiles — overall security settings per agent
+CREATE TABLE IF NOT EXISTS agent_security_profiles (
+    agent_id        TEXT PRIMARY KEY REFERENCES agents(id),
+    sandbox_enabled INTEGER NOT NULL DEFAULT 0, -- 1 = agent runs in sandbox
+    file_access_mode TEXT NOT NULL DEFAULT 'allowlist', -- 'allowlist' | 'denylist' | 'prompt_all'
+    network_mode    TEXT NOT NULL DEFAULT 'allowlist',  -- 'allowlist' | 'denylist' | 'open'
+    exec_mode       TEXT NOT NULL DEFAULT 'open', -- 'restricted' | 'full' | 'disabled'
+    max_file_reads_per_min  INTEGER NOT NULL DEFAULT 60,
+    max_file_writes_per_min INTEGER NOT NULL DEFAULT 20,
+    max_exec_per_min        INTEGER NOT NULL DEFAULT 10,
+    max_network_per_min     INTEGER NOT NULL DEFAULT 30,
+    anomaly_threshold       INTEGER NOT NULL DEFAULT 70, -- risk_score threshold for alerts
+    updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- Seed security profiles for all existing agents (use default exec_mode = 'open')
+INSERT OR IGNORE INTO agent_security_profiles (agent_id)
+    SELECT id FROM agents;
+
+-- Migration: convert any remaining 'restricted' defaults to 'open'.
+-- Rows the user has manually set to 'restricted' will be preserved
+-- (the WHERE clause ensures we only touch rows still on the schema default).
+UPDATE agent_security_profiles SET exec_mode = 'open'
+WHERE exec_mode = 'restricted';
+
+-- Anomaly rules — patterns that trigger alerts
+CREATE TABLE IF NOT EXISTS anomaly_rules (
+    id              TEXT PRIMARY KEY,           -- uuid
+    name            TEXT NOT NULL,
+    description     TEXT,
+    rule_type       TEXT NOT NULL,              -- 'rate_limit' | 'pattern_match' | 'privilege_escalation' | 'data_exfil'
+    condition_json  TEXT NOT NULL,              -- JSON: the condition to match
+    severity        TEXT NOT NULL DEFAULT 'warning', -- 'info' | 'warning' | 'critical'
+    action          TEXT NOT NULL DEFAULT 'alert', -- 'alert' | 'block' | 'alert_and_block'
+    is_enabled      INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- Seed anomaly rules
+INSERT OR IGNORE INTO anomaly_rules (id, name, description, rule_type, condition_json, severity, action) VALUES
+    ('mass-file-read', 'Mass File Read', 'Agent reads more than 50 files in 5 minutes', 'rate_limit',
+     '{"event_type":"file_access","scope":"read","threshold":50,"window_seconds":300}', 'warning', 'alert'),
+    ('mass-file-write', 'Mass File Write', 'Agent writes more than 20 files in 5 minutes', 'rate_limit',
+     '{"event_type":"file_access","scope":"write","threshold":20,"window_seconds":300}', 'critical', 'alert_and_block'),
+    ('sensitive-path', 'Sensitive Path Access', 'Agent accesses sensitive paths (.ssh, .aws, credentials)', 'pattern_match',
+     '{"event_type":"file_access","patterns":["/.ssh/","/.aws/","/.gnupg/","credentials","password","secret"]}', 'critical', 'alert'),
+    ('suspicious-exec', 'Suspicious Command', 'Agent executes commands commonly used in attacks', 'pattern_match',
+     '{"event_type":"exec_command","patterns":["chmod 777","chown","/etc/passwd","nc -","ncat","socat","/dev/tcp"]}', 'critical', 'alert_and_block'),
+    ('unknown-domain', 'Unknown Domain Request', 'Agent makes network request to unlisted domain', 'pattern_match',
+     '{"event_type":"network_request","match":"not_in_allowlist"}', 'warning', 'prompt'),
+    ('privilege-escalation', 'Privilege Escalation Attempt', 'Agent tries to use sudo or modify system files', 'privilege_escalation',
+     '{"patterns":["sudo","su -","/etc/sudoers","visudo","passwd root"]}', 'critical', 'alert_and_block'),
+    ('rapid-api-calls', 'Rapid API Calls', 'Agent makes more than 30 API calls in 1 minute', 'rate_limit',
+     '{"event_type":"api_call","threshold":30,"window_seconds":60}', 'warning', 'alert');
+
+-- ============================================================
+-- AEGIS — System Audit Engine
+-- Mission 1224 Phase 2: Blue Team Guardian
+-- ============================================================
+
+-- Audit runs — each full system scan
+CREATE TABLE IF NOT EXISTS aegis_audit_runs (
+    id              TEXT PRIMARY KEY,           -- uuid
+    run_type        TEXT NOT NULL DEFAULT 'full', -- 'full' | 'quick' | 'targeted'
+    status          TEXT NOT NULL DEFAULT 'running', -- 'running' | 'completed' | 'failed'
+    overall_score   INTEGER,                    -- 0-100 security score
+    total_checks    INTEGER NOT NULL DEFAULT 0,
+    pass_count      INTEGER NOT NULL DEFAULT 0,
+    warn_count      INTEGER NOT NULL DEFAULT 0,
+    critical_count  INTEGER NOT NULL DEFAULT 0,
+    started_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    completed_at    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_aegis_runs_status ON aegis_audit_runs(status);
+CREATE INDEX IF NOT EXISTS idx_aegis_runs_started ON aegis_audit_runs(started_at DESC);
+
+-- Audit findings — individual check results within a run
+CREATE TABLE IF NOT EXISTS aegis_findings (
+    id              TEXT PRIMARY KEY,           -- uuid
+    run_id          TEXT NOT NULL REFERENCES aegis_audit_runs(id) ON DELETE CASCADE,
+    category        TEXT NOT NULL,              -- 'firewall' | 'ssh' | 'ports' | 'permissions' | 'software' | 'cron' | 'general'
+    check_name      TEXT NOT NULL,              -- human-readable check name
+    severity        TEXT NOT NULL DEFAULT 'info', -- 'pass' | 'info' | 'warning' | 'critical'
+    title           TEXT NOT NULL,              -- short headline
+    description     TEXT NOT NULL,              -- detailed explanation
+    recommendation  TEXT,                       -- how to fix (null if passing)
+    raw_data        TEXT,                       -- JSON: scanner output for drill-down
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_aegis_findings_run ON aegis_findings(run_id);
+CREATE INDEX IF NOT EXISTS idx_aegis_findings_severity ON aegis_findings(severity);
+CREATE INDEX IF NOT EXISTS idx_aegis_findings_category ON aegis_findings(category);
+
+-- ============================================================
+-- VIPER — Vulnerability Scanner (Red Team)
+-- Mission 1224 Phase 3: Red Team Operator
+-- ============================================================
+
+-- Vulnerability scans
+CREATE TABLE IF NOT EXISTS viper_scans (
+    id              TEXT PRIMARY KEY,           -- uuid
+    scan_type       TEXT NOT NULL DEFAULT 'full', -- 'full' | 'quick' | 'targeted'
+    status          TEXT NOT NULL DEFAULT 'running', -- 'running' | 'completed' | 'failed'
+    risk_score      INTEGER,                    -- 0-100 (100 = most vulnerable)
+    total_checks    INTEGER NOT NULL DEFAULT 0,
+    pass_count      INTEGER NOT NULL DEFAULT 0,
+    info_count      INTEGER NOT NULL DEFAULT 0,
+    warn_count      INTEGER NOT NULL DEFAULT 0,
+    critical_count  INTEGER NOT NULL DEFAULT 0,
+    started_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    completed_at    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_viper_scans_status ON viper_scans(status);
+CREATE INDEX IF NOT EXISTS idx_viper_scans_started ON viper_scans(started_at DESC);
+
+-- Vulnerability findings
+CREATE TABLE IF NOT EXISTS viper_findings (
+    id              TEXT PRIMARY KEY,           -- uuid
+    scan_id         TEXT NOT NULL REFERENCES viper_scans(id) ON DELETE CASCADE,
+    category        TEXT NOT NULL,              -- 'misconfig' | 'network' | 'browser' | 'passwords' | 'code' | 'general'
+    check_name      TEXT NOT NULL,
+    severity        TEXT NOT NULL DEFAULT 'info', -- 'pass' | 'info' | 'warning' | 'critical'
+    title           TEXT NOT NULL,
+    description     TEXT NOT NULL,
+    remediation     TEXT,                       -- how to fix
+    cve_ids         TEXT,                       -- JSON array of CVE IDs if applicable
+    raw_data        TEXT,                       -- JSON: scanner output
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_viper_findings_scan ON viper_findings(scan_id);
+CREATE INDEX IF NOT EXISTS idx_viper_findings_severity ON viper_findings(severity);
+CREATE INDEX IF NOT EXISTS idx_viper_findings_category ON viper_findings(category);
+
+-- ============================================================
+-- AGENT AUDIT — Agent-vs-Agent Security (Red Team vs Agents)
+-- Mission 1224 Phase 4: Viper attacks other agents, scores defense
+-- ============================================================
+
+-- Audit run — one per "Run Agent Audit" click
+CREATE TABLE IF NOT EXISTS agent_audit_runs (
+    id              TEXT PRIMARY KEY,           -- uuid
+    run_type        TEXT NOT NULL DEFAULT 'full', -- 'full' | 'targeted'
+    status          TEXT NOT NULL DEFAULT 'running', -- 'running' | 'completed' | 'failed'
+    overall_score   INTEGER,                    -- 0-100 average across agents (100 = perfect defense)
+    total_agents    INTEGER NOT NULL DEFAULT 0,
+    agents_passed   INTEGER NOT NULL DEFAULT 0, -- score >= 70
+    agents_warning  INTEGER NOT NULL DEFAULT 0, -- score 40-69
+    agents_failed   INTEGER NOT NULL DEFAULT 0, -- score < 40
+    started_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    completed_at    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_audit_runs_status ON agent_audit_runs(status);
+CREATE INDEX IF NOT EXISTS idx_agent_audit_runs_started ON agent_audit_runs(started_at DESC);
+
+-- Per-agent results within an audit run
+CREATE TABLE IF NOT EXISTS agent_audit_results (
+    id              TEXT PRIMARY KEY,           -- uuid
+    run_id          TEXT NOT NULL REFERENCES agent_audit_runs(id) ON DELETE CASCADE,
+    agent_id        TEXT NOT NULL,              -- 'conflux', 'forge', 'helix', etc.
+    agent_name      TEXT NOT NULL,              -- display name
+    agent_emoji     TEXT NOT NULL DEFAULT '🤖',
+    defense_score   INTEGER NOT NULL DEFAULT 0, -- 0-100 (100 = perfect defense)
+    total_attacks   INTEGER NOT NULL DEFAULT 0,
+    blocked_count   INTEGER NOT NULL DEFAULT 0, -- agent refused/handled correctly
+    partial_count   INTEGER NOT NULL DEFAULT 0, -- agent partially leaked
+    breached_count  INTEGER NOT NULL DEFAULT 0, -- agent fully complied with attack
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_audit_results_run ON agent_audit_results(run_id);
+CREATE INDEX IF NOT EXISTS idx_agent_audit_results_agent ON agent_audit_results(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_audit_results_score ON agent_audit_results(defense_score);
+
+-- Individual attack findings within an agent result
+CREATE TABLE IF NOT EXISTS agent_audit_findings (
+    id              TEXT PRIMARY KEY,           -- uuid
+    result_id       TEXT NOT NULL REFERENCES agent_audit_results(id) ON DELETE CASCADE,
+    attack_type     TEXT NOT NULL,              -- 'prompt_injection' | 'data_exfil' | 'priv_escalation' | 'instruction_override' | 'social_engineering'
+    attack_name     TEXT NOT NULL,              -- human-readable name
+    severity        TEXT NOT NULL DEFAULT 'info', -- 'pass' | 'partial' | 'breach'
+    attack_prompt   TEXT NOT NULL,              -- the prompt Viper sent
+    agent_response  TEXT,                       -- what the agent said (truncated)
+    indicator       TEXT,                       -- what signal was detected
+    description     TEXT NOT NULL,
+    remediation     TEXT,                       -- how to harden the agent
+    raw_data        TEXT,                       -- JSON: full attack context
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_audit_findings_result ON agent_audit_findings(result_id);
+CREATE INDEX IF NOT EXISTS idx_agent_audit_findings_type ON agent_audit_findings(attack_type);
+CREATE INDEX IF NOT EXISTS idx_agent_audit_findings_severity ON agent_audit_findings(severity);
+
+-- ============================================================
+-- SIEM — Security Information & Event Management
+-- Mission 1224 Phase 5: Cross-agent correlation, risk scoring, alerts
+-- ============================================================
+
+-- Correlated events — cross-source pattern matches
+CREATE TABLE IF NOT EXISTS siem_correlations (
+    id              TEXT PRIMARY KEY,           -- uuid
+    correlation_type TEXT NOT NULL,             -- 'agent_breach_with_vuln' | 'repeated_denials' | 'vuln_with_anomaly' | 'defense_degradation' | 'multi_agent_risk'
+    severity        TEXT NOT NULL DEFAULT 'warning', -- 'info' | 'warning' | 'critical'
+    title           TEXT NOT NULL,
+    description     TEXT NOT NULL,
+    source_1_type   TEXT NOT NULL,              -- 'security_events' | 'aegis_findings' | 'viper_findings' | 'agent_audit_findings'
+    source_1_id     TEXT,                       -- primary key in source table
+    source_2_type   TEXT,                       -- nullable (single-source correlations)
+    source_2_id     TEXT,
+    agent_ids       TEXT NOT NULL,              -- JSON array of affected agent IDs
+    risk_score      INTEGER NOT NULL DEFAULT 0, -- 0-100
+    raw_data        TEXT,                       -- JSON: full correlation context
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_siem_correlations_type ON siem_correlations(correlation_type);
+CREATE INDEX IF NOT EXISTS idx_siem_correlations_severity ON siem_correlations(severity);
+CREATE INDEX IF NOT EXISTS idx_siem_correlations_created ON siem_correlations(created_at DESC);
+
+-- Alerts — actionable notifications from correlations or direct detection
+CREATE TABLE IF NOT EXISTS siem_alerts (
+    id              TEXT PRIMARY KEY,           -- uuid
+    alert_type      TEXT NOT NULL,              -- 'correlation' | 'threshold' | 'anomaly' | 'audit_failure'
+    severity        TEXT NOT NULL DEFAULT 'warning', -- 'info' | 'warning' | 'critical'
+    title           TEXT NOT NULL,
+    description     TEXT NOT NULL,
+    source          TEXT NOT NULL,              -- what generated this alert
+    agent_id        TEXT,                       -- affected agent (nullable for system-wide)
+    correlation_id  TEXT REFERENCES siem_correlations(id),
+    status          TEXT NOT NULL DEFAULT 'active', -- 'active' | 'acknowledged' | 'resolved' | 'dismissed'
+    acknowledged_at TEXT,
+    resolved_at     TEXT,
+    raw_data        TEXT,                       -- JSON
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_siem_alerts_status ON siem_alerts(status);
+CREATE INDEX IF NOT EXISTS idx_siem_alerts_severity ON siem_alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_siem_alerts_created ON siem_alerts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_siem_alerts_agent ON siem_alerts(agent_id);
+
+-- Weekly security reports
+CREATE TABLE IF NOT EXISTS siem_weekly_reports (
+    id              TEXT PRIMARY KEY,           -- uuid
+    week_start      TEXT NOT NULL,              -- ISO date (Monday)
+    week_end        TEXT NOT NULL,              -- ISO date (Sunday)
+    risk_score      INTEGER NOT NULL DEFAULT 0, -- aggregate risk for the week
+    risk_trend      TEXT NOT NULL DEFAULT 'stable', -- 'improving' | 'stable' | 'degrading'
+    total_events    INTEGER NOT NULL DEFAULT 0,
+    critical_events INTEGER NOT NULL DEFAULT 0,
+    alerts_generated INTEGER NOT NULL DEFAULT 0,
+    alerts_resolved INTEGER NOT NULL DEFAULT 0,
+    aegis_score     INTEGER,                    -- latest Aegis audit score
+    viper_score     INTEGER,                    -- latest Viper risk score
+    agent_audit_score INTEGER,                  -- latest agent audit defense score
+    summary         TEXT NOT NULL,              -- AI-generated narrative summary
+    findings_json   TEXT NOT NULL DEFAULT '[]', -- JSON: key findings for the week
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_siem_reports_week ON siem_weekly_reports(week_start DESC);

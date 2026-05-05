@@ -1,0 +1,790 @@
+/* ═══════════════════════════════════════════════════════════════
+   PULSE ONBOARDING v2 — Boot + One-Question + Tour
+   Emerald aesthetic: floating particles, glowing heart,
+   income card reveal, budget preview, spotlight tour
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Boot Sequence ─────────────────────────────────────────── */
+
+.pulse-boot {
+  position: fixed;
+  inset: 0;
+  background: #020a06;
+  z-index: 99999;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-boot-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pulse-boot-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  pointer-events: none;
+}
+
+.pulse-boot-content.visible {
+  opacity: 1;
+}
+
+.pulse-boot-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.pulse-boot-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 3.2rem;
+  font-weight: 900;
+  letter-spacing: 0.4em;
+  color: #10b981;
+  text-shadow:
+    0 0 20px rgba(16, 185, 129, 0.7),
+    0 0 40px rgba(16, 185, 129, 0.45),
+    0 0 80px rgba(16, 185, 129, 0.25),
+    0 0 120px rgba(16, 185, 129, 0.1);
+  animation: pulse-logo-breathe 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-logo-breathe {
+  0%, 100% {
+    text-shadow:
+      0 0 20px rgba(16, 185, 129, 0.6),
+      0 0 40px rgba(16, 185, 129, 0.4),
+      0 0 80px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(16, 185, 129, 0.85),
+      0 0 60px rgba(16, 185, 129, 0.5),
+      0 0 100px rgba(16, 185, 129, 0.3),
+      0 0 160px rgba(16, 185, 129, 0.12);
+  }
+}
+
+.pulse-boot-tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: rgba(52, 211, 153, 0.65);
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  margin: 0;
+}
+
+.pulse-boot-tagline.visible {
+  opacity: 1;
+}
+
+/* Heart animation */
+.pulse-boot-heart {
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
+}
+
+.pulse-boot-heart.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pulse-boot-heart-svg {
+  width: 80px;
+  height: 80px;
+  animation: pulse-heartbeat 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.5));
+}
+
+@keyframes pulse-heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.12); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.06); }
+  60% { transform: scale(1); }
+}
+
+.pulse-boot-heart-path {
+  animation: none; /* SVG embedded, no stroke draw needed */
+}
+
+.pulse-boot-heart-glow-ring {
+  animation: pulse-glow-ring 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow-ring {
+  0%, 100% { opacity: 0.3; r: 40; }
+  50% { opacity: 0.8; r: 44; }
+}
+
+.pulse-boot-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.pulse-boot-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #059669, #10b981, #34d399);
+  transition: width 0.1s linear;
+}
+
+/* ── Onboarding Root ───────────────────────────────────────── */
+
+.pulse-onboard-root {
+  position: fixed;
+  inset: 0;
+  background: #020a06;
+  z-index: 9997;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-onboard-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pulse-onboard-center {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 520px;
+  padding: 0 24px;
+  animation: onboard-enter 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes onboard-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Prompt group */
+.pulse-onboard-prompt-group {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.pulse-onboard-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: rgba(16, 185, 129, 0.5);
+  text-transform: uppercase;
+  animation: fade-in-up 0.5s ease both 0.1s;
+}
+
+.pulse-onboard-question {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.8rem, 5.5vw, 2.8rem);
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 50%, rgba(16,185,129,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fade-in-up 0.5s ease both 0.2s;
+}
+
+.pulse-onboard-hint {
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+  font-style: italic;
+  animation: fade-in-up 0.5s ease both 0.3s;
+}
+
+/* Input area */
+.pulse-onboard-input-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fade-in-up 0.5s ease both 0.4s;
+}
+
+.pulse-onboard-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(6, 20, 12, 0.8);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 16px;
+  padding: 4px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(12px);
+}
+
+.pulse-onboard-input-row:focus-within {
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.08) inset;
+}
+
+.pulse-onboard-currency {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: rgba(16, 185, 129, 0.7);
+  user-select: none;
+}
+
+.pulse-onboard-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 14px 12px;
+  color: #fff;
+  font-family: 'Orbitron', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  outline: none;
+  min-width: 0;
+}
+
+.pulse-onboard-input::placeholder {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.pulse-onboard-period {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: rgba(52, 211, 153, 0.5);
+  white-space: nowrap;
+}
+
+.pulse-onboard-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 12px;
+  color: #020a06;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  align-self: flex-end;
+}
+
+.pulse-onboard-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(16, 185, 129, 0.4);
+}
+
+.pulse-onboard-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Example chips */
+.pulse-onboard-examples {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fade-in-up 0.5s ease both 0.5s;
+}
+
+.pulse-onboard-example-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.42);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.76rem;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pulse-onboard-example-chip:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: rgba(16, 185, 129, 0.9);
+}
+
+/* Interpreting phase */
+.pulse-onboard-interpreting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.pulse-onboard-heart-orb {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse-heartbeat 1.6s ease-in-out infinite;
+}
+
+.pulse-onboard-heart-svg {
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.5));
+}
+
+.pulse-onboard-heart-fill {
+  animation: heart-fill 1.2s ease-in-out infinite;
+}
+
+@keyframes heart-fill {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.pulse-onboard-interpreting-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.82rem;
+  color: rgba(16, 185, 129, 0.8);
+  letter-spacing: 0.1em;
+  animation: text-fade 0.5s ease both;
+}
+
+/* Preview phase */
+.pulse-onboard-preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: rgba(4, 12, 7, 0.92);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 24px;
+  padding: 36px 28px;
+  width: 100%;
+  max-width: 460px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 60px rgba(16, 185, 129, 0.06), 0 30px 80px rgba(0, 0, 0, 0.5);
+  animation: card-appear 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.pulse-onboard-card-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  pointer-events: none;
+  transition: background 0.8s ease;
+}
+
+.pulse-onboard-preview-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: rgba(16, 185, 129, 0.42);
+  text-transform: uppercase;
+}
+
+/* Income display */
+.pulse-onboard-income-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pulse-onboard-income-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  color: rgba(52, 211, 153, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.pulse-onboard-income-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Orbitron', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 16px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.pulse-onboard-income-input:focus {
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.pulse-onboard-pay-freq {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  color: rgba(52, 211, 153, 0.45);
+  text-transform: capitalize;
+}
+
+/* Category preview */
+.pulse-onboard-categories {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.pulse-onboard-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.06);
+}
+
+.pulse-onboard-cat-row:last-child {
+  border-bottom: none;
+}
+
+.pulse-onboard-cat-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.pulse-onboard-cat-name {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.pulse-onboard-cat-amount {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(16, 185, 129, 0.85);
+}
+
+.pulse-onboard-desc {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  margin: 0;
+}
+
+/* Launch button */
+.pulse-onboard-launch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 12px;
+  color: #020a06;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+  width: 100%;
+}
+
+.pulse-onboard-launch-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
+}
+
+.pulse-onboard-retry {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.pulse-onboard-retry:hover {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Saving phase */
+.pulse-onboard-save {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.pulse-onboard-save-heart {
+  width: 60px;
+  height: 60px;
+  animation: pulse-heartbeat 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.6));
+}
+
+.pulse-onboard-save-heart-path {
+  fill: #10b981;
+}
+
+.pulse-onboard-saving-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  color: rgba(16, 185, 129, 0.9);
+  letter-spacing: 0.1em;
+  animation: text-fade 0.5s ease both;
+}
+
+/* Utilities */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes text-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: scale(0.9) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Pulse Tour Tooltip ────────────────────────────────────── */
+
+.pulse-tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9996;
+  pointer-events: none;
+  animation: tour-appear 0.3s ease both;
+}
+
+@keyframes tour-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.pulse-tour-root .pulse-tour-tooltip,
+.pulse-tour-root .tour-spotlight-full,
+.pulse-tour-root .tour-spotlight-svg {
+  pointer-events: auto;
+}
+
+.pulse-tour-tooltip {
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: rgba(4, 12, 7, 0.93);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 40px rgba(16, 185, 129, 0.05);
+  animation: tooltip-enter 250ms ease-out;
+  overflow: visible;
+}
+
+@keyframes tooltip-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pulse-tour-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: rgba(4, 12, 7, 0.93);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.pulse-tour-tooltip--bottom .pulse-tour-arrow {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.pulse-tour-tooltip--top .pulse-tour-arrow {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+}
+
+.pulse-tour-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 0;
+}
+
+.pulse-tour-step-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: rgba(16, 185, 129, 0.5);
+  text-transform: uppercase;
+}
+
+.pulse-tour-close {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.pulse-tour-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Progress dots */
+.pulse-tour-progress {
+  display: flex;
+  gap: 5px;
+  padding: 10px 20px;
+}
+
+.pulse-tour-dot {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.pulse-tour-dot.active {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  transform: scaleY(1.4);
+}
+
+.pulse-tour-dot.done {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.pulse-tour-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 8px;
+  padding: 0 20px;
+  letter-spacing: 0.01em;
+}
+
+.pulse-tour-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 16px;
+  padding: 0 20px;
+}
+
+.pulse-tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pulse-tour-skip {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.pulse-tour-skip:hover {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pulse-tour-next {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  border-radius: 10px;
+  color: #020a06;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+  letter-spacing: 0.03em;
+}
+
+.pulse-tour-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .pulse-onboard-preview { padding: 28px 20px; }
+  .pulse-onboard-question { font-size: 1.8rem; }
+  .pulse-boot-logo { font-size: 2.2rem; letter-spacing: 0.2em; }
+  .pulse-tour-tooltip { width: calc(100vw - 32px); }
+}

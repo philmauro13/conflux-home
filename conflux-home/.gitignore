@@ -6,4 +6,8 @@ dist/
 .env.router
 src-tauri/target/
 src-tauri/models/*.bin
+src-tauri/models/*.gguf
+src-tauri/binaries/llama-server
+src-tauri/binaries/llama-server.exe
 icons-generated/
+src-tauri/.env

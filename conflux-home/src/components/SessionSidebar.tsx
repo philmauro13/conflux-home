@@ -18,7 +18,7 @@ interface SessionSidebarProps {
   agentId: string | null;
   activeSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
-  onNewSession: () => void;
+  onNewSession: () => Promise<void>; // actually creates a new session
   isOpen: boolean;
   onClose: () => void;
 }
@@ -89,7 +89,15 @@ export default function SessionSidebar({
         <span style={{ fontWeight: 600, fontSize: 13 }}>History</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
-            onClick={onNewSession}
+            onClick={async () => {
+              try {
+                await onNewSession();
+                // Reload sessions list after creating
+                await loadSessions();
+              } catch (err) {
+                console.error('[SessionSidebar] Failed to create new session:', err);
+              }
+            }}
             style={{
               background: 'var(--accent-primary)',
               color: '#000',

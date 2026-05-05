@@ -26,7 +26,7 @@ export function useEchoCounselor() {
   const [crisisAlert, setCrisisAlert] = useState<EchoCrisisFlag | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // ── Load State ───────────────────────────────────────────
+  // -- Load State -------------------------------------------
   const loadState = useCallback(async () => {
     try {
       const s = await invoke<EchoCounselorState>('echo_counselor_get_state');
@@ -40,17 +40,19 @@ export function useEchoCounselor() {
 
   useEffect(() => { loadState(); }, [loadState]);
 
-  // ── Load Session Messages ────────────────────────────────
+  // -- Load Session Messages --------------------------------
   const loadMessages = useCallback(async (sessionId: string) => {
     try {
       const msgs = await invoke<EchoCounselorMessage[]>('echo_counselor_get_messages', { sessionId });
       setMessages(msgs);
-    } catch (e) {
-      console.error('Failed to load messages:', e);
-    }
+    } catch (e) { console.error('Failed:', e); }
   }, []);
 
-  // ── Start Session ────────────────────────────────────────
+  const setCurrentSessionData = useCallback((session: EchoCounselorSession) => {
+    setState(prev => prev ? { ...prev, current_session: session } : null);
+  }, []);
+
+  // -- Start Session ----------------------------------------
   const startSession = useCallback(async (opening?: string) => {
     try {
       const req: EchoStartSessionRequest = { opening };
@@ -118,7 +120,7 @@ export function useEchoCounselor() {
     }
   }, [loadState]);
 
-  // ── End Session ──────────────────────────────────────────
+  // -- End Session ------------------------------------------
   const endSession = useCallback(async (sessionId: string) => {
     try {
       await invoke('echo_counselor_end_session', { sessionId });
@@ -128,7 +130,7 @@ export function useEchoCounselor() {
     }
   }, [loadState]);
 
-  // ── Gratitude ────────────────────────────────────────────
+  // -- Gratitude --------------------------------------------
   const writeGratitude = useCallback(async (items: string[], context?: string) => {
     try {
       await invoke('echo_counselor_write_gratitude', { items, context: context ?? null });
@@ -147,7 +149,7 @@ export function useEchoCounselor() {
     }
   }, []);
 
-  // ── Grounding Exercises ──────────────────────────────────
+  // -- Grounding Exercises ----------------------------------
   const getExercises = useCallback(async () => {
     try {
       return await invoke<EchoGroundingExercise[]>('echo_counselor_get_exercises');
@@ -166,7 +168,7 @@ export function useEchoCounselor() {
     }
   }, [loadState]);
 
-  // ── Counselor Journal ─────────────────────────────────────
+  // -- Counselor Journal -------------------------------------
   const getCounselorJournal = useCallback(async (limit?: number) => {
     try {
       return await invoke<EchoCounselorSession[]>('echo_counselor_get_reflections', { limit: limit ?? 10 });
@@ -185,12 +187,12 @@ export function useEchoCounselor() {
     }
   }, [loadState]);
 
-  // ── Dismiss Crisis Alert ─────────────────────────────────
+  // -- Dismiss Crisis Alert ---------------------------------
   const dismissCrisis = useCallback(() => {
     setCrisisAlert(null);
   }, []);
 
-  // ── Get Opening ──────────────────────────────────────────
+  // -- Get Opening ------------------------------------------
   const getOpening = useCallback((): string => {
     if (!state) return getRandomOpening();
     
@@ -216,7 +218,7 @@ export function useEchoCounselor() {
     });
   }, [state]);
 
-  // ── Weekly Mirror Letter ──────────────────────────────────
+  // -- Weekly Mirror Letter ----------------------------------
   const generateWeeklyLetter = useCallback(async () => {
     try {
       return await invoke<EchoWeeklyLetter>('echo_counselor_generate_weekly_letter');
@@ -244,10 +246,23 @@ export function useEchoCounselor() {
     }
   }, []);
 
-  // ── Evening Reminder ──────────────────────────────────────
+  // -- Evening Reminder --------------------------------------
+  const getEveningReminder = useCallback(async () => {
+    try {
+      return await invoke<{ enabled: boolean; hour: number; minute: number } | null>('echo_counselor_get_evening_reminder');
+    } catch (e) {
+      console.error('Failed to get evening reminder:', e);
+      return null;
+    }
+  }, []);
+
   const setEveningReminder = useCallback(async (settings: EchoEveningReminderSettings) => {
     try {
-      await invoke<string>('echo_counselor_set_evening_reminder', { req: settings });
+      await invoke<string>('echo_counselor_set_evening_reminder', {
+        enabled: settings.enabled,
+        hour: settings.hour ?? null,
+        minute: settings.minute ?? null,
+      });
     } catch (e) {
       console.error('Failed to set evening reminder:', e);
     }
@@ -274,7 +289,9 @@ export function useEchoCounselor() {
     generateWeeklyLetter,
     getWeeklyLetter,
     getWeeklyLetterHistory,
+    getEveningReminder,
     setEveningReminder,
+    setCurrentSessionData,
     refresh: loadState,
   };
 }

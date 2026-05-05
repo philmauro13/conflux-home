@@ -102,11 +102,8 @@
 }
 
 .immersive-overlay {
-  position: fixed;
-  top: 48px; /* below TopBar */
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  min-height: 100vh;
   z-index: 100;
   animation: immersive-enter 0.3s ease-out forwards;
   overflow-y: auto;
@@ -118,7 +115,7 @@
 }
 
 .immersive-bg {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
@@ -127,7 +124,7 @@
 }
 
 .immersive-gradient {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: linear-gradient(
     180deg,
@@ -141,7 +138,8 @@
 .immersive-back-btn {
   position: fixed;
   top: 16px;
-  left: 16px;
+  right: 16px;
+  left: auto;
   z-index: 110;
   display: inline-flex;
   align-items: center;
@@ -171,20 +169,25 @@
 
 .immersive-content {
   position: fixed;
-  top: 48px; /* Match overlay top */
+  top: 0;
   left: 0;
   right: 0;
-  bottom: 56px; /* Match ConfluxBar height */
+  bottom: 0;
   z-index: 2;
   margin: 0;
   padding: 0;
-  /* Seamless app fill */
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: none;
   border-radius: 0;
   overflow-y: auto;
+}
+
+.immersive-content > * {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 /* ── Agents Bottom Bar ── */
@@ -645,3 +648,169 @@
   color: rgba(255, 255, 255, 0.25);
   font-size: 13px;
 }
+
+/* ── Skill Garden (Phase 6) ──────────────────────────────────── */
+.skill-garden {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+}
+.skill-garden-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+}
+.garden-section {}
+.garden-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.garden-emoji { font-size: 20px; }
+.garden-section-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.garden-count-badge {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+}
+.garden-browse-link {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.garden-browse-link:hover { text-decoration: underline; }
+.garden-cards { display: flex; flex-direction: column; gap: 8px; }
+.garden-empty-state {
+  padding: 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  text-align: center;
+}
+.skill-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.skill-card.blooming {
+  animation: skill-bloom 1.5s ease-out;
+}
+@keyframes skill-bloom {
+  0% { box-shadow: 0 0 0 0 rgba(0, 200, 100, 0.6); transform: scale(1); }
+  50% { box-shadow: 0 0 20px 8px rgba(0, 200, 100, 0.3); transform: scale(1.03); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 200, 100, 0); transform: scale(1); }
+}
+.skill-card:hover { background: rgba(255,255,255,0.07); }
+.skill-card-emoji { font-size: 22px; flex-shrink: 0; }
+.skill-card-body { flex: 1; min-width: 0; }
+.skill-card-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.skill-card-description { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.4; }
+.skill-card-footer { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.skill-type-badge {
+  display: inline-block;
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.learned-badge { background: rgba(0, 200, 100, 0.15); color: #00c864; }
+.mined-badge { background: rgba(160, 80, 255, 0.15); color: #a050ff; }
+.domain-badge { background: rgba(60, 130, 255, 0.15); color: #3c82f6; }
+.fragment-badge { background: rgba(255, 180, 0, 0.15); color: #ffb400; }
+.skill-version-badge { font-size: 10px; color: rgba(255,255,255,0.3); }
+.toggle-switch-wrap input[type="checkbox"] { width: 36px; height: 20px; cursor: pointer; }
+
+/* Skill browser overlay */
+.skill-browser-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.skill-browser-panel {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 24px;
+  width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+.skills-browser-panel h3 { margin: 0 0 16px; }
+.skills-list { display: flex; flex-direction: column; gap: 8px; }
+.skills-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+
+/* ── Skill Creation Prompt Modal (Phase 4) ───────────────────── */
+.skill-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.skill-prompt-card {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.skill-prompt-emoji { font-size: 48px; margin-bottom: 12px; }
+.skill-prompt-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; }
+.skill-prompt-subtitle { font-size: 13px; color: rgba(255,255,255,0.5); margin: 0 0 24px; }
+.skill-prompt-details { text-align: left; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.skill-prompt-detail-row { display: flex; flex-direction: column; gap: 2px; }
+.skill-prompt-detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); }
+.skill-prompt-detail-value { font-size: 13px; color: var(--text-primary); }
+.skill-prompt-actions { display: flex; gap: 12px; justify-content: center; }
+.skill-prompt-btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.skill-prompt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.skill-prompt-btn.primary { background: #00c864; color: #000; }
+.skill-prompt-btn.primary:hover:not(:disabled) { background: #00dd70; }
+.skill-prompt-btn.secondary { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
+.skill-prompt-btn.secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14); }

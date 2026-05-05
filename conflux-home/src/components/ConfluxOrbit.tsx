@@ -1,5 +1,8 @@
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
+import { useGlobalClickSound } from '../hooks/useGlobalClickSound';
 import { ConfluxPresence, useConfluxController, attachTauriConfluxListeners } from './conflux';
+import MorningBriefOverlay, { useMorningBrief } from './MorningBriefOverlay';
+import type { FairyExpression, FairyNudge } from './conflux';
 import type { ConfluxTauriListen } from './conflux';
 import { View } from '../types';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -25,21 +28,22 @@ interface ConfluxOrbitProps {
 
 // Magnetic Zones: target coordinates for each app view
 // Conflux "zips" to the right spot instead of floating randomly
+const ELEMENT_H = 300;
+
 const MAGNETIC_ZONES: Record<string, { x: number; y: number; scale?: number }> = {
-  budget: { x: 0, y: 0.5, scale: 0.7 },    // Left-center for Budget
-  kitchen: { x: 0.95, y: 0.35, scale: 0.7 }, // Top-right for Kitchen
-  life: { x: 0.95, y: 0.5, scale: 0.7 },     // Right-center for Life
-  home: { x: 0.95, y: 0.5, scale: 0.7 },     // Right-center for Home Health
-  dreams: { x: 0.5, y: 0.2, scale: 0.8 },    // Top-center for Dream Builder
-  games: { x: 0.05, y: 0.5, scale: 0.7 },    // Left-center for Games
-  feed: { x: 0.5, y: 0.5, scale: 0.7 },      // Center for Feed
-  marketplace: { x: 0.5, y: 0.5, scale: 0.7 }, // Center for Marketplace
-  echo: { x: 0.05, y: 0.5, scale: 0.7 },     // Left-center for Echo
-  vault: { x: 0.05, y: 0.5, scale: 0.7 },    // Left-center for Vault
-  studio: { x: 0.05, y: 0.5, scale: 0.7 },   // Left-center for Studio
-  settings: { x: 0.95, y: 0.5, scale: 0.7 }, // Right-center for Settings
-  dashboard: { x: 0.5, y: 0.93, scale: 0.85 },  // Bottom-center for Dashboard
-  agents: { x: 0.05, y: 0.5, scale: 0.7 },   // Left-center for Agents
+  budget:    { x: 0,      y: 0.5,  scale: 0.7 }, // Left-center
+  kitchen:   { x: 0.95,   y: 0.28, scale: 0.7 }, // Upper-right
+  life:      { x: 0.95,   y: 0.5,  scale: 0.7 }, // Right-center
+  dreams:    { x: 0.5,    y: 0.18, scale: 0.8 }, // Top-center
+  games:     { x: 0.05,   y: 0.5,  scale: 0.7 }, // Left-center
+  feed:      { x: 0.5,    y: 0.5,  scale: 0.7 }, // Center
+  marketplace:{ x: 0.5,    y: 0.5,  scale: 0.7 }, // Center
+  echo:      { x: 0.05,   y: 0.5,  scale: 0.7 }, // Left-center
+  vault:     { x: 0.05,   y: 0.5,  scale: 0.7 }, // Left-center
+  studio:    { x: 0.05,   y: 0.5,  scale: 0.7 }, // Left-center
+  settings:  { x: 0.95,   y: 0.5,  scale: 0.7 }, // Right-center
+  dashboard: { x: 0.5,    y: 0.76, scale: 0.85 }, // Bottom-center (near dock)
+  agents:    { x: 0.05,   y: 0.5,  scale: 0.7 }, // Left-center
   'api-dashboard': { x: 0.05, y: 0.5, scale: 0.7 },
 };
 
@@ -65,6 +69,26 @@ const APP_LOBE_MAP: Record<string, string> = {
 const EMPTY_SEQ: never[] = [];
 
 export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatOpen, isPushToTalkActive, wizardMode = false, wizardSequence = EMPTY_SEQ }: ConfluxOrbitProps) {
+  // Global click sound — fired from ConfluxOrbit (always mounted desktop shell)
+  useGlobalClickSound();
+
+  // ── Conflux Fairy State ───────────────────────────────────────────────────
+  const [fairyExpression, setFairyExpression] = useState<FairyExpression>('idle');
+  const [fairyNudge, setFairyNudge] = useState<FairyNudge | null>(null);
+
+  // Subscribe to fairy nudge events from the heartbeat system
+  useEffect(() => {
+    const handler = (e: Event) => setFairyNudge((e as CustomEvent<FairyNudge>).detail);
+    window.addEventListener('conflux:fairy-nudge', handler);
+    return () => window.removeEventListener('conflux:fairy-nudge', handler);
+  }, []);
+
+  // Update fairy expression based on open app / activity
+  useEffect(() => {
+    if (voiceChatOpen) { setFairyExpression('listening'); return; }
+    if (chatOpen) { setFairyExpression('thinking'); return; }
+    setFairyExpression('idle');
+  }, [voiceChatOpen, chatOpen]);
 
   // Wizard Mode: cycle through sequence steps
   const [wizardStepIndex, setWizardStepIndex] = useState(0);
@@ -333,8 +357,10 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
     // Magnetic Zones: use pre-defined coordinates for each app view
     const zone = MAGNETIC_ZONES[immersiveView];
     if (zone) {
-      targetX = (dimensions.width - 300) * zone.x;
-      targetY = (dimensions.height - 300) * zone.y;
+      const elH = ELEMENT_H * (zone.scale ?? 0.7);
+      const avH = dimensions.height - 56; // available height below TopBar and above ConfluxBar
+      targetX = (dimensions.width - elH) * zone.x;
+      targetY = (avH - elH) * zone.y; // top of element within available space
       scale = zone.scale ?? 0.7;
     } else {
       // Fallback for unknown views
@@ -343,9 +369,9 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
       scale = 0.75;
     }
   } else if (view === 'dashboard') {
-    // Idle state: hovering near the dock (ConfluxBarV2)
+    // Idle state: hovering near the dock (ConfluxBarV2) — full scale
     targetX = dimensions.width - 320;
-    targetY = dimensions.height - 320;
+    targetY = dimensions.height - 56 - ELEMENT_H - 16; // 16px above ConfluxBar
     scale = 1;
   }
 
@@ -393,6 +419,9 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
     }
     return null;
   });
+  // One-shot flag: fires a spring to magnetic zone when setDragOverride(null) is called
+  const [transitioningToZone, setTransitioningToZone] = useState(false);
+  const transitioningRef = useRef(false);
 
   useEffect(() => {
     if (wizardMode) return; // Skip non-wizard bezier — wizard has its own
@@ -410,16 +439,33 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
     prevImmersiveViewRef.current = immersiveView;
   }, [immersiveView, wizardMode]);
 
-  // Clear drag override when view changes (let spring animate to new position)
+  // On view change: clear dragOverride → triggers one-shot spring to magnetic zone
   useEffect(() => {
-    setDragOverride(null);
-  }, [view, immersiveView, chatOpen, isPushToTalkActive]);
+    if (dragOverride !== null) {
+      transitioningRef.current = true;
+      setTransitioningToZone(true);
+      setDragOverride(null);
+    }
+  }, [view, immersiveView]);
 
-  // Drag handler: save final position to localStorage
+  // onDragStart: clear all accumulated offsets immediately on grab
+  const handleDragStart = useCallback(() => {
+    transitioningRef.current = false;
+    setTransitioningToZone(false);
+    setWizardOffset({ x: 0, y: 0 });
+    setBezierOffset({ x: 0, y: 0 });
+  }, []);
+
+  // Drag handler: info.point.x/y is the exact final viewport position after drag.
+  // Write it to state — NO spring, no animate. User drops it exactly where they release.
   const handleDragEnd = useCallback((_e: any, info: { point: { x: number; y: number } }) => {
+    transitioningRef.current = false;
+    setTransitioningToZone(false);
     const finalX = info.point.x;
     const finalY = info.point.y;
     setDragOverride({ x: finalX, y: finalY });
+    setWizardOffset({ x: 0, y: 0 });
+    setBezierOffset({ x: 0, y: 0 });
     localStorage.setItem('conflux-fairy-pos', JSON.stringify({
       rx: finalX / window.innerWidth,
       ry: finalY / window.innerHeight,
@@ -588,25 +634,33 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
 
   return (
     <>
-      {/* Base position — spring-driven to target */}
+      {/* NeuralBrain position — Framer Motion owns x/y during drag.
+          After drag: handleDragEnd writes exact release coords to dragOverride.
+          Magnetic zone: setTransitioningToZone(true) + clear dragOverride → one-shot spring. */}
       <motion.div
         initial={false}
         drag
         dragMomentum={false}
         dragElastic={0}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        animate={dragOverride ? {
-          x: dragOverride.x,
-          y: dragOverride.y,
-          scale,
-          filter: builderModeFilter,
-        } : {
-          x: targetX + (wizardMode ? 0 : bezierOffset.x),
-          y: targetY + (wizardMode ? 0 : bezierOffset.y),
+        // x/y: ONLY when transitioningToZone=true (one-shot spring to magnetic zone).
+        // When isDragging or user has set a position: x/y are controlled by Framer Motion drag internally.
+        animate={{
+          x: transitioningToZone
+            ? targetX + (wizardMode ? 0 : bezierOffset.x)
+            : undefined,
+          y: transitioningToZone
+            ? targetY + (wizardMode ? 0 : bezierOffset.y)
+            : undefined,
           scale,
           filter: builderModeFilter,
         }}
-        transition={getTransitionConfig()}
+        transition={
+          transitioningToZone
+            ? { type: 'spring', stiffness: 100, damping: 18 }
+            : { duration: 0 }
+        }
         style={{
           position: 'fixed',
           zIndex: isBuilderMode ? 110 : 100,
@@ -617,10 +671,10 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
         }}
         whileDrag={{ cursor: 'grabbing' }}
       >
-        {/* Wizard organic offset — wraps ConfluxPresence to layer bezier + oscillation on top of base spring */}
+        {/* Wizard organic offset — applies bezier drift + oscillation. Always {0,0} outside wizard mode. */}
         <motion.div
-          animate={wizardMode ? { x: wizardOffset.x, y: wizardOffset.y } : { x: 0, y: 0 }}
-          transition={wizardMode ? { duration: 0 } : { type: 'spring', stiffness: 80, damping: 18 }}
+          animate={{ x: wizardMode ? wizardOffset.x : 0, y: wizardMode ? wizardOffset.y : 0 }}
+          transition={{ duration: 0 }}
           style={{ position: 'relative', top: 0, left: 0 }}
         >
           <ConfluxPresence
@@ -629,6 +683,9 @@ export default function ConfluxOrbit({ view, immersiveView, chatOpen, voiceChatO
             pulseEvent={conflux.pulseEvent}
             transparent={conflux.transparent}
             effectivePalette={conflux.effectivePalette}
+            fairyExpression={fairyExpression}
+            fairyNudge={fairyNudge}
+            onFairyNudgeClick={() => setFairyNudge(null)}
             style={{ width: 300, height: 300 }}
           />
         </motion.div>

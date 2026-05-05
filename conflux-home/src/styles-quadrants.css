@@ -159,49 +159,64 @@
 
 .intel-ring {
   position: relative;
-  width: 72px;
-  height: 72px;
+  width: 86px;
+  height: 86px;
+  /* center the ring with the text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.intel-ring svg {
+.intel-ring-svg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45));
 }
 
 .intel-ring-bg {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.06);
-  stroke-width: 5;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 6;
 }
 
 .intel-ring-fill {
   fill: none;
-  stroke-width: 5;
+  stroke-width: 6;
   stroke-linecap: round;
   transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-  filter: drop-shadow(0 0 6px currentColor);
 }
 
 .intel-ring-label {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+  /* Slight inset so text sits inside the ring */
+  padding-bottom: 2px;
+}
+
+.intel-ring-value {
   font-size: 20px;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.5px;
+  line-height: 1;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6), 0 0 8px rgba(0,0,0,0.4);
 }
 
 .intel-ring-sublabel {
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-top: 1px;
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+  font-weight: 500;
 }
 
 /* ── Agent Rows — Cockpit Style ── */
@@ -627,9 +642,16 @@
   transition: background 0.4s ease;
 }
 
+/* Default: color themes use --theme-accent for category card accents */
 .category-card-accent-themed {
   background: linear-gradient(180deg, var(--theme-accent, #818cf8), transparent);
   transition: background 0.4s ease;
+}
+
+/* Base themes (Conflux, Nexus): category cards use their own --cat-color */
+body[data-color-theme="conflux"] .category-card-accent-themed,
+body[data-color-theme="nexus"] .category-card-accent-themed {
+  background: linear-gradient(180deg, var(--cat-color, #6366f1), transparent);
 }
 
 /* ── Folder expansion tiles ── */
@@ -835,8 +857,8 @@
 }
 
 @keyframes knob-snap-flash {
-  0%   { filter: drop-shadow(0 0 12px rgba(99,102,241,0.9)); }
-  100% { filter: drop-shadow(0 0 4px rgba(99,102,241,0.3)); }
+  0%   { filter: drop-shadow(0 0 14px rgba(239,68,68,0.9)); }
+  100% { filter: drop-shadow(0 0 4px rgba(239,68,68,0.3)); }
 }
 
 .intel-pulse-knob.off .intel-knob-svg {
@@ -856,12 +878,12 @@
 .intel-knob-svg {
   width: 108px;
   height: 108px;
-  filter: drop-shadow(0 0 4px rgba(99,102,241,0.3));
+  filter: drop-shadow(0 0 4px rgba(239,68,68,0.3));
   transition: filter 0.2s ease;
 }
 
 .intel-pulse-knob.dragging .intel-knob-svg {
-  filter: drop-shadow(0 0 8px rgba(99,102,241,0.7));
+  filter: drop-shadow(0 0 8px rgba(239,68,68,0.7));
 }
 
 .intel-pulse-knob.off .intel-knob-svg {
@@ -872,7 +894,7 @@
   font-family: var(--radar-font-mono, monospace);
   font-size: 16px;
   font-weight: 800;
-  color: #6366f1;
+  color: #ef4444;
   letter-spacing: 1px;
   transition: color 0.3s ease;
   margin-top: 4px;

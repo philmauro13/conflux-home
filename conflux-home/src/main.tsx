@@ -13,6 +13,7 @@ import './styles-budget.css'
 import './styles/budget-pulse.css'
 import './styles-feed.css'
 import './styles/feed-radar.css'
+import './styles/radar-boot.css'
 import './styles-life.css'
 import './styles-orbit.css'
 import './styles/animations.css'
@@ -21,12 +22,15 @@ import './styles/horizon-stellar.css'
 import './styles-current.css'
 import './styles-games.css'
 import './styles-snake.css'
-import './styles-pacman.css'
-import './styles-solitaire.css'
-import './styles-control-room.css'
-import './styles-neural-mesh.css'
+import './styles-pacman.css';
+import './styles-solitaire.css';
+import './styles-nani-solitaire.css';
+import './styles-johnny-solitaire.css';
+import './styles-control-room.css';
+import './styles-neural-mesh.css';
 import './styles/foundation.css'
 import './styles/orbit-mission-control.css'
+import './styles/orbit-boot.css'
 
 // Error boundary with MAXIMUM detail
 class ErrorBoundary extends React.Component<

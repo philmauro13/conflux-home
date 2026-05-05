@@ -1,182 +1,314 @@
 /* ═══════════════════════════════════════════
-   Marketplace Hub — Design System
+   Marketplace Hub — Design System v2
+   Gold Accents · Treasure Vault · Bazaar Soul
    ═══════════════════════════════════════════ */
 
+/* ── CSS Variables ── */
+:root {
+  --bazaar-gold: #f5c842;
+  --bazaar-gold-dim: rgba(245, 200, 66, 0.15);
+  --bazaar-gold-glow: rgba(245, 200, 66, 0.25);
+  --bazaar-bg: #080b12;
+  --bazaar-card-bg: rgba(18, 22, 35, 0.75);
+  --bazaar-card-border: rgba(245, 200, 66, 0.12);
+  --bazaar-card-hover: rgba(245, 200, 66, 0.07);
+}
+
+/* ── View ── */
 .marketplace-hub {
-  height: 100%;
-  padding: 24px;
-  overflow-y: auto;
-  animation: card-enter 0.3s ease-out;
+  min-height: 100%;
+  position: relative;
+  overflow: hidden;
+  animation: bazaar-enter 0.4s ease-out;
 }
 
-/* ── Header ─────────────────────────────── */
-.marketplace-header {
-  margin-bottom: 20px;
+/* Animated background grid */
+.marketplace-hub::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(245, 200, 66, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 200, 66, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.marketplace-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 4px;
+/* ── Hero ── */
+.marketplace-hero {
+  position: relative;
+  padding: 48px 32px 32px;
+  text-align: center;
+  overflow: hidden;
+  z-index: 1;
 }
 
-.marketplace-header p {
+.marketplace-hero-glow {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 240px;
+  background: radial-gradient(ellipse, rgba(245, 200, 66, 0.18) 0%, rgba(245, 200, 66, 0.05) 40%, transparent 70%);
+  pointer-events: none;
+  animation: hero-breathe 7s ease-in-out infinite;
+}
+
+@keyframes hero-breathe {
+  0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.06); }
+}
+
+.marketplace-hero-content {
+  position: relative;
+}
+
+.marketplace-hero-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.marketplace-hero-icon::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 200, 66, 0.2) 0%, transparent 70%);
+  animation: icon-pulse 3s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.15); }
+}
+
+.marketplace-hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f5c842 0%, #f0a830 50%, #f5c842 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.marketplace-hero-sub {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   margin: 0;
 }
 
-/* ── Search ─────────────────────────────── */
+/* ── Content ── */
+.marketplace-content {
+  position: relative;
+  z-index: 1;
+  padding: 0 32px 40px;
+}
+
+/* ── Search ── */
 .marketplace-search {
-  width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.marketplace-search-inner {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.marketplace-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 15px;
+  pointer-events: none;
 }
 
 .marketplace-search input {
   width: 100%;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.06);
+  padding: 12px 16px 12px 42px;
+  background: rgba(18, 22, 35, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
+  border: 1px solid rgba(245, 200, 66, 0.15);
+  border-radius: 14px;
   color: white;
   font-size: 14px;
   outline: none;
-  transition: all 0.2s;
+  transition: all 0.25s;
   box-sizing: border-box;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
 }
 
 .marketplace-search input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .marketplace-search input:focus {
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 0 3px rgba(123, 47, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(245, 200, 66, 0.45);
+  box-shadow: 0 0 0 3px rgba(245, 200, 66, 0.1), 0 4px 24px rgba(0, 0, 0, 0.4);
+  background: rgba(18, 22, 35, 0.95);
 }
 
-/* ── Tab Rows ───────────────────────────── */
+/* ── Tab Rows ── */
+.marketplace-tabs-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
 .marketplace-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  padding-bottom: 2px;
 }
 
 .marketplace-tabs::-webkit-scrollbar {
   display: none;
 }
 
-/* ── Type Tabs ──────────────────────────── */
+.marketplace-tabs-row .marketplace-tabs {
+  justify-content: center;
+}
+
+/* ── Type Tabs ── */
 .type-tab {
-  padding: 8px 18px;
+  padding: 9px 20px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: transparent;
+  border: 1px solid rgba(245, 200, 66, 0.15);
+  background: rgba(18, 22, 35, 0.6);
   color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: all 0.2s;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .type-tab:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(245, 200, 66, 0.08);
   color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(245, 200, 66, 0.25);
 }
 
 .type-tab.active[data-type="all"] {
-  background: rgba(255, 255, 255, 0.12);
-  color: white;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(245, 200, 66, 0.14);
+  color: #f5c842;
+  border-color: rgba(245, 200, 66, 0.4);
+  box-shadow: 0 0 16px rgba(245, 200, 66, 0.1);
 }
 
 .type-tab.active[data-type="app"] {
-  background: rgba(0, 212, 255, 0.15);
+  background: rgba(0, 212, 255, 0.12);
   color: #00d4ff;
-  border-color: rgba(0, 212, 255, 0.3);
+  border-color: rgba(0, 212, 255, 0.35);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.08);
 }
 
 .type-tab.active[data-type="game"] {
-  background: rgba(255, 215, 0, 0.15);
+  background: rgba(255, 215, 0, 0.12);
   color: #ffd700;
-  border-color: rgba(255, 215, 0, 0.3);
+  border-color: rgba(255, 215, 0, 0.35);
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.08);
 }
 
 .type-tab.active[data-type="agent"] {
-  background: rgba(123, 47, 255, 0.15);
-  color: #7b2fff;
-  border-color: rgba(123, 47, 255, 0.3);
+  background: rgba(123, 47, 255, 0.12);
+  color: #a78bfa;
+  border-color: rgba(123, 47, 255, 0.35);
+  box-shadow: 0 0 16px rgba(123, 47, 255, 0.08);
 }
 
 /* ── Category Tabs ──────────────────────── */
 .category-tab {
-  padding: 5px 14px;
+  padding: 6px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(245, 200, 66, 0.1);
+  background: rgba(18, 22, 35, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
   text-transform: capitalize;
+  backdrop-filter: blur(10px);
 }
 
 .category-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(245, 200, 66, 0.07);
   color: rgba(255, 255, 255, 0.75);
+  border-color: rgba(245, 200, 66, 0.2);
 }
 
 .category-tab.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(245, 200, 66, 0.12);
+  color: #f5c842;
+  border-color: rgba(245, 200, 66, 0.35);
+}
+
+/* ── Section Labels ── */
+.marketplace-section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.25);
+  margin: 0 0 14px;
+  padding-left: 4px;
 }
 
 /* ── Featured Section ───────────────────── */
 .marketplace-featured {
-  margin-bottom: 32px;
-}
-
-.marketplace-featured h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 14px;
-  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 36px;
 }
 
 .featured-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 18px;
 }
 
 /* ── Item Grid ──────────────────────────── */
 .marketplace-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
 }
 
 /* ── Card ───────────────────────────────── */
 .marketplace-card {
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 20px;
+  background: var(--bazaar-card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--bazaar-card-border);
+  border-radius: 18px;
+  padding: 22px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .marketplace-card::before {
@@ -185,16 +317,17 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--card-color, #7b2fff);
+  height: 3px;
+  background: linear-gradient(90deg, var(--card-color, #f5c842), color-mix(in srgb, var(--card-color, #f5c842) 50%, transparent));
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.25s;
 }
 
 .marketplace-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transform: translateY(-5px);
+  border-color: rgba(245, 200, 66, 0.22);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(245, 200, 66, 0.05);
+  background: rgba(22, 27, 44, 0.85);
 }
 
 .marketplace-card:hover::before {
@@ -202,138 +335,173 @@
 }
 
 .marketplace-card.coming-soon {
-  filter: grayscale(0.6);
-  opacity: 0.7;
+  opacity: 0.55;
+  filter: saturate(0.4);
   cursor: default;
 }
 
 .marketplace-card.coming-soon:hover {
   transform: none;
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--bazaar-card-border);
   box-shadow: none;
+  background: var(--bazaar-card-bg);
+}
+
+/* Card shine sweep on hover */
+.marketplace-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(245, 200, 66, 0.04), transparent);
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.marketplace-card:hover::after {
+  left: 150%;
 }
 
 /* ── Card Internals ─────────────────────── */
 .card-emoji {
-  font-size: 40px;
+  font-size: 42px;
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   line-height: 1;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
 .card-name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-  margin: 0 0 4px;
+  margin: 0 0 5px;
   color: white;
+  letter-spacing: -0.2px;
 }
 
 .card-tagline {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0 0 10px;
-  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 14px;
+  line-height: 1.45;
+  flex-grow: 1;
 }
 
-.card-category {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 2px 10px;
+.card-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(245, 200, 66, 0.1);
+  border: 1px solid rgba(245, 200, 66, 0.2);
+  border-radius: 10px;
+  padding: 3px 10px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 4px;
+  font-weight: 600;
+  color: rgba(245, 200, 66, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
 
 .card-skills {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 5px;
+  margin-top: 4px;
 }
 
 .skill-tag {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 2px 8px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* ── Card Action Button ─────────────────── */
 .card-action {
   width: 100%;
   margin-top: 16px;
-  padding: 10px;
+  padding: 11px;
   border-radius: 12px;
   border: none;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.18s;
+  letter-spacing: 0.2px;
 }
 
 .card-action.installed {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(245, 200, 66, 0.12);
+  color: #f5c842;
+  border: 1px solid rgba(245, 200, 66, 0.25);
 }
 
 .card-action.installed:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(245, 200, 66, 0.2);
+  box-shadow: 0 0 16px rgba(245, 200, 66, 0.12);
 }
 
 .card-action.available {
-  background: linear-gradient(135deg, var(--card-color, #7b2fff), color-mix(in srgb, var(--card-color, #7b2fff) 70%, white));
-  color: white;
+  background: linear-gradient(135deg, rgba(245, 200, 66, 0.9), color-mix(in srgb, rgba(245, 200, 66, 0.85) 80%, white));
+  color: #0a0c14;
+  font-weight: 800;
 }
 
 .card-action.available:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.08);
   transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(245, 200, 66, 0.3);
 }
 
 .card-action.coming-soon {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.35);
   cursor: not-allowed;
 }
 
 /* ── Featured Card ──────────────────────── */
 .featured-card {
-  min-height: 260px;
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
+  background: var(--bazaar-card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(245, 200, 66, 0.18);
+  border-radius: 20px;
+  padding: 26px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
 }
 
+/* Gradient border via pseudo-element */
 .featured-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 1px;
-  background: linear-gradient(135deg, var(--card-color, #7b2fff), transparent 60%);
+  background: linear-gradient(135deg, var(--card-color, #f5c842) 0%, transparent 50%, rgba(245, 200, 66, 0.3) 100%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  opacity: 0.5;
+  transition: opacity 0.25s;
 }
 
 .featured-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-5px);
+  border-color: rgba(245, 200, 66, 0.3);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(245, 200, 66, 0.08);
 }
 
 .featured-card:hover::before {
@@ -341,7 +509,7 @@
 }
 
 .featured-card .card-emoji {
-  font-size: 48px;
+  font-size: 52px;
 }
 
 .featured-card .card-name {
@@ -352,35 +520,52 @@
   font-size: 14px;
 }
 
+.featured-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(245, 200, 66, 0.15);
+  border: 1px solid rgba(245, 200, 66, 0.3);
+  color: #f5c842;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
 /* ── Empty State ────────────────────────── */
 .marketplace-empty {
   text-align: center;
-  padding: 48px 24px;
-  color: rgba(255, 255, 255, 0.4);
+  padding: 60px 24px;
 }
 
 .marketplace-empty .empty-emoji {
-  font-size: 48px;
-  margin-bottom: 12px;
+  font-size: 52px;
+  margin-bottom: 14px;
+  display: block;
+  opacity: 0.6;
 }
 
 .marketplace-empty h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 17px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.65);
   margin: 0 0 6px;
 }
 
 .marketplace-empty p {
   font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
   margin: 0;
 }
 
 /* ── Animations ─────────────────────────── */
-@keyframes card-enter {
+@keyframes bazaar-enter {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -389,45 +574,48 @@
 }
 
 /* ── Responsive: Tablet ─────────────────── */
-@media (max-width: 768px) {
-  .marketplace-hub {
-    padding: 16px;
-  }
-
-  .marketplace-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .marketplace-content {
+    padding: 0 20px 32px;
   }
 
   .featured-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .marketplace-header h2 {
-    font-size: 20px;
+  .marketplace-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
   }
 }
 
 /* ── Responsive: Mobile ─────────────────── */
-@media (max-width: 480px) {
-  .marketplace-hub {
-    padding: 12px;
+@media (max-width: 600px) {
+  .marketplace-hero {
+    padding: 36px 20px 24px;
   }
 
+  .marketplace-content {
+    padding: 0 14px 24px;
+  }
+
+  .featured-grid,
   .marketplace-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
 
-  .featured-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .marketplace-card {
+  .marketplace-card,
+  .featured-card {
     padding: 16px;
   }
 
-  .featured-card {
+  .marketplace-card {
     min-height: auto;
-    padding: 18px;
+  }
+
+  .featured-card {
+    min-height: 220px;
   }
 
   .marketplace-tabs {
@@ -435,7 +623,14 @@
   }
 
   .type-tab {
-    padding: 6px 14px;
+    padding: 7px 14px;
     font-size: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  .featured-grid,
+  .marketplace-grid {
+    grid-template-columns: 1fr;
   }
 }

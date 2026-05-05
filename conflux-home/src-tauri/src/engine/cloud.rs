@@ -5,9 +5,18 @@
 
 /// Valid task types accepted by the cloud router.
 const VALID_TASK_TYPES: &[&str] = &[
-    "simple_chat", "summarize", "extract", "translate",
-    "code_gen", "tool_orchestrate", "image_gen", "file_ops",
-    "web_browse", "creative", "deep_reasoning", "agentic_complex",
+    "simple_chat",
+    "summarize",
+    "extract",
+    "translate",
+    "code_gen",
+    "tool_orchestrate",
+    "image_gen",
+    "file_ops",
+    "web_browse",
+    "creative",
+    "deep_reasoning",
+    "agentic_complex",
 ];
 
 use anyhow::Result;
@@ -103,7 +112,9 @@ const COST_CACHE_TTL: Duration = Duration::from_secs(300); // 5 minutes
 /// Read Supabase URL from engine config.
 fn get_supabase_url() -> Result<String> {
     let engine = get_engine();
-    engine.db().get_config("supabase_url")
+    engine
+        .db()
+        .get_config("supabase_url")
         .map_err(|e| anyhow::anyhow!("Failed to read supabase_url: {}", e))?
         .ok_or_else(|| anyhow::anyhow!("supabase_url not configured"))
 }
@@ -111,7 +122,9 @@ fn get_supabase_url() -> Result<String> {
 /// Read Supabase anon key from engine config.
 fn get_supabase_key() -> Result<String> {
     let engine = get_engine();
-    engine.db().get_config("supabase_anon_key")
+    engine
+        .db()
+        .get_config("supabase_anon_key")
         .map_err(|e| anyhow::anyhow!("Failed to read supabase_anon_key: {}", e))?
         .ok_or_else(|| anyhow::anyhow!("supabase_anon_key not configured"))
 }
@@ -119,7 +132,9 @@ fn get_supabase_key() -> Result<String> {
 /// Read the user's auth token (JWT) from engine config.
 fn get_auth_token() -> Result<String> {
     let engine = get_engine();
-    let token = engine.db().get_config("supabase_auth_token")
+    let token = engine
+        .db()
+        .get_config("supabase_auth_token")
         .map_err(|e| anyhow::anyhow!("Failed to read supabase_auth_token: {}", e))?;
     log::info!("[get_auth_token] Token found: {}", token.is_some());
     token.ok_or_else(|| anyhow::anyhow!("supabase_auth_token not configured"))
@@ -227,17 +242,23 @@ pub async fn check_cloud_balance(user_id: &str) -> Result<CreditStatus> {
         anyhow::bail!("credit_accounts fetch returned {}: {}", status, body);
     }
 
-    let accounts: Vec<serde_json::Value> = resp.json().await
+    let accounts: Vec<serde_json::Value> = resp
+        .json()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to parse credit_accounts: {}", e))?;
 
-    let account = accounts.first()
+    let account = accounts
+        .first()
         .ok_or_else(|| anyhow::anyhow!("No credit account found for user {}", user_id))?;
 
     let balance = account["balance"].as_i64().unwrap_or(0);
     let deposit_balance = balance; // All balance is usable (deposit + subscription grant both tracked here)
 
     // Fetch active subscription (if any)
-    let sub_query = format!("user_id=eq.{}&subscription_status=eq.active&select=*", user_id);
+    let sub_query = format!(
+        "user_id=eq.{}&subscription_status=eq.active&select=*",
+        user_id
+    );
     let (has_active_subscription, subscription_plan, monthly_credits, monthly_used) =
         match supabase_get("ch_subscriptions", &sub_query) {
             Ok(builder) => match builder.send().await {
@@ -299,10 +320,13 @@ pub async fn charge_credits(user_id: &str, amount: i64, usage_log_id: &str) -> R
         .await
         .map_err(|e| anyhow::anyhow!("Failed to read balance for charge: {}", e))?;
 
-    let accounts: Vec<serde_json::Value> = resp.json().await
+    let accounts: Vec<serde_json::Value> = resp
+        .json()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to parse balance: {}", e))?;
 
-    let account = accounts.first()
+    let account = accounts
+        .first()
         .ok_or_else(|| anyhow::anyhow!("No credit account for user {}", user_id))?;
 
     let current_balance = account["balance"].as_i64().unwrap_or(0);
@@ -311,7 +335,8 @@ pub async fn charge_credits(user_id: &str, amount: i64, usage_log_id: &str) -> R
     if current_balance < amount {
         anyhow::bail!(
             "Insufficient credits: have {}, need {}",
-            current_balance, amount
+            current_balance,
+            amount
         );
     }
 
@@ -349,13 +374,19 @@ pub async fn charge_credits(user_id: &str, amount: i64, usage_log_id: &str) -> R
         "created_at": now,
     });
 
-    if let Err(e) = supabase_post("credit_transactions")?.json(&tx_body).send().await {
+    if let Err(e) = supabase_post("credit_transactions")?
+        .json(&tx_body)
+        .send()
+        .await
+    {
         log::warn!("[Cloud] Failed to record credit transaction: {}", e);
     }
 
     log::info!(
         "[Cloud] Charged {} credits for user {} (new balance: {})",
-        amount, user_id, new_balance
+        amount,
+        user_id,
+        new_balance
     );
 
     Ok(new_balance)
@@ -386,7 +417,9 @@ pub async fn get_credit_costs() -> Result<HashMap<String, i64>> {
         anyhow::bail!("credit_config fetch returned {}: {}", status, body);
     }
 
-    let rows: Vec<serde_json::Value> = resp.json().await
+    let rows: Vec<serde_json::Value> = resp
+        .json()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to parse credit_config: {}", e))?;
 
     let mut costs = HashMap::new();
@@ -455,20 +488,25 @@ pub async fn get_usage_history(user_id: &str, limit: i32) -> Result<Vec<UsageEnt
         anyhow::bail!("usage_log fetch returned {}: {}", status, body);
     }
 
-    let rows: Vec<serde_json::Value> = resp.json().await
+    let rows: Vec<serde_json::Value> = resp
+        .json()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to parse usage_log: {}", e))?;
 
-    let entries = rows.iter().map(|r| UsageEntry {
-        id: r["id"].as_str().unwrap_or_default().to_string(),
-        model: r["model"].as_str().unwrap_or_default().to_string(),
-        provider_id: r["provider_id"].as_str().unwrap_or_default().to_string(),
-        tokens_used: r["tokens_used"].as_i64().unwrap_or(0),
-        latency_ms: r["latency_ms"].as_i64().unwrap_or(0),
-        status: r["status"].as_str().unwrap_or("success").to_string(),
-        credits_charged: r["credits_charged"].as_i64().unwrap_or(0),
-        call_type: r["call_type"].as_str().unwrap_or("chat").to_string(),
-        created_at: r["created_at"].as_str().unwrap_or_default().to_string(),
-    }).collect();
+    let entries = rows
+        .iter()
+        .map(|r| UsageEntry {
+            id: r["id"].as_str().unwrap_or_default().to_string(),
+            model: r["model"].as_str().unwrap_or_default().to_string(),
+            provider_id: r["provider_id"].as_str().unwrap_or_default().to_string(),
+            tokens_used: r["tokens_used"].as_i64().unwrap_or(0),
+            latency_ms: r["latency_ms"].as_i64().unwrap_or(0),
+            status: r["status"].as_str().unwrap_or("success").to_string(),
+            credits_charged: r["credits_charged"].as_i64().unwrap_or(0),
+            call_type: r["call_type"].as_str().unwrap_or("chat").to_string(),
+            created_at: r["created_at"].as_str().unwrap_or_default().to_string(),
+        })
+        .collect();
 
     Ok(entries)
 }
@@ -476,7 +514,44 @@ pub async fn get_usage_history(user_id: &str, limit: i32) -> Result<Vec<UsageEnt
 // ── Cloud Router Proxy ──
 
 /// Cloud router endpoint (conflux-cloud)
-const CLOUD_ROUTER_URL: &str = "https://zcvhozqrssotirabdlzr.functions.supabase.co/conflux-router/v1/chat/completions";
+const CLOUD_ROUTER_URL: &str =
+    "https://zcvhozqrssotirabdlzr.functions.supabase.co/conflux-router/v1/chat/completions";
+
+/// If the text content looks like a JSON tool call (the model sometimes puts it in content
+/// instead of the tool_calls field), extract it and return the remaining text.
+/// Tool calls in content look like: {"name": "tool_name", "arguments": {...}}
+fn maybe_extract_tool_call_from_text(text: &str) -> (Option<ToolCallRequest>, String) {
+    let trimmed = text.trim();
+    if !trimmed.starts_with('{') || !trimmed.ends_with('}') {
+        return (None, text.to_string());
+    }
+
+    // Only consider it a tool call if it has "name" and "arguments" fields
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed) {
+        if parsed.get("name").and_then(|v| v.as_str()).is_some()
+            && parsed.get("arguments").is_some()
+        {
+            let name = parsed["name"].as_str().unwrap().to_string();
+            let arguments = parsed["arguments"].to_string();
+            let id = format!("text-call-{}", uuid::Uuid::new_v4());
+            log::warn!(
+                "[cloud] Model output JSON tool call as text — extracted: name={}, arguments={}",
+                name,
+                &arguments[..arguments.len().min(80)]
+            );
+            return (
+                Some(ToolCallRequest {
+                    id,
+                    name,
+                    arguments,
+                }),
+                String::new(),
+            );
+        }
+    }
+
+    (None, text.to_string())
+}
 
 /// Send a chat completion request to the cloud router.
 /// This is the main entry point for all inference in cloud-only mode.
@@ -489,13 +564,17 @@ pub async fn cloud_chat(
 ) -> Result<ModelResponse> {
     let token = get_auth_token()?;
     // Log token status for debugging (first 10 chars only)
-    let token_preview = if token.len() > 10 { &token[..10] } else { &token };
-    log::info!("[cloud_chat] Using token (preview): {}...", token_preview);    
+    let token_preview = if token.len() > 10 {
+        &token[..10]
+    } else {
+        &token
+    };
+    log::info!("[cloud_chat] Using token (preview): {}...", token_preview);
     let mut request_body = serde_json::json!({
         "messages": messages,
         "stream": false,
     });
-    
+
     // Add optional fields — map model aliases to valid task types
     if let Some(task) = task_type {
         let effective_task = if VALID_TASK_TYPES.contains(&task) {
@@ -514,7 +593,7 @@ pub async fn cloud_chat(
     if let Some(t) = tools {
         request_body["tools"] = serde_json::json!(t);
     }
-    
+
     let client = reqwest::Client::new();
     let response = client
         .post(CLOUD_ROUTER_URL)
@@ -524,21 +603,28 @@ pub async fn cloud_chat(
         .send()
         .await
         .map_err(|e| anyhow::anyhow!("Failed to call cloud router: {}", e))?;
-    
+
     let status = response.status();
-    
+
     // Handle errors from cloud router
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
         log::error!("[cloud_chat] Cloud router returned {}: {}", status, body);
-        log::error!("[cloud_chat] Token preview sent (first 20): {}", if token.len() > 20 { &token[..20] } else { &token });
-        
+        log::error!(
+            "[cloud_chat] Token preview sent (first 20): {}",
+            if token.len() > 20 {
+                &token[..20]
+            } else {
+                &token
+            }
+        );
+
         let error_msg = match status.as_u16() {
             401 => {
                 // DO NOT clear the token on 401 — it may be a transient error
                 log::warn!("[cloud_chat] 401 from cloud router. Response: {}", body);
                 format!("Unauthorized from cloud router (401): {}", body)
-            },
+            }
             402 => format!("Insufficient credits: {}", body),
             429 => "Rate limit exceeded. Please try again later.".to_string(),
             503 => "Service temporarily unavailable. Please try again.".to_string(),
@@ -546,7 +632,7 @@ pub async fn cloud_chat(
         };
         anyhow::bail!(error_msg);
     }
-    
+
     // Parse OpenAI-compatible response
     #[derive(Debug, serde::Deserialize)]
     struct CloudResponse {
@@ -555,34 +641,38 @@ pub async fn cloud_chat(
         choices: Vec<CloudChoice>,
         usage: Option<CloudUsage>,
     }
-    
+
     #[derive(Debug, serde::Deserialize)]
     struct CloudChoice {
         index: Option<i64>,
         message: Option<OpenAIMessage>,
         finish_reason: Option<String>,
     }
-    
+
     #[derive(Debug, serde::Deserialize)]
     struct CloudUsage {
         prompt_tokens: Option<i64>,
         completion_tokens: Option<i64>,
         total_tokens: Option<i64>,
     }
-    
+
     let parsed: CloudResponse = response
         .json()
         .await
         .map_err(|e| anyhow::anyhow!("Failed to parse cloud router response: {}", e))?;
-    
+
     let choice = parsed.choices.first();
-    
-    let content = choice
+
+    let raw_content = choice
         .and_then(|c| c.message.as_ref())
         .and_then(|m| m.content.clone())
         .unwrap_or_default();
-    
-    let tool_calls = choice
+
+    // Some models put tool calls in the content text instead of the tool_calls field.
+    // Detect and extract them so they are properly handled as tool calls.
+    let (extracted_tool_call, raw_content) = maybe_extract_tool_call_from_text(&raw_content);
+
+    let mut tool_calls: Vec<ToolCallRequest> = choice
         .and_then(|c| c.message.as_ref())
         .and_then(|m| m.tool_calls.as_ref())
         .map(|tc| {
@@ -609,12 +699,24 @@ pub async fn cloud_chat(
                 .collect()
         })
         .unwrap_or_default();
-    
+
+    // If the model put a tool call in the text content, prepend it to tool_calls
+    if let Some(ref tc) = extracted_tool_call {
+        tool_calls.insert(0, tc.clone());
+    }
+
+    // If we extracted a tool call from text, clear the content so it doesn't get spoken as JSON
+    let content = if extracted_tool_call.is_some() {
+        String::new()
+    } else {
+        raw_content
+    };
+
     let tokens_used = parsed
         .usage
         .map(|u| u.total_tokens.unwrap_or(0))
         .unwrap_or(0);
-    
+
     Ok(ModelResponse {
         content,
         model: parsed.model.unwrap_or_else(|| "cloud-router".to_string()),
@@ -634,15 +736,19 @@ pub async fn cloud_chat_stream(
     on_chunk: &mut dyn FnMut(&str) -> Result<()>,
 ) -> Result<ModelResponse> {
     let token = get_auth_token()?;
-    let token_preview = if token.len() > 10 { &token[..10] } else { &token };
+    let token_preview = if token.len() > 10 {
+        &token[..10]
+    } else {
+        &token
+    };
     log::info!("[cloud_chat_stream] URL: {}", CLOUD_ROUTER_URL);
     log::info!("[cloud_chat_stream] Token preview: {}...", token_preview);
-    
+
     let mut request_body = serde_json::json!({
         "messages": messages,
         "stream": true,
     });
-    
+
     if let Some(task) = task_type {
         let effective_task = if VALID_TASK_TYPES.contains(&task) {
             task.to_string()
@@ -654,7 +760,7 @@ pub async fn cloud_chat_stream(
     if let Some(max) = max_tokens {
         request_body["max_tokens"] = serde_json::json!(max);
     }
-    
+
     let client = reqwest::Client::new();
     let response = client
         .post(CLOUD_ROUTER_URL)
@@ -664,14 +770,25 @@ pub async fn cloud_chat_stream(
         .send()
         .await
         .map_err(|e| anyhow::anyhow!("Failed to call cloud router (stream): {}", e))?;
-    
+
     let status = response.status();
-    
+
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        log::error!("[cloud_chat_stream] Cloud router returned {}: {}", status, body);
-        log::error!("[cloud_chat_stream] Token preview sent (first 20): {}", if token.len() > 20 { &token[..20] } else { &token });
-        
+        log::error!(
+            "[cloud_chat_stream] Cloud router returned {}: {}",
+            status,
+            body
+        );
+        log::error!(
+            "[cloud_chat_stream] Token preview sent (first 20): {}",
+            if token.len() > 20 {
+                &token[..20]
+            } else {
+                &token
+            }
+        );
+
         let error_msg = match status.as_u16() {
             401 => format!("Unauthorized from cloud router (401): {}", body),
             402 => format!("Insufficient credits: {}", body),
@@ -681,27 +798,27 @@ pub async fn cloud_chat_stream(
         };
         anyhow::bail!(error_msg);
     }
-    
+
     // Parse SSE stream from cloud router (OpenAI-compatible format)
     let mut full_text = String::new();
     let mut buffer = String::new();
     let mut stream = response.bytes_stream();
-    
+
     use futures_util::StreamExt;
-    
+
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| anyhow::anyhow!("Stream read error: {}", e))?;
         let text = String::from_utf8_lossy(&chunk);
         buffer.push_str(&text);
-        
+
         while let Some(newline_pos) = buffer.find('\n') {
             let line = buffer[..newline_pos].trim().to_string();
             buffer = buffer[newline_pos + 1..].to_string();
-            
+
             if line.is_empty() || line.starts_with(':') {
                 continue;
             }
-            
+
             if line == "data: [DONE]" {
                 let tokens_used = (full_text.len() as f64 / 4.0).ceil() as i64;
                 return Ok(ModelResponse {
@@ -714,7 +831,7 @@ pub async fn cloud_chat_stream(
                     tool_calls: vec![],
                 });
             }
-            
+
             if let Some(data) = line.strip_prefix("data: ") {
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data) {
                     if let Some(content) = parsed
@@ -731,7 +848,7 @@ pub async fn cloud_chat_stream(
             }
         }
     }
-    
+
     let tokens_used = (full_text.len() as f64 / 4.0).ceil() as i64;
     Ok(ModelResponse {
         content: full_text,
@@ -748,7 +865,7 @@ pub async fn cloud_chat_stream(
 pub async fn cloud_get_models() -> Result<Vec<CloudModel>> {
     let token = get_auth_token()?;
     let url = format!("{}/v1/models", CLOUD_ROUTER_URL);
-    
+
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
@@ -756,19 +873,21 @@ pub async fn cloud_get_models() -> Result<Vec<CloudModel>> {
         .send()
         .await
         .map_err(|e| anyhow::anyhow!("Failed to fetch models: {}", e))?;
-    
+
     if !response.status().is_success() {
         anyhow::bail!("Failed to fetch models: {}", response.status());
     }
-    
+
     #[derive(Debug, serde::Deserialize)]
     struct ModelsResponse {
         data: Vec<CloudModel>,
     }
-    
-    let parsed: ModelsResponse = response.json().await
+
+    let parsed: ModelsResponse = response
+        .json()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to parse models response: {}", e))?;
-    
+
     Ok(parsed.data)
 }
 
@@ -806,13 +925,24 @@ pub async fn get_usage_stats(user_id: &str, days: i32) -> Result<UsageStats> {
         anyhow::bail!("usage stats fetch returned {}: {}", status, body);
     }
 
-    let rows: Vec<serde_json::Value> = resp.json().await
+    let rows: Vec<serde_json::Value> = resp
+        .json()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to parse usage stats: {}", e))?;
 
     let total_calls = rows.len() as i64;
-    let total_tokens: i64 = rows.iter().map(|r| r["tokens_used"].as_i64().unwrap_or(0)).sum();
-    let total_credits: i64 = rows.iter().map(|r| r["credits_charged"].as_i64().unwrap_or(0)).sum();
-    let success_count = rows.iter().filter(|r| r["status"].as_str() == Some("success")).count() as i64;
+    let total_tokens: i64 = rows
+        .iter()
+        .map(|r| r["tokens_used"].as_i64().unwrap_or(0))
+        .sum();
+    let total_credits: i64 = rows
+        .iter()
+        .map(|r| r["credits_charged"].as_i64().unwrap_or(0))
+        .sum();
+    let success_count = rows
+        .iter()
+        .filter(|r| r["status"].as_str() == Some("success"))
+        .count() as i64;
     let success_rate = if total_calls > 0 {
         success_count as f64 / total_calls as f64
     } else {
@@ -840,19 +970,25 @@ pub async fn get_usage_stats(user_id: &str, days: i32) -> Result<UsageStats> {
         entry.2 += credits;
     }
 
-    let by_provider = provider_map.into_iter().map(|(id, (calls, tokens, credits))| ProviderStat {
-        provider_id: id,
-        call_count: calls,
-        total_tokens: tokens,
-        total_credits: credits,
-    }).collect();
+    let by_provider = provider_map
+        .into_iter()
+        .map(|(id, (calls, tokens, credits))| ProviderStat {
+            provider_id: id,
+            call_count: calls,
+            total_tokens: tokens,
+            total_credits: credits,
+        })
+        .collect();
 
-    let by_model = model_map.into_iter().map(|(model, (calls, tokens, credits))| ModelStat {
-        model,
-        call_count: calls,
-        total_tokens: tokens,
-        total_credits: credits,
-    }).collect();
+    let by_model = model_map
+        .into_iter()
+        .map(|(model, (calls, tokens, credits))| ModelStat {
+            model,
+            call_count: calls,
+            total_tokens: tokens,
+            total_credits: credits,
+        })
+        .collect();
 
     Ok(UsageStats {
         total_calls,

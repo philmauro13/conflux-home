@@ -100,24 +100,21 @@ export function useAuth(): UseAuthReturn {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Pass Supabase credentials to Rust backend when session changes
-  // Also sync before each chat request to ensure we have a fresh token
+  // Pass Supabase credentials to Rust backend when session changes.
+  // Use a ref to skip redundant syncs when values haven't actually changed.
+  const lastSyncedRef = useRef<{token?: string; userId?: string}>({});
   useEffect(() => {
-    console.log('[useAuth] useAuth useEffect triggered');
-    console.log('[useAuth] session?.access_token:', !!session?.access_token);
-    console.log('[useAuth] session?.user?.id:', !!session?.user?.id);
-    if (!session?.access_token || !session?.user?.id) {
-      console.log('[useAuth] ❌ Skipping sync: no session or missing data');
-      return
-    }
-    console.log('[useAuth] 🚀 Syncing to engine...');
+    const token = session?.access_token;
+    const userId = session?.user?.id;
+    if (!token || !userId) return;
+    // Skip if nothing changed since last successful sync
+    if (lastSyncedRef.current.token === token && lastSyncedRef.current.userId === userId) return;
+    lastSyncedRef.current = { token, userId };
     invoke('set_supabase_session', {
       supabaseUrl: SUPABASE_URL,
       supabaseAnonKey: SUPABASE_ANON_KEY,
-      accessToken: session.access_token,
-      userId: session.user.id,
-    }).then(() => {
-      console.log('[useAuth] ✅ Synced to engine successfully');
+      accessToken: token,
+      userId,
     }).catch((err) => console.warn('[useAuth] ❌ Failed to sync Supabase session to backend:', err))
   }, [session?.access_token, session?.user?.id, SUPABASE_URL, SUPABASE_ANON_KEY])
 

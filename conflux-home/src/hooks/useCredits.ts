@@ -57,7 +57,7 @@ export function useCredits() {
     }
 
     try {
-      const result = await invoke<CreditBalance>('get_credit_balance', { userId: user.id });
+      const result = await invoke<CreditBalance>('get_credit_balance', { user_id: user.id });
       setBalance(result);
       setError(null);
     } catch (err) {
@@ -95,7 +95,7 @@ export function useUsageHistory(limit: number = 20) {
     }
 
     try {
-      const result = await invoke<UsageEntry[]>('get_usage_history', { userId: user.id, limit });
+      const result = await invoke<UsageEntry[]>('get_usage_history', { user_id: user.id, limit });
       setEntries(result);
     } catch (err) {
       console.error('Failed to load usage history:', err);
@@ -126,7 +126,7 @@ export function useUsageStats(days: number = 7) {
     }
 
     try {
-      const result = await invoke<UsageStats>('get_usage_stats', { userId: user.id, days });
+      const result = await invoke<UsageStats>('get_usage_stats', { user_id: user.id, days });
       setStats(result);
     } catch (err) {
       console.error('Failed to load usage stats:', err);

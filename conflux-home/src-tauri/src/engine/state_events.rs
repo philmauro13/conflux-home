@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
-use chrono::{Utc, DateTime};
 
 // ── State Types ──
 
@@ -46,7 +46,7 @@ impl StateManager {
     pub fn transition(&mut self, new_state: ConfluxState) -> Result<(), String> {
         self.current_state = new_state.clone();
         self.last_transition = Utc::now();
-        
+
         if let Some(window) = &self.window {
             let event = StateChangeEvent {
                 state: new_state.clone(),
@@ -55,12 +55,13 @@ impl StateManager {
                 timestamp: self.last_transition.to_rfc3339(),
                 metadata: None,
             };
-            
+
             log::info!("[StateManager] Transitioning to {:?}", new_state);
-            window.emit("conflux:state", &event)
+            window
+                .emit("conflux:state", &event)
                 .map_err(|e| e.to_string())?;
         }
-        
+
         Ok(())
     }
 
@@ -73,7 +74,7 @@ impl StateManager {
     ) -> Result<(), String> {
         self.current_state = new_state.clone();
         self.last_transition = Utc::now();
-        
+
         if let Some(window) = &self.window {
             let event = StateChangeEvent {
                 state: new_state,
@@ -82,11 +83,12 @@ impl StateManager {
                 timestamp: self.last_transition.to_rfc3339(),
                 metadata,
             };
-            
-            window.emit("conflux:state", &event)
+
+            window
+                .emit("conflux:state", &event)
                 .map_err(|e| e.to_string())?;
         }
-        
+
         Ok(())
     }
 

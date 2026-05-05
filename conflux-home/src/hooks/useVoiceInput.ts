@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 interface UseVoiceInputOptions {
   onTranscription: (text: string) => void;
@@ -59,11 +60,40 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputRetur
     setIsListening(false);
 
     try {
-      // Stop recording
-      const result = await invoke<{ samples: number; duration_seconds: number }>('voice_capture_stop');
+      // Stop recording — backend returns transcript if realtime STT delivered it
+      const result = await invoke<{ samples: number; duration_seconds: number; transcript?: string | null }>('voice_capture_stop');
 
       if (result.samples > 1600) { // At least 0.1s of audio
         setIsTranscribing(true);
+
+        // Fast path: realtime STT already gave us a transcript synchronously
+        if (result.transcript && result.transcript.trim()) {
+          options.onTranscription(result.transcript.trim());
+          return;
+        }
+
+        // Fallback: wait for conflux:transcription event (realtime STT arrived after stop)
+        // This handles the case where transcript arrived just after voice_capture_stop returned.
+        const transcriptionText = await new Promise<string>(async (resolve) => {
+          const unlisten = await listen<{ text: string }>('conflux:transcription', (event) => {
+            if (timeoutId) clearTimeout(timeoutId);
+            unlisten();
+            if (event.payload?.text) resolve(event.payload.text);
+            else resolve('');
+          });
+
+          let timeoutId: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+            unlisten();
+            resolve('');
+          }, 3000);
+        });
+
+        if (transcriptionText && transcriptionText.trim()) {
+          options.onTranscription(transcriptionText.trim());
+          return;
+        }
+
+        // Last resort: batch Whisper / ElevenLabs
         const text = await invoke<string>('voice_transcribe');
         if (text) {
           options.onTranscription(text);

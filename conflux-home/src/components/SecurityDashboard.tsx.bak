@@ -1,0 +1,954 @@
+// Conflux Home — Security Center Dashboard (Consumer Redesign)
+// Mission 1224: Plain-language security for AI agent homes
+// Permission gates, event log, agent profiles — made human-readable
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+
+// ── Timeout wrapper — prevents invoke calls from hanging forever ──
+function invokeTimeout<T>(cmd: string, args?: Record<string, unknown>, ms = 5000): Promise<T> {
+  return Promise.race([
+    invoke<T>(cmd, args),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Command '${cmd}' timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+// ── Types ──
+
+interface SecurityEvent {
+  id: string;
+  agent_id: string;
+  event_type: string;
+  category: 'info' | 'warning' | 'critical';
+  tool_name: string | null;
+  target: string | null;
+  risk_score: number;
+  was_allowed: boolean;
+  created_at: string;
+}
+
+interface PermissionPrompt {
+  id: string;
+  agent_id: string;
+  agent_name: string;
+  agent_emoji: string;
+  request_type: string;
+  target: string;
+  tool_name: string | null;
+  created_at: string;
+}
+
+interface AgentProfile {
+  agent_id: string;
+  sandbox_enabled: boolean;
+  file_access_mode: string;
+  network_mode: string;
+  exec_mode: string;
+  anomaly_threshold: number;
+}
+
+// ── Helpers ──
+
+function postureIcon(allowed: boolean, risk: number): string {
+  if (!allowed) return '🚫';
+  if (risk >= 70) return '🔴';
+  if (risk >= 40) return '🟡';
+  return '✅';
+}
+
+function eventIcon(type: string): string {
+  const icons: Record<string, string> = {
+    file_access: '📁',
+    network_request: '🌐',
+    exec_command: '💻',
+    api_call: '🔌',
+    browser_action: '🌍',
+    permission_denied: '🚫',
+    anomaly: '⚠️',
+  };
+  return icons[type] || '📋';
+}
+
+function eventLabel(type: string): string {
+  const labels: Record<string, string> = {
+    file_access: 'tried to read a file',
+    network_request: 'made a network request',
+    exec_command: 'ran a command',
+    api_call: 'called an API',
+    browser_action: 'opened something in browser',
+    permission_denied: 'was denied access',
+    anomaly: 'triggered an anomaly detection',
+  };
+  return labels[type] || type;
+}
+
+function categoryColor(cat: string): string {
+  return cat === 'critical' ? '#ef4444' : cat === 'warning' ? '#f59e0b' : '#22c55e';
+}
+
+function formatAge(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return d.toLocaleDateString();
+  } catch {
+    return iso;
+  }
+}
+
+function truncate(str: string, len: number): string {
+  if (!str) return '—';
+  return str.length > len ? str.slice(0, len) + '...' : str;
+}
+
+// ── Component ──
+
+export default function SecurityDashboard() {
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [prompts, setPrompts] = useState<PermissionPrompt[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, AgentProfile>>({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'activity' | 'permissions' | 'pending'>('activity');
+  const [toasts, setToasts] = useState<Array<{id: string; title: string; body: string; key: string}>>([]);
+
+  const load = useCallback(async () => {
+    try {
+      const [ev, pr, siemOverview] = await Promise.all([
+        invokeTimeout<SecurityEvent[]>('security_get_events', { limit: 30 }),
+        invokeTimeout<PermissionPrompt[]>('security_get_pending_prompts', {}),
+        invokeTimeout<any>('siem_get_risk_overview').catch(() => null),
+      ]);
+      setEvents(ev);
+      setPrompts(pr);
+
+      // Load profiles for all agents seen
+      const agentIds = [...new Set([...ev.map(e => e.agent_id), ...pr.map(p => p.agent_id)])];
+      const profilesMap: Record<string, AgentProfile> = {};
+      for (const id of agentIds) {
+        try {
+          const profile = await invoke<any>('security_get_profile', { agentId: id });
+          profilesMap[id] = profile;
+        } catch { /* skip */ }
+      }
+      setProfiles(profilesMap);
+    } catch (err: any) {
+      console.error('[Security] Load failed:', err);
+      setLoadError(err?.message ?? String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  // Real-time security events
+  useEffect(() => {
+    const unlisten = listen('security:event', (event) => {
+      const newEvent = event.payload as SecurityEvent;
+      setEvents(prev => [newEvent, ...prev.slice(0, 49)]);
+    });
+    return () => { unlisten.then(fn => fn()); };
+  }, []);
+
+  // Real-time permission prompt notifications
+  useEffect(() => {
+    const unlisten = listen<{ title: string; body: string; timestamp: string }>(
+      'security:permission_prompt',
+      (event) => {
+        const toast = {
+          id: Date.now().toString(),
+          title: event.payload.title,
+          body: event.payload.body,
+          key: event.payload.timestamp,
+        };
+        setToasts(prev => {
+          if (prev.some(t => t.key === toast.key)) return prev;
+          return [...prev, toast];
+        });
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== toast.id));
+        }, 10000);
+        // Also refresh prompts and switch to pending tab
+        setActiveTab('pending');
+        load();
+      }
+    );
+    return () => { unlisten.then(fn => fn()); };
+  }, [load]);
+
+  const handlePrompt = async (
+    id: string,
+    decision: 'allow_once' | 'allow_always' | 'deny_once' | 'deny_always'
+  ) => {
+    try {
+      await invokeTimeout('security_resolve_prompt', { promptId: id, decision });
+      setPrompts(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      console.error('[Security] Prompt resolution failed:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={s.container}>
+        <div style={s.loading}>
+          <div style={s.loadingIcon}>🛡️</div>
+          <div style={s.loadingText}>Loading Security Center...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={s.container}>
+        <div style={s.errorBox}>
+          <div style={s.errorIcon}>⚠️</div>
+          <h3 style={s.errorTitle}>Couldn't load Security Center</h3>
+          <p style={s.errorText}>{loadError}</p>
+          <p style={s.errorHint}>Make sure the Conflux engine is running with the latest build.</p>
+          <button style={s.retryBtn} onClick={() => { setLoadError(null); setLoading(true); load(); }}>
+            🔄 Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const pendingCount = prompts.length;
+  const recentCritical = events.filter(e => e.category === 'critical').slice(0, 5);
+
+  return (
+    <div style={s.container}>
+      {/* ── Toast Notifications ── */}
+      {toasts.map(toast => (
+        <div key={toast.id} style={s.toast}>
+          <div style={s.toastTitle}>🔔 {toast.title}</div>
+          <div style={s.toastBody}>{toast.body}</div>
+          <div style={s.toastActions}>
+            <button
+              style={{ ...s.toastBtn, background: '#22c55e', marginRight: 8 }}
+              onClick={() => { setActiveTab('pending'); setToasts(prev => prev.filter(t => t.id !== toast.id)); }}
+            >
+              Review Now
+            </button>
+            <button
+              style={{ ...s.toastBtn, background: '#1e293b' }}
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* ── Header ── */}
+      <div style={s.header}>
+        <div style={s.headerLeft}>
+          <span style={s.headerIcon}>🛡️</span>
+          <div>
+            <h1 style={s.title}>Security Center</h1>
+            <p style={s.subtitle}>Who your agents can talk to and what they can do</p>
+          </div>
+        </div>
+        {pendingCount > 0 && (
+          <button
+            style={s.pendingAlert}
+            onClick={() => setActiveTab('pending')}
+          >
+            🔔 {pendingCount} request{pendingCount !== 1 ? 's' : ''} need your approval
+          </button>
+        )}
+      </div>
+
+      {/* ── Critical Alert Strip ── */}
+      {recentCritical.length > 0 && (
+        <div style={s.alertStrip}>
+          <div style={s.alertStripHeader}>🚨 Recent Security Events</div>
+          {recentCritical.map(e => (
+            <div key={e.id} style={s.alertStripItem}>
+              <span>{eventIcon(e.event_type)}</span>
+              <span style={s.alertAgent}>{e.agent_id}</span>
+              <span style={s.alertText}>{eventLabel(e.event_type)}</span>
+              <span style={s.alertTarget}>{truncate(e.target || '', 40)}</span>
+              <span style={s.alertTime}>{formatAge(e.created_at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Tabs ── */}
+      <div style={s.tabs}>
+        {[
+          { key: 'activity', label: `📋 Activity (${events.length})` },
+          { key: 'permissions', label: '🔐 Agent Permissions' },
+          { key: 'pending', label: `🔔 Pending (${pendingCount})` },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            style={{ ...s.tab, ...(activeTab === tab.key ? s.tabActive : {}) }}
+            onClick={() => setActiveTab(tab.key as typeof activeTab)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Activity Tab ── */}
+      {activeTab === 'activity' && (
+        <div style={s.activityTab}>
+          {events.length === 0 ? (
+            <div style={s.emptyState}>
+              <div style={s.emptyIcon}>🛡️</div>
+              <h3 style={s.emptyTitle}>No Activity Yet</h3>
+              <p style={s.emptyText}>
+                Agent actions will appear here as they happen. Run a scan from the Security Hub to generate your first security events.
+              </p>
+            </div>
+          ) : (
+            <div style={s.eventList}>
+              {events.map(event => (
+                <div
+                  key={event.id}
+                  style={{
+                    ...s.eventRow,
+                    borderLeft: `3px solid ${categoryColor(event.category)}`,
+                  }}
+                >
+                  <div style={s.eventIcon}>{eventIcon(event.event_type)}</div>
+                  <div style={s.eventBody}>
+                    <div style={s.eventHeader}>
+                      <span style={s.eventAgent}>{event.agent_id}</span>
+                      <span style={s.eventAction}>{eventLabel(event.event_type)}</span>
+                      {!event.was_allowed && (
+                        <span style={s.deniedBadge}>Denied</span>
+                      )}
+                    </div>
+                    {event.target && (
+                      <div style={s.eventTarget}>{truncate(event.target, 80)}</div>
+                    )}
+                    <div style={s.eventMeta}>
+                      {event.tool_name && (
+                        <span style={s.eventTool}>{event.tool_name}</span>
+                      )}
+                      <span style={{ color: categoryColor(event.category), fontSize: '12px', fontWeight: 600 }}>
+                        {event.category.toUpperCase()}
+                      </span>
+                      <span style={s.eventTime}>{formatAge(event.created_at)}</span>
+                    </div>
+                  </div>
+                  <div style={s.eventRisk}>
+                    {event.risk_score > 0 ? (
+                      <span style={{
+                        color: event.risk_score >= 70 ? '#ef4444' : event.risk_score >= 40 ? '#f59e0b' : '#22c55e',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                      }}>
+                        {event.risk_score}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Permissions Tab ── */}
+      {activeTab === 'permissions' && (
+        <div style={s.permissionsTab}>
+          <div style={s.permissionsIntro}>
+            <p style={s.permissionsIntroText}>
+              Each agent has its own security profile — controls what it can access on your system. These are the agents currently running in your home.
+            </p>
+          </div>
+          <div style={s.profileGrid}>
+            {Object.entries(profiles).map(([agentId, profile]) => (
+              <div key={agentId} style={s.profileCard}>
+                <div style={s.profileHeader}>
+                  <span style={s.profileName}>{agentId}</span>
+                  <span style={{
+                    ...s.profileBadge,
+                    background: profile.sandbox_enabled ? '#22c55e22' : '#ef444422',
+                    color: profile.sandbox_enabled ? '#22c55e' : '#ef4444',
+                  }}>
+                    {profile.sandbox_enabled ? '🛡️ Sandboxed' : '⚠️ Unrestricted'}
+                  </span>
+                </div>
+                <div style={s.profileGrid2}>
+                  <PermissionChip label="Files" value={profile.file_access_mode} icon="📁" />
+                  <PermissionChip label="Network" value={profile.network_mode} icon="🌐" />
+                  <PermissionChip label="Commands" value={profile.exec_mode} icon="💻" />
+                </div>
+                <div style={s.profileThreshold}>
+                  Anomaly threshold: {profile.anomaly_threshold}/100
+                </div>
+              </div>
+            ))}
+          </div>
+          {Object.keys(profiles).length === 0 && (
+            <div style={s.emptyState}>
+              <div style={s.emptyIcon}>🤖</div>
+              <h3 style={s.emptyTitle}>No Agents Configured</h3>
+              <p style={s.emptyText}>
+                Add agents through the Agents app and their security profiles will appear here.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Pending Prompts Tab ── */}
+      {activeTab === 'pending' && (
+        <div style={s.pendingTab}>
+          {prompts.length === 0 ? (
+            <div style={s.emptyState}>
+              <div style={s.emptyIcon}>✅</div>
+              <h3 style={s.emptyTitle}>All Clear</h3>
+              <p style={s.emptyText}>
+                No pending permission requests. Your agents are operating within their allowed boundaries.
+              </p>
+            </div>
+          ) : (
+            <div style={s.promptList}>
+              {prompts.map(prompt => (
+                <div key={prompt.id} style={s.promptCard}>
+                  <div style={s.promptTop}>
+                    <span style={s.promptAgentEmoji}>{prompt.agent_emoji}</span>
+                    <div style={s.promptAgentInfo}>
+                      <span style={s.promptAgentName}>{prompt.agent_name}</span>
+                      <span style={s.promptAgentId}>ID: {prompt.agent_id}</span>
+                    </div>
+                    <span style={s.promptAge}>{formatAge(prompt.created_at)}</span>
+                  </div>
+
+                  <div style={s.promptRequest}>
+                    <span style={s.promptRequestLabel}>wants to</span>
+                    <code style={s.promptTool}>{prompt.tool_name || prompt.request_type}</code>
+                    <span style={s.promptRequestLabel}>this:</span>
+                  </div>
+                  <div style={s.promptTarget}>"{truncate(prompt.target, 80)}"</div>
+
+                  <div style={s.promptActions}>
+                    <button
+                      style={{ ...s.promptBtn, background: '#22c55e' }}
+                      onClick={() => handlePrompt(prompt.id, 'allow_once')}
+                    >
+                      ✓ Allow Once
+                    </button>
+                    <button
+                      style={{ ...s.promptBtn, background: '#3b82f6' }}
+                      onClick={() => handlePrompt(prompt.id, 'allow_always')}
+                    >
+                      ✓ Always Allow
+                    </button>
+                    <button
+                      style={{ ...s.promptBtn, background: '#f59e0b' }}
+                      onClick={() => handlePrompt(prompt.id, 'deny_once')}
+                    >
+                      ✗ Deny Once
+                    </button>
+                    <button
+                      style={{ ...s.promptBtn, background: '#ef4444' }}
+                      onClick={() => handlePrompt(prompt.id, 'deny_always')}
+                    >
+                      ✗ Always Block
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PermissionChip({ label, value, icon }: { label: string; value: string; icon: string }) {
+  const color = value === 'open' || value === 'prompt_all' ? '#f59e0b' : '#22c55e';
+  const label2 = value === 'open' ? 'Full Access' : value === 'prompt_all' ? 'Ask First' : value === 'allowlist' ? 'Restricted' : value;
+  return (
+    <div style={s.permissionChip}>
+      <span style={s.permissionChipIcon}>{icon}</span>
+      <span style={s.permissionChipLabel}>{label}</span>
+      <span style={{ ...s.permissionChipValue, color }}>{label2}</span>
+    </div>
+  );
+}
+
+// ── Styles ──
+
+const s: Record<string, React.CSSProperties> = {
+  container: {
+    padding: '24px',
+    maxWidth: '860px',
+    margin: '0 auto',
+    color: '#e2e8f0',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  loading: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '60vh',
+    gap: '12px',
+  },
+  loadingIcon: {
+    fontSize: '48px',
+    animation: 'pulse 2s infinite',
+  },
+  loadingText: {
+    color: '#64748b',
+    fontSize: '15px',
+  },
+
+  // Header
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '20px',
+    flexWrap: 'wrap' as const,
+    gap: '12px',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  headerIcon: {
+    fontSize: '32px',
+  },
+  title: {
+    fontSize: '24px',
+    fontWeight: 700,
+    margin: 0,
+    color: '#f1f5f9',
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#64748b',
+    margin: '2px 0 0 0',
+  },
+  pendingAlert: {
+    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+
+  // Alert Strip
+  alertStrip: {
+    background: '#0f172a',
+    border: '1px solid #1e293b',
+    borderRadius: '12px',
+    marginBottom: '20px',
+    overflow: 'hidden',
+  },
+  alertStripHeader: {
+    padding: '10px 16px',
+    background: '#ef444415',
+    borderBottom: '1px solid #1e293b',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#ef4444',
+  },
+  alertStripItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    borderBottom: '1px solid #1e293b',
+  },
+  alertAgent: {
+    fontWeight: 700,
+    color: '#6366f1',
+    minWidth: 80,
+  },
+  alertText: {
+    color: '#94a3b8',
+    flex: 1,
+  },
+  alertTarget: {
+    color: '#475569',
+    fontSize: '12px',
+    maxWidth: 200,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
+  alertTime: {
+    color: '#475569',
+    fontSize: '11px',
+    flexShrink: 0,
+  },
+
+  // Tabs
+  tabs: {
+    display: 'flex',
+    gap: '4px',
+    marginBottom: '16px',
+    borderBottom: '1px solid #1e293b',
+    paddingBottom: '12px',
+  },
+  tab: {
+    background: 'transparent',
+    color: '#64748b',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 500,
+  },
+  tabActive: {
+    background: '#1e293b',
+    color: '#f1f5f9',
+  },
+
+  // Activity Tab
+  activityTab: {},
+  eventList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '4px',
+  },
+  eventRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    padding: '10px 14px',
+    background: '#0f172a',
+    borderRadius: '8px',
+  },
+  eventIcon: {
+    fontSize: '18px',
+    flexShrink: 0,
+    marginTop: '2px',
+  },
+  eventBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eventHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '2px',
+  },
+  eventAgent: {
+    fontWeight: 700,
+    fontSize: '14px',
+    color: '#6366f1',
+  },
+  eventAction: {
+    fontSize: '13px',
+    color: '#94a3b8',
+  },
+  deniedBadge: {
+    background: '#ef444422',
+    color: '#ef4444',
+    fontSize: '10px',
+    fontWeight: 700,
+    padding: '1px 6px',
+    borderRadius: '4px',
+  },
+  eventTarget: {
+    fontSize: '12px',
+    color: '#475569',
+    marginBottom: '4px',
+    fontFamily: 'monospace',
+    wordBreak: 'break-all' as const,
+  },
+  eventMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  eventTool: {
+    background: '#1e293b',
+    color: '#94a3b8',
+    fontSize: '11px',
+    padding: '1px 6px',
+    borderRadius: '4px',
+    fontFamily: 'monospace',
+  },
+  eventTime: {
+    fontSize: '11px',
+    color: '#475569',
+  },
+  eventRisk: {
+    flexShrink: 0,
+    minWidth: '24px',
+    textAlign: 'right' as const,
+  },
+
+  // Permissions Tab
+  permissionsTab: {},
+  permissionsIntro: {
+    marginBottom: '16px',
+  },
+  permissionsIntroText: {
+    fontSize: '14px',
+    color: '#64748b',
+    margin: 0,
+    lineHeight: 1.5,
+  },
+  profileGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '12px',
+  },
+  profileCard: {
+    background: '#0f172a',
+    border: '1px solid #1e293b',
+    borderRadius: '12px',
+    padding: '16px',
+  },
+  profileHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+  },
+  profileName: {
+    fontSize: '16px',
+    fontWeight: 700,
+    color: '#f1f5f9',
+    textTransform: 'capitalize' as const,
+  },
+  profileBadge: {
+    fontSize: '11px',
+    fontWeight: 700,
+    padding: '3px 8px',
+    borderRadius: '6px',
+  },
+  profileGrid2: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '6px',
+    marginBottom: '10px',
+  },
+  permissionChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+  },
+  permissionChipIcon: {
+    fontSize: '14px',
+    width: '20px',
+    textAlign: 'center' as const,
+  },
+  permissionChipLabel: {
+    color: '#64748b',
+    flex: 1,
+  },
+  permissionChipValue: {
+    fontWeight: 600,
+    fontSize: '12px',
+  },
+  profileThreshold: {
+    fontSize: '11px',
+    color: '#475569',
+    marginTop: '4px',
+  },
+
+  // Pending Tab
+  pendingTab: {},
+  promptList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '12px',
+  },
+  promptCard: {
+    background: '#0f172a',
+    border: '1px solid #1e293b',
+    borderLeft: '4px solid #f59e0b',
+    borderRadius: '12px',
+    padding: '20px',
+  },
+  promptTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '12px',
+  },
+  promptAgentEmoji: {
+    fontSize: '28px',
+  },
+  promptAgentInfo: {
+    flex: 1,
+  },
+  promptAgentName: {
+    fontSize: '16px',
+    fontWeight: 700,
+    color: '#f1f5f9',
+    display: 'block',
+  },
+  promptAgentId: {
+    fontSize: '11px',
+    color: '#475569',
+  },
+  promptAge: {
+    fontSize: '12px',
+    color: '#475569',
+  },
+  promptRequest: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginBottom: '6px',
+    fontSize: '14px',
+  },
+  promptRequestLabel: {
+    color: '#94a3b8',
+  },
+  promptTool: {
+    background: '#1e293b',
+    color: '#22c55e',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    fontSize: '13px',
+    fontFamily: 'monospace',
+  },
+  promptTarget: {
+    fontSize: '13px',
+    color: '#cbd5e1',
+    background: '#020617',
+    borderRadius: '6px',
+    padding: '8px 12px',
+    marginBottom: '14px',
+    wordBreak: 'break-all' as const,
+    fontFamily: 'monospace',
+  },
+  promptActions: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap' as const,
+  },
+  promptBtn: {
+    padding: '7px 16px',
+    border: 'none',
+    borderRadius: '7px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 600,
+    transition: 'opacity 0.15s',
+  },
+
+  // Empty State
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: '48px 24px',
+  },
+  emptyIcon: {
+    fontSize: '56px',
+    marginBottom: '16px',
+  },
+  emptyTitle: {
+    fontSize: '18px',
+    fontWeight: 700,
+    color: '#f1f5f9',
+    marginBottom: '8px',
+  },
+  emptyText: {
+    fontSize: '14px',
+    color: '#64748b',
+    maxWidth: '400px',
+    margin: '0 auto',
+    lineHeight: 1.6,
+  },
+
+  // Toast Notifications
+  toast: {
+    position: 'fixed' as const,
+    top: 24,
+    right: 24,
+    zIndex: 9999,
+    width: 340,
+    background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+    border: '1px solid #22c55e55',
+    borderRadius: 14,
+    padding: '16px 18px',
+    boxShadow: '0 8px 32px rgba(34, 197, 94, 0.25), 0 0 0 1px rgba(34, 197, 94, 0.1)',
+    animation: 'slideInRight 0.3s ease',
+  },
+  toastTitle: {
+    fontSize: '15px',
+    fontWeight: 700,
+    color: '#22c55e',
+    marginBottom: 6,
+  },
+  toastBody: {
+    fontSize: '13px',
+    color: '#94a3b8',
+    marginBottom: 12,
+    lineHeight: 1.5,
+  },
+  toastActions: {
+    display: 'flex',
+    gap: 8,
+  },
+  toastBtn: {
+    flex: 1,
+    padding: '7px 0',
+    border: 'none',
+    borderRadius: 7,
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 600,
+    transition: 'opacity 0.15s',
+  },
+
+  // Error State
+  errorBox: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '48px 24px',
+    textAlign: 'center' as const,
+    gap: '12px',
+  },
+  errorIcon: { fontSize: '52px' },
+  errorTitle: { fontSize: '18px', fontWeight: 700, color: '#f1f5f9', margin: 0 },
+  errorText: { fontSize: '14px', color: '#f59e0b', margin: 0, maxWidth: '400px' },
+  errorHint: { fontSize: '13px', color: '#64748b', margin: 0 },
+  retryBtn: {
+    marginTop: '8px',
+    padding: '9px 20px',
+    background: '#1e293b',
+    border: '1px solid #334155',
+    borderRadius: '8px',
+    color: '#e2e8f0',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 600,
+  },
+};

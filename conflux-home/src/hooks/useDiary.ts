@@ -17,9 +17,9 @@ export function useDiary() {
     finally { setLoading(false); }
   }, []);
 
-  const loadEntries = useCallback(async (agentId: string, limit?: number) => {
+  const loadEntries = useCallback(async (agent_id: string, limit?: number) => {
     try {
-      const e = await invoke<DiaryEntry[]>('diary_get_entries', { agentId, limit: limit ?? 20 });
+      const e = await invoke<DiaryEntry[]>('diary_get_entries', { agent_id, limit: limit ?? 20 });
       setEntries(e);
     } catch (e) { console.error('Failed:', e); }
   }, []);
@@ -38,8 +38,8 @@ export function useDiary() {
     } catch (e) { console.error('Failed:', e); }
   }, []);
 
-  const generateEntry = useCallback(async (agentId: string) => {
-    const entry = await invoke<DiaryEntry>('diary_generate_entry', { agentId });
+  const generateEntry = useCallback(async (agent_id: string) => {
+    const entry = await invoke<DiaryEntry>('diary_generate_entry', { agent_id });
     await loadDashboard();
     return entry;
   }, [loadDashboard]);

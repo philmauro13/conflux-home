@@ -172,7 +172,30 @@ export default function GoogleView() {
       <div className="google-hero">
         <div className="google-hero-glow" />
         <div className="google-hero-content">
-          <div className="google-hero-icon">🔍</div>
+          <div className="google-hero-icon">
+            <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="72" height="72" rx="18" fill="url(#g_grad)" opacity="0.15"/>
+              <circle cx="36" cy="36" r="22" stroke="url(#g_grad)" strokeWidth="2.5" fill="none"/>
+              <circle cx="36" cy="36" r="14" fill="none" stroke="#4285F4" strokeWidth="1.5" opacity="0.6"/>
+              <circle cx="36" cy="36" r="6" fill="#4285F4" opacity="0.9"/>
+              {/* Orbit dot */}
+              <circle cx="36" cy="14" r="3.5" fill="#EA4335"/>
+              <circle cx="53.1" cy="25" r="3.5" fill="#FBBC05"/>
+              <circle cx="53.1" cy="47" r="3.5" fill="#34A853"/>
+              <circle cx="36" cy="58" r="3.5" fill="#4285F4"/>
+              <circle cx="18.9" cy="47" r="3.5" fill="#EA4335" opacity="0.7"/>
+              <circle cx="18.9" cy="25" r="3.5" fill="#FBBC05" opacity="0.7"/>
+              {/* Connecting rings */}
+              <ellipse cx="36" cy="36" rx="22" ry="8" stroke="#4285F4" strokeWidth="1" fill="none" opacity="0.3" transform="rotate(-30 36 36)"/>
+              <ellipse cx="36" cy="36" rx="22" ry="8" stroke="#4285F4" strokeWidth="1" fill="none" opacity="0.3" transform="rotate(30 36 36)"/>
+              <defs>
+                <linearGradient id="g_grad" x1="0" y1="0" x2="72" y2="72">
+                  <stop stopColor="#4285F4"/>
+                  <stop offset="1" stopColor="#34A853"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
           <h1 className="google-hero-title">Google Center</h1>
           <p className="google-hero-sub">Your workspace, at a glance</p>
         </div>

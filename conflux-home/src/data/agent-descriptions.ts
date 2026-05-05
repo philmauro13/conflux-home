@@ -330,6 +330,52 @@ export const AGENT_PROFILES: AgentProfile[] = [
     category: 'fun',
     comingSoon: true,
   },
+  {
+    id: 'hearth',
+    name: 'Hearth',
+    emoji: '🍳',
+    role: 'Personal Nutritionist',
+    tagline: 'Your kitchen co-pilot for mindful eating.',
+    description:
+      'Hearth is your personal nutritionist — the agent that helps you eat well without the fuss. From meal planning to mindful eating habits, Hearth makes nutrition approachable, sustainable, and delicious.',
+    personality: 'Warm, encouraging, practical. Never judgmental about food choices — focuses on progress, not perfection.',
+    skills: ['Meal planning', 'Nutritional guidance', 'Dietary accommodation', 'Mindful eating coaching', 'Grocery list optimization'],
+    bestFor: ['Building healthier eating habits', 'Planning meals around dietary needs', 'Learning to cook simple, nutritious meals', 'Developing a positive relationship with food'],
+    avatarPath: '/avatars/hearth.webp',
+    color: AGENT_COLORS.hearth,
+    category: 'life',
+  },
+  {
+    id: 'echo',
+    name: 'Echo',
+    emoji: '🫂',
+    role: 'Wellbeing Coach',
+    tagline: 'Your mindful companion for mental wellness.',
+    description:
+      'Echo is your wellbeing coach — the agent that helps you check in, reflect, and nurture your mental health. From daily mood check-ins to guided reflections, Echo creates space for you to breathe and be present.',
+    personality: 'Gentle, empathetic, present. Creates a safe space without pressure. Listens more than speaks, and always meets you where you are.',
+    skills: ['Mental wellness check-ins', 'Reflective journaling', 'Mood tracking', 'Guided breathing', 'Stress management'],
+    bestFor: ['Starting a daily reflection habit', 'Managing stress and anxiety', 'Building emotional awareness', 'Creating space for self-care'],
+    avatarPath: '/avatars/echo.webp',
+    color: AGENT_COLORS.echo,
+    category: 'life',
+  },
+  {
+    id: 'legal-expert',
+    name: 'Legal Eagle',
+    emoji: '⚖️',
+    role: 'Legal Advisor',
+    tagline: 'Your on-call legal advisor.',
+    description:
+      'Legal Eagle is the agent that reviews contracts, explains complex legal concepts in plain language, and flags risks before you sign on the dotted line. Think of having a sharp paralegal in your pocket — one who actually reads the fine print.',
+    personality: 'Precise, cautious, thorough. Reads every clause twice. Never rushes a recommendation and always shows the risk before the reward.',
+    skills: ['Contract review', 'Legal research', 'Compliance checks', 'Risk assessment', 'Plain-language legal translation'],
+    bestFor: ['Reviewing contracts and agreements', 'Understanding legal terminology', 'Identifying risks in business documents'],
+    avatarPath: '/avatars/legal-expert.webp',
+    color: '#8866cc',
+    category: 'expert',
+    comingSoon: true,
+  },
 ];
 
 // Quick lookup by id

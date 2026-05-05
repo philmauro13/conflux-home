@@ -5,12 +5,17 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useHomeHealth } from '../hooks/useHomeHealth';
 import { useHomeDiagnosis, usePredictions, useSeasonalTasks, useWarrantyAlerts, useHomeChat } from '../hooks/foundation-hooks';
 import { FoundationHero, FoundationDiagnosisCard, FoundationPredictionsGrid, FoundationSeasonalCalendar, FoundationChat, FoundationVault } from './foundation';
+import FoundationBoot from './FoundationBoot';
+import FoundationOnboarding, { hasCompletedFoundationOnboarding } from './FoundationOnboarding';
+import FoundationTour, { hasCompletedFoundationTour } from './FoundationTour';
+import type { HomeProfile } from '../types';
 import '../styles/foundation.css';
+import '../styles/foundation-onboarding.css';
 
 type Tab = 'overview' | 'diagnose' | 'calendar' | 'vault' | 'chat';
 
 export default function HomeHealthView() {
-  const { dashboard, loading, load } = useHomeHealth();
+  const { dashboard, loading, load, setProfileData } = useHomeHealth();
   const { diagnosis, loading: diagnosing, error: diagnoseError, diagnose } = useHomeDiagnosis();
   const { predictions, load: loadPredictions } = usePredictions();
   const { tasks, load: loadSeasonalTasks, complete } = useSeasonalTasks();
@@ -23,6 +28,14 @@ export default function HomeHealthView() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth() + 1);
   const [recentDiagnoses, setRecentDiagnoses] = useState<string[]>([]);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+
+  // Boot → Onboarding → Tour → Main view
+  // bootDone persists so boot only plays once per session
+  const [bootDone, setBootDone] = useState(() => localStorage.getItem('foundation-boot-done') === 'true');
+  const hasOnboarded = hasCompletedFoundationOnboarding();
+  const hasTakenTour = hasCompletedFoundationTour();
+  const [showOnboarding, setShowOnboarding] = useState(!bootDone && !hasOnboarded);
+  const [showTour, setShowTour] = useState(!bootDone ? false : !hasTakenTour);
 
   // Load dashboard on mount
   useEffect(() => { load(); }, [load]);
@@ -79,6 +92,19 @@ export default function HomeHealthView() {
     return { path, areaPath, w, h };
   }, [billTrend]);
 
+  // Boot → Onboarding → Tour → Main
+  if (!bootDone) {
+    return <FoundationBoot onComplete={() => { localStorage.setItem('foundation-boot-done', 'true'); setBootDone(true); }} />;
+  }
+
+  if (showOnboarding) {
+    return <FoundationOnboarding onComplete={(createdProfile?: HomeProfile) => { if (createdProfile) setProfileData(createdProfile); setShowOnboarding(false); if (!hasTakenTour) setShowTour(true); }} />;
+  }
+
+  if (showTour) {
+    return <FoundationTour onComplete={() => setShowTour(false)} />;
+  }
+
   if (loading) {
     return (
       <div className="foundation-view">
@@ -106,7 +132,7 @@ export default function HomeHealthView() {
           {(['overview', 'diagnose', 'calendar', 'vault', 'chat'] as const).map(t => (
             <button
               key={t}
-              className={`foundation-tab ${tab === t ? 'foundation-tab--active' : ''}`}
+              className={`foundation-tab ${tab === t ? 'foundation-tab--active' : ''} ${t === 'vault' ? 'foundation-vault-tab' : ''} ${t === 'diagnose' ? 'foundation-diagnose-tab' : ''}`}
               onClick={() => setTab(t)}
             >
               {t === 'overview' ? '📊 Overview' : t === 'diagnose' ? '🩺 Diagnose' : t === 'calendar' ? '📅 Calendar' : t === 'vault' ? '🛡️ Vault' : '💬 Chat'}
@@ -115,7 +141,7 @@ export default function HomeHealthView() {
         </div>
       </div>
 
-      {/* ── Overview Tab ── */}
+      {/* -- Overview Tab -- */}
       {tab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Nudge Banner */}
@@ -231,13 +257,13 @@ export default function HomeHealthView() {
         </div>
       )}
 
-      {/* ── Diagnose Tab ── */}
+      {/* -- Diagnose Tab -- */}
       {tab === 'diagnose' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Natural Language Input */}
           <div style={{ display: 'flex', gap: 12 }}>
             <textarea
-              className="foundation-nl-input"
+              className="foundation-nl-input foundation-diagnose-input"
               value={symptomInput}
               onChange={e => setSymptomInput(e.target.value)}
               onKeyDown={handleDiagnoseKeyDown}
@@ -289,7 +315,7 @@ export default function HomeHealthView() {
         </div>
       )}
 
-      {/* ── Calendar Tab ── */}
+      {/* -- Calendar Tab -- */}
       {tab === 'calendar' && (
         <FoundationSeasonalCalendar
           tasks={tasks}
@@ -299,12 +325,12 @@ export default function HomeHealthView() {
         />
       )}
 
-      {/* ── Vault Tab ── */}
+      {/* -- Vault Tab -- */}
       {tab === 'vault' && (
         <FoundationVault alerts={alerts} />
       )}
 
-      {/* ── Chat Tab ── */}
+      {/* -- Chat Tab -- */}
       {tab === 'chat' && (
         <FoundationChat
           messages={messages}

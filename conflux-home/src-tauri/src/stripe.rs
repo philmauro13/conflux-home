@@ -61,12 +61,10 @@ fn map_price_to_plan(price_id: &str) -> String {
 async fn parse_stripe_error(resp: reqwest::Response) -> String {
     let status = resp.status();
     match resp.json::<serde_json::Value>().await {
-        Ok(json) => {
-            json["error"]["message"]
-                .as_str()
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("Stripe API error (status {})", status))
-        }
+        Ok(json) => json["error"]["message"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("Stripe API error (status {})", status)),
         Err(_) => format!("Stripe API error (status {})", status),
     }
 }
@@ -119,11 +117,16 @@ pub async fn stripe_create_credit_pack_session(
     pack: String,
 ) -> Result<String, String> {
     let (price_id, credits, pack_name) = match pack.as_str() {
-        "s"  => ("price_1THDigHGQzE1oe8rH6GIhln2", "500",   "API Starter"),
-        "m"  => ("price_1THDieHGQzE1oe8rMYmKhVyV", "2000",  "API Growth"),
-        "l"  => ("price_1THDieHGQzE1oe8ro0GlIjac", "5000",  "API Scale"),
+        "s" => ("price_1THDigHGQzE1oe8rH6GIhln2", "500", "API Starter"),
+        "m" => ("price_1THDieHGQzE1oe8rMYmKhVyV", "2000", "API Growth"),
+        "l" => ("price_1THDieHGQzE1oe8ro0GlIjac", "5000", "API Scale"),
         "xl" => ("price_1THDidHGQzE1oe8r7CYAUk6p", "15000", "API Business"),
-        _ => return Err(format!("Unknown credit pack: '{}'. Valid: s, m, l, xl", pack)),
+        _ => {
+            return Err(format!(
+                "Unknown credit pack: '{}'. Valid: s, m, l, xl",
+                pack
+            ))
+        }
     };
 
     let client = stripe_client();
@@ -164,9 +167,7 @@ pub async fn stripe_create_credit_pack_session(
 }
 
 #[tauri::command]
-pub async fn stripe_create_portal_session(
-    stripe_customer_id: String,
-) -> Result<String, String> {
+pub async fn stripe_create_portal_session(stripe_customer_id: String) -> Result<String, String> {
     let client = stripe_client();
 
     let params = [

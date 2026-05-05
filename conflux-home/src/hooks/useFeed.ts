@@ -6,20 +6,20 @@ import { invoke } from '@tauri-apps/api/core';
 import type { ContentFeedItem } from '../types';
 import { useAuthContext } from '../contexts/AuthContext';
 
-export function useContentFeed(memberId?: string) {
+export function useContentFeed(member_id?: string) {
   const { user } = useAuthContext();
-  const userId = user?.id || '';
+  const user_id = user?.id || '';
   const [items, setItems] = useState<ContentFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
-    if (!userId) return;
+    if (!user_id) return;
     try {
       setLoading(true);
       const data = await invoke<ContentFeedItem[]>('feed_get_items', {
-        userId,
-        memberId: memberId ?? null,
+        user_id,
+        member_id: member_id ?? null,
         contentType: null,
         unreadOnly: false,
       });
@@ -29,26 +29,26 @@ export function useContentFeed(memberId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [userId, memberId]);
+  }, [user_id, member_id]);
 
   useEffect(() => { load(); }, [load]);
 
   const markRead = useCallback(async (id: string) => {
-    await invoke('feed_mark_read', { userId, id });
+    await invoke('feed_mark_read', { user_id, id });
     setItems(prev => prev.map(i => i.id === id ? { ...i, is_read: true } : i));
-  }, [userId]);
+  }, [user_id]);
 
   const toggleBookmark = useCallback(async (id: string) => {
-    await invoke('feed_toggle_bookmark', { userId, id });
+    await invoke('feed_toggle_bookmark', { user_id, id });
     setItems(prev => prev.map(i => i.id === id ? { ...i, is_bookmarked: !i.is_bookmarked } : i));
-  }, [userId]);
+  }, [user_id]);
 
   const generate = useCallback(async (interests?: string) => {
     setGenerating(true);
     try {
       const data = await invoke<ContentFeedItem[]>('feed_generate', {
-        userId,
-        memberId: memberId ?? null,
+        user_id,
+        member_id: member_id ?? null,
         interests: interests ?? null,
       });
       setItems(prev => [...data, ...prev]);
@@ -56,7 +56,7 @@ export function useContentFeed(memberId?: string) {
     } finally {
       setGenerating(false);
     }
-  }, [userId, memberId]);
+  }, [user_id, member_id]);
 
   const unreadCount = items.filter(i => !i.is_read).length;
 

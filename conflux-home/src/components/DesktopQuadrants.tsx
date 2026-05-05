@@ -4,13 +4,14 @@ import { listen } from '@tauri-apps/api/event';
 import { useCredits, useUsageStats, useUsageHistory } from '../hooks/useCredits';
 import { useAuth } from '../hooks/useAuth';
 import PulseKnob from './PulseKnob';
+import IntelView from './IntelView';
 
 import { View, Agent } from '../types';
 
 // ── App definitions ──
 
 interface AppDef {
-  id: View;
+  id: string;
   icon: string;
   label: string;
   preview: string;
@@ -31,15 +32,14 @@ const CATEGORIES: CategoryDef[] = [
     icon: '📱',
     label: 'My Apps',
     color: '#10b981',
-    desc: '7 daily apps',
+    desc: '6 daily apps',
     apps: [
       { id: 'kitchen', icon: '🍳', label: 'Kitchen', preview: 'Meal planning & recipes' },
       { id: 'budget', icon: '💰', label: 'Budget', preview: 'Track spending & goals' },
       { id: 'life', icon: '🧠', label: 'Life Autopilot', preview: 'Tasks, habits & reminders' },
       { id: 'dreams', icon: '🎯', label: 'Dreams', preview: 'Goal tracking & milestones' },
-      { id: 'home', icon: '🔧', label: 'Home Health', preview: 'Systems & maintenance' },
-      { id: 'feed', icon: '📰', label: 'Feed', preview: 'News & intelligence' },
-      { id: 'games', icon: '🎮', label: 'Games', preview: 'Play & learn' },
+      { id: 'echo', icon: '📝', label: 'Echo', preview: 'Journal & reflection' },
+      { id: 'security-hub', icon: '🛡️', label: 'Security', preview: 'Shield & monitor your home' },
     ],
   },
   {
@@ -51,6 +51,8 @@ const CATEGORIES: CategoryDef[] = [
     apps: [
       { id: 'marketplace', icon: '🛒', label: 'Marketplace', preview: 'Browse & install agents' },
       { id: 'agents', icon: '🧩', label: 'Agents', preview: 'Manage your AI team' },
+      { id: 'games', icon: '🎮', label: 'Games', preview: 'Play & learn' },
+      { id: 'news-intelligence', icon: '📡', label: 'News & Intelligence', preview: 'Daily briefing & signals' },
     ],
   },
   {
@@ -62,7 +64,6 @@ const CATEGORIES: CategoryDef[] = [
     apps: [
       { id: 'studio', icon: '🎨', label: 'Studio', preview: 'AI creative generation' },
       { id: 'vault', icon: '📦', label: 'Vault', preview: 'Files & projects' },
-      { id: 'echo', icon: '📝', label: 'Echo', preview: 'Journal & reflection' },
     ],
   },
 ];
@@ -122,28 +123,65 @@ interface IntelDashboardProps {
   agents: Agent[];
 }
 
-// Ring gauge SVG component
+// Ring gauge SVG component — neumorphic 3D style
 function RingGauge({ value, max, color, label, sublabel }: { value: number; max: number; color: string; label: string; sublabel: string }) {
-  const radius = 28;
+  const radius = 34;
   const circumference = 2 * Math.PI * radius;
   const pct = Math.min(value / max, 1);
   const offset = circumference * (1 - pct);
+  const cx = 40;
+  const cy = 40;
 
   return (
     <div className="intel-ring">
-      <svg viewBox="0 0 72 72">
-        <circle className="intel-ring-bg" cx="36" cy="36" r={radius} />
+      <svg viewBox="0 0 80 80" className="intel-ring-svg">
+        <defs>
+          {/* Neumorphic outer glow for the whole gauge */}
+          <filter id={`gauge-glow-${sublabel}`} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur" />
+            <feFlood floodColor={color} floodOpacity="0.3" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          {/* Gradient for the filled arc */}
+          <linearGradient id={`gauge-grad-${sublabel}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"   stopColor={color} stopOpacity="1" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.55" />
+          </linearGradient>
+        </defs>
+
+        {/* Neumorphic outer shadow — dark ring behind */}
+        <circle cx={cx} cy={cy} r={radius + 5}
+          fill="rgba(0,0,0,0.35)"
+          style={{ filter: 'blur(3px)' }}
+        />
+        {/* Neumorphic top-left highlight bezel */}
+        <circle cx={cx} cy={cy} r={radius + 4}
+          fill="none"
+          stroke="rgba(255,255,255,0.07)"
+          strokeWidth="1"
+        />
+        {/* Track ring — neumorphic groove */}
+        <circle className="intel-ring-bg" cx={cx} cy={cy} r={radius} />
+        {/* Filled arc — gradient + glow */}
         <circle
           className="intel-ring-fill"
-          cx="36" cy="36" r={radius}
-          stroke={color}
+          cx={cx} cy={cy} r={radius}
+          stroke={`url(#gauge-grad-${sublabel})`}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          style={{ color }}
+          filter={`url(#gauge-glow-${sublabel})`}
+        />
+        {/* Specular highlight dot at top */}
+        <circle cx={cx} cy={cy - radius + 3} r="3"
+          fill="rgba(255,255,255,0.18)"
         />
       </svg>
       <div className="intel-ring-label">
-        <span>{label}</span>
+        <span className="intel-ring-value">{label}</span>
         <span className="intel-ring-sublabel">{sublabel}</span>
       </div>
     </div>
@@ -155,9 +193,12 @@ function IntelDashboard({ agents }: IntelDashboardProps) {
   const { stats, loading: statsLoading } = useUsageStats(7);
   const { entries, loading: historyLoading } = useUsageHistory(10);
 
-  // Heartbeat interval — default 30m (1_800_000 ms)
-  const [heartbeatInterval, setHeartbeatInterval] = useState(1_800_000);
-  const [lastBeat, setLastBeat] = useState(Date.now());
+  // Heartbeat interval — default 1hr (3_600_000 ms)
+  const [heartbeatInterval, setHeartbeatInterval] = useState(3_600_000);
+  const [lastBeat, setLastBeat] = useState(() => {
+    const cached = localStorage.getItem('conflux-last-beat');
+    return cached ? parseInt(cached, 10) : Date.now();
+  });
 
   const allLoading = creditsLoading || statsLoading || historyLoading;
   const activeAgents = agents.filter(a => a.status !== 'offline');
@@ -173,15 +214,31 @@ function IntelDashboard({ agents }: IntelDashboardProps) {
 
   // Listen for real beat events from Rust scheduler
   useEffect(() => {
-    let cancelled = false;
-    listen<null>('conflux:heartbeat-beat', () => {
-      if (cancelled) return;
-      setLastBeat(Date.now());
-    }).then(unlisten => {
-      if (cancelled) { unlisten(); return; }
-      return unlisten;
+    let ignore = false;
+
+    const unlistenPromise = listen<null>('conflux:heartbeat-beat', () => {
+      if (ignore) return;
+      const now = Date.now();
+      setLastBeat(now);
+      localStorage.setItem('conflux-last-beat', String(now));
     });
-    return () => { cancelled = true; };
+
+    // Also listen for interval-change events so scheduler restart is instant
+    const unlistenIntervalPromise = listen<number>('conflux:heartbeat-interval-changed', (event) => {
+      if (ignore) return;
+      const newMs = event.payload;
+      setHeartbeatInterval(newMs);
+      const now = Date.now();
+      setLastBeat(now);
+      localStorage.setItem('conflux-last-beat', String(now));
+    });
+
+    // Cleanup: unsubscribe both listeners when effect tears down
+    return () => {
+      ignore = true;
+      unlistenPromise.then(fn => fn());
+      unlistenIntervalPromise.then(fn => fn());
+    };
   }, []);
 
   const handleHeartbeatChange = useCallback(async (ms: number) => {
@@ -312,7 +369,16 @@ const FOLDER_APPS: Record<string, { title: string; icon: string; items: FolderIt
       { id: 'solitaire', name: 'Solitaire', icon: '🃏', subtitle: 'Classic Card Game', status: 'available' },
       { id: 'pacman', name: 'Pac-Man', icon: '🟡', subtitle: 'Arcade Classic', status: 'available' },
       { id: 'snake', name: 'Snake', icon: '🐍', subtitle: 'Arcade Classic', status: 'available' },
+      { id: 'nani-solitaire', name: "Nani's Solitaire", icon: '🎴', subtitle: 'Family Tradition · 4×4', status: 'available' },
+      { id: 'johnny-solitaire', name: "Johnny C's Solitaire", icon: '🀄', subtitle: 'FreeCell · 8 Columns', status: 'available' },
       { id: 'stories', name: 'Conflux Stories', icon: '📖', subtitle: 'Interactive Fiction', status: 'coming-soon' },
+    ],
+  },
+  'news-intelligence': {
+    title: 'News & Intelligence',
+    icon: '📡',
+    items: [
+      { id: 'feed', name: 'Feed', icon: '📰', subtitle: 'Daily briefing & signal radar', status: 'coming-soon' },
     ],
   },
 };
@@ -428,7 +494,7 @@ function ExpandedView({ category, onBack, onNavigate }: ExpandedViewProps) {
                 if (isFolder) {
                   setSubFolder(app.id);
                 } else {
-                  onNavigate(app.id);
+                  onNavigate(app.id as View);
                 }
               }}
               style={{ '--widget-color': category.color } as React.CSSProperties}

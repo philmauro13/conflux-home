@@ -74,7 +74,7 @@ export default function GoogleSettings() {
   async function handleSaveCredentials() {
     if (!clientId || !clientSecret) return;
     try {
-      await invoke('engine_google_set_credentials', { clientId, clientSecret });
+      await invoke('engine_google_set_credentials', { client_id: clientId, client_secret: clientSecret });
       setHasCredentials(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

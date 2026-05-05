@@ -14,6 +14,7 @@ import {
   playLogoReveal,
   playBuildComplete,
   playVoiceClick,
+  playTeamAliveNew,
 } from '../lib/onboarding-sounds';
 import { NeuralBrainScene } from './NeuralBrainScene';
 import { COMMANDS } from '../lib/neuralBrain';
@@ -33,8 +34,8 @@ interface OnboardingProps {
 // Conflux voice = ELEVENLABS_VOICE_ID from .env (TvxTBL9RtGW6tVhl4NoI)
 const AGENT_VOICE_IDS: Record<string, string> = {
   conflux: 'TvxTBL9RtGW6tVhl4NoI', // From .env ELEVENLABS_VOICE_ID
-  helix:   'USEXQnsXRJlw2k9LUzG4',
-  pulse:   'auq43ws1oslv0tO4BDa7',
+  helix:   'NQMJRVvPew6HsaebYnZj',
+  pulse:   'iLVmqjzCGGvqtMCk6vVQ',
   hearth:  'W7iR5kTNHozpIl2Jqq15',
   echo:    'EST9Ui6982FZPSi7gCHi',
   aegis:   'WtA85syCrJwasGeHGH2p',
@@ -62,7 +63,7 @@ const KEY_PLAYERS: KeyPlayer[] = [
     color: '#00d4ff',
     tagline: 'Your co-founder who never sleeps.',
     voiceLine: 'Online. Ready to build.',
-    delay: 600,
+    delay: 800,
     narrative: 'I\'m the one who brought us all together.',
   },
   {
@@ -72,7 +73,7 @@ const KEY_PLAYERS: KeyPlayer[] = [
     color: '#00cc88',
     tagline: 'Research at the speed of thought.',
     voiceLine: 'I find the signal in the noise.',
-    delay: 2200,
+    delay: 4500,
     narrative: 'Helix — my research powerhouse. Dives deeper than you thought possible.',
   },
   {
@@ -82,7 +83,7 @@ const KEY_PLAYERS: KeyPlayer[] = [
     color: '#10b981',
     tagline: 'Your financial heartbeat.',
     voiceLine: 'Let\'s make your money move smarter.',
-    delay: 3800,
+    delay: 6500,
     narrative: 'Pulse — your financial heartbeat. Knows your numbers better than you do.',
   },
   {
@@ -92,7 +93,7 @@ const KEY_PLAYERS: KeyPlayer[] = [
     color: '#f59e0b',
     tagline: 'Your personal nutritionist.',
     voiceLine: 'Good food. Good fuel. Let\'s cook.',
-    delay: 5400,
+    delay: 8500,
     narrative: 'Hearth — your personal nutritionist. Turns "what\'s for dinner" into a plan.',
   },
   {
@@ -102,7 +103,7 @@ const KEY_PLAYERS: KeyPlayer[] = [
     color: '#a78bfa',
     tagline: 'Your wellbeing coach.',
     voiceLine: 'I\'m here. However you\'re doing.',
-    delay: 7000,
+    delay: 11500,
     narrative: 'Echo — your wellbeing coach. Checks in on the human behind the screen.',
   },
 ];
@@ -116,7 +117,7 @@ const PROTECTORS: KeyPlayer[] = [
     color: '#6366f1',
     tagline: 'I watch the walls.',
     voiceLine: 'Your fortress is my responsibility.',
-    delay: 8800,
+    delay: 14500,
     narrative: 'And these two? They protect everything.',
   },
   {
@@ -126,7 +127,7 @@ const PROTECTORS: KeyPlayer[] = [
     color: '#22c55e',
     tagline: 'I find the cracks.',
     voiceLine: 'I break things so nothing breaks you.',
-    delay: 8800,
+    delay: 14500,
     narrative: 'Aegis watches the walls. Viper finds the cracks before anyone else does.',
   },
 ];
@@ -251,24 +252,23 @@ function BootSequence({ onComplete }: { onComplete: () => void }) {
   const [phase, setPhase] = useState<'dark' | 'logo' | 'brain' | 'done'>('dark');
 
   useEffect(() => {
-    // Phase 1: Dark screen (400ms) — gives SplashScreen time to finish its 1500ms run
+    // Extended cinematic boot — ~3s total for a more majestic reveal
     const t1 = setTimeout(() => {
       setPhase('logo');
+      playBootUp();
       playLogoReveal();
-    }, 400);
+    }, 600);  // dark → logo at 600ms
 
-    // Phase 2: Logo visible (1000ms)
     const t2 = setTimeout(() => {
       setPhase('brain');
       playBrainActivate();
-    }, 1400);
+    }, 2000); // logo → brain at 2000ms (1.4s logo duration)
 
-    // Phase 3: Brain activates (600ms), then done
     const t3 = setTimeout(() => {
       setPhase('done');
       playWelcomeChime();
       onComplete();
-    }, 2000);
+    }, 3000); // brain → done at 3000ms (1s brain duration)
 
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [onComplete]);
@@ -379,12 +379,12 @@ function AgentIntroCard({
   player,
   visible,
   isPlaying,
-  onPlayVoice,
+  onToggleVoice,
 }: {
   player: KeyPlayer;
   visible: boolean;
   isPlaying: boolean;
-  onPlayVoice: () => void;
+  onToggleVoice: () => void;
 }) {
   return (
     <motion.div
@@ -399,19 +399,37 @@ function AgentIntroCard({
         width: 110,
         cursor: 'pointer',
       }}
-      onClick={() => onPlayVoice()}
+      onClick={() => onToggleVoice()}
     >
       {/* Avatar circle */}
       <motion.div
-        animate={isPlaying ? {
-          boxShadow: [
-            `0 0 12px ${player.color}44`,
-            `0 0 24px ${player.color}66`,
-            `0 0 12px ${player.color}44`,
-          ],
-          scale: [1, 1.08, 1],
-        } : {}}
-        transition={isPlaying ? { duration: 1.2, repeat: Infinity } : {}}
+        animate={
+          isPlaying
+            ? {
+                boxShadow: [
+                  `0 0 12px ${player.color}44`,
+                  `0 0 24px ${player.color}66`,
+                  `0 0 12px ${player.color}44`,
+                ],
+                scale: [1, 1.08, 1],
+              }
+            : (player.id === 'hearth' || player.id === 'echo')
+            ? {
+                boxShadow: [
+                  `0 0 4px ${player.color}33`,
+                  `0 0 10px ${player.color}55`,
+                  `0 0 4px ${player.color}33`,
+                ],
+              }
+            : {}
+        }
+        transition={
+          isPlaying
+            ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
+            : (player.id === 'hearth' || player.id === 'echo')
+            ? { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
+            : {}
+        }
         style={{
           width: 56,
           height: 56,
@@ -466,7 +484,7 @@ function AgentIntroCard({
       <motion.button
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.95 }}
-        onClick={(e) => { e.stopPropagation(); onPlayVoice(); }}
+        onClick={(e) => { e.stopPropagation(); onToggleVoice(); }}
         style={{
           background: 'transparent',
           border: `1px solid ${player.color}44`,
@@ -507,9 +525,9 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const [visibleAgents, setVisibleAgents] = useState<Set<string>>(new Set());
   const [showProtectors, setShowProtectors] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [narrationStarted, setNarrationStarted] = useState(false);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const narrationTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const voiceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Step 2: Ice breaker
   const [iceBreakerInput, setIceBreakerInput] = useState('');
@@ -550,7 +568,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   }, [stopAudio]);
 
   // ── Play base64 MP3 audio via Web Audio API ──
-  const playBase64Audio = useCallback((base64: string): Promise<void> => {
+  const playBase64Audio = useCallback((base64: string, opts?: { onstart?: () => void }): Promise<void> => {
     stopAudio(); // stop any existing playback
     return new Promise((resolve, reject) => {
       if (!audioContextRef.current) {
@@ -571,6 +589,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           resolve();
         };
         source.start(0);
+        opts?.onstart?.();
       }).catch(reject);
     });
   }, [stopAudio]);
@@ -595,18 +614,32 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }
   }, [stopAudio, playBase64Audio]);
 
+  // Voice toggle — stop if same agent, speak if different
+  const handleVoiceToggle = useCallback((agentId: string, voiceLine: string) => {
+    if (playingVoiceId === agentId) {
+      stopAudio();
+    } else {
+      stopAudio();
+      speakWithVoice(voiceLine, agentId);
+    }
+  }, [playingVoiceId, stopAudio, speakWithVoice]);
+
   // ── Conflux narration (uses Conflux voice) ──
   const speakNarration = useCallback(async () => {
     const text = getNarrationScript(userName);
     setIsSpeaking(true);
+    setNarrationStarted(false); // ensure clean state
     try {
       const result = await invoke<{ audio_base64: string }>('tts_speak', {
         text,
         voice: AGENT_VOICE_IDS.conflux,
       });
-      await playBase64Audio(result.audio_base64);
+      await playBase64Audio(result.audio_base64, {
+        onstart: () => setNarrationStarted(true),
+      });
     } catch (err) {
       console.warn('[Onboarding] TTS failed (non-fatal):', err);
+      setNarrationStarted(true); // still start agents on error
     } finally {
       setIsSpeaking(false);
     }
@@ -632,15 +665,25 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     if (savedName) setUserName(savedName);
   }, []);
 
-  // ── Step 1: Start narration + staggered agent appearances ──
+  // ── Step 1: Start Conflux narration ──
   useEffect(() => {
     if (step !== 1) return;
 
     playNarrationSignal();
-    // Start TTS narration
-    speakNarration();
+    speakNarration(); // triggers setNarrationStarted when audio begins
 
-    // Stagger agent card appearances
+    return () => {
+      // Cleanup: stop any pending agent timers when leaving step
+      narrationTimerRef.current.forEach(clearTimeout);
+      narrationTimerRef.current = [];
+      setNarrationStarted(false);
+    };
+  }, [step, speakNarration]);
+
+  // ── Step 1: Stagger agent card appearances (triggered when narration audio starts) ──
+  useEffect(() => {
+    if (step !== 1 || !narrationStarted) return;
+
     const allPlayers = [...KEY_PLAYERS, ...PROTECTORS];
     allPlayers.forEach(player => {
       const timer = setTimeout(() => {
@@ -653,14 +696,29 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     // Show protectors label after main agents
     const protectorTimer = setTimeout(() => {
       setShowProtectors(true);
-    }, 8600);
+      playTeamAliveNew(); // celebratory chime when protectors arrive
+    }, 15500);
     narrationTimerRef.current.push(protectorTimer);
 
     return () => {
       narrationTimerRef.current.forEach(clearTimeout);
       narrationTimerRef.current = [];
     };
-  }, [step, speakNarration]);
+  }, [step, narrationStarted]);
+
+  // ── Audio cleanup ──
+  // Stop any voice playback when leaving the team-intro step (or unmounting)
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (step !== 1) {
+      stopAudio();
+    }
+  }, [step, stopAudio]);
 
   // ── Step 2: Speak ice breaker prompt ──
   useEffect(() => {
@@ -840,8 +898,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       {/* Neural brain pulsing during narration */}
       <div style={{ position: 'absolute', top: -100, left: '50%', transform: 'translateX(-50%)', zIndex: 0 }}>
         <NeuralBrainScene
-          command={isSpeaking ? COMMANDS[3] : COMMANDS[1]}
-          pulseImpulse={isSpeaking ? 20 : 8}
+          command={narrationStarted ? COMMANDS[3] : COMMANDS[1]}
+          pulseImpulse={narrationStarted ? 20 : 8}
           transparent={true}
         />
       </div>
@@ -879,7 +937,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             player={player}
             visible={visibleAgents.has(player.id)}
             isPlaying={playingVoiceId === player.id}
-            onPlayVoice={() => speakWithVoice(player.voiceLine, player.id)}
+            onToggleVoice={() => handleVoiceToggle(player.id, player.voiceLine)}
           />
         ))}
       </div>
@@ -893,7 +951,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             transition={{ duration: 0.4 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 8 }}
           >
-            <div style={{
+          {/* Play team alive chime when protectors make their entrance */}
+          <div style={{
               display: 'flex', alignItems: 'center', gap: 12,
               color: 'var(--text-tertiary)', fontSize: '0.8rem',
               textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 600,
@@ -910,7 +969,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   player={player}
                   visible={visibleAgents.has(player.id)}
                   isPlaying={playingVoiceId === player.id}
-                  onPlayVoice={() => speakWithVoice(player.voiceLine, player.id)}
+                  onToggleVoice={() => handleVoiceToggle(player.id, player.voiceLine)}
                 />
               ))}
             </div>

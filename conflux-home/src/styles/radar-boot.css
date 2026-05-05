@@ -1,0 +1,688 @@
+/* ═══════════════════════════════════════════════════════════════
+   RADAR BOOT + ONBOARDING — Tactical Intelligence Aesthetic
+   Dark glass cockpit, SVG radar geometry, cyan-on-black,
+   rotating sweep arm, expanding ripple rings,
+   classified dossier briefing cards
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Boot Sequence ─────────────────────────────────────────── */
+
+.radar-boot {
+  position: fixed;
+  inset: 0;
+  background: #0a0a0e;
+  z-index: 99999;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar-boot-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.radar-boot-content.visible {
+  opacity: 1;
+}
+
+/* Title */
+.radar-boot-title-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.radar-boot-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: rgba(6, 182, 212, 0.45);
+  text-transform: uppercase;
+  animation: fade-in-up 0.5s ease 0.1s both;
+}
+
+.radar-boot-title {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: #06b6d4;
+  text-shadow:
+    0 0 20px rgba(6, 182, 212, 0.8),
+    0 0 40px rgba(6, 182, 212, 0.45),
+    0 0 80px rgba(6, 182, 212, 0.2),
+    0 0 120px rgba(6, 182, 212, 0.1);
+  animation: radar-logo-glow 2s ease-in-out infinite;
+}
+
+@keyframes radar-logo-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 20px rgba(6, 182, 212, 0.7),
+      0 0 40px rgba(6, 182, 212, 0.4),
+      0 0 80px rgba(6, 182, 212, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(6, 182, 212, 0.9),
+      0 0 60px rgba(6, 182, 212, 0.5),
+      0 0 100px rgba(6, 182, 212, 0.3);
+  }
+}
+
+/* Radar SVG */
+.radar-boot-radar {
+  position: relative;
+  width: min(340px, 80vw);
+  height: min(340px, 80vw);
+}
+
+.radar-boot-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.2));
+}
+
+.radar-border-spin {
+  animation: border-rotate 20s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes border-rotate {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 200; }
+}
+
+/* Blip animations */
+.radar-boot-blip-ring {
+  animation: ring-expand 2.5s ease-out forwards;
+}
+
+@keyframes ring-expand {
+  0% { r: 0; opacity: 0.8; }
+  100% { r: 18; opacity: 0; }
+}
+
+.radar-boot-blip-dot {
+  animation: blip-appear 0.4s ease forwards;
+}
+
+@keyframes blip-appear {
+  from { opacity: 0; r: 2; }
+  to { opacity: 1; r: 5; }
+}
+
+/* Tactical readouts */
+.radar-boot-readouts {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 500px;
+}
+
+.radar-boot-readout {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border: 1px solid;
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  animation: readout-appear 0.4s ease forwards;
+}
+
+@keyframes readout-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.radar-boot-readout-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  animation: dot-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+/* Status bar */
+.radar-boot-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  color: rgba(6, 182, 212, 0.4);
+  animation: fade-in-up 0.5s ease 0.5s both;
+}
+
+.radar-boot-status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #06b6d4;
+  animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(6, 182, 212, 0.8); }
+  50% { opacity: 0.4; box-shadow: 0 0 2px rgba(6, 182, 212, 0.3); }
+}
+
+/* Progress */
+.radar-boot-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(6, 182, 212, 0.06);
+}
+
+.radar-boot-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0891b2, #06b6d4, #22d3ee);
+  animation: progress-draw 5s linear forwards;
+}
+
+@keyframes progress-draw {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* ── Onboarding Root ───────────────────────────────────────── */
+
+.radar-onboard-root {
+  position: fixed;
+  inset: 0;
+  background: #0a0a0e;
+  z-index: 9997;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.radar-onboard-root.entered {
+  opacity: 1;
+}
+
+/* Subtle grid background */
+.radar-onboard-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Vignette */
+.radar-onboard-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header */
+.radar-onboard-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.radar-onboard-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.4em;
+  color: #06b6d4;
+  text-shadow: 0 0 20px rgba(6, 182, 212, 0.6), 0 0 40px rgba(6, 182, 212, 0.3);
+}
+
+.radar-onboard-header-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.25em;
+  color: rgba(6, 182, 212, 0.35);
+  text-transform: uppercase;
+}
+
+/* ── Briefing Card ─────────────────────────────────────────── */
+
+.radar-onboard-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 520px;
+  background: rgba(10, 10, 14, 0.92);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow:
+    0 0 60px rgba(6, 182, 212, 0.04),
+    0 0 0 1px rgba(6, 182, 212, 0.04) inset,
+    0 30px 80px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+  overflow: hidden;
+}
+
+.radar-onboard-card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Glowing top border */
+.radar-onboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent, #06b6d4), transparent);
+  box-shadow: 0 0 16px var(--accent, #06b6d4);
+}
+
+/* Scanline overlay */
+.radar-onboard-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(6, 182, 212, 0.012) 3px,
+    rgba(6, 182, 212, 0.012) 4px
+  );
+  pointer-events: none;
+  border-radius: 16px;
+}
+
+/* Category badge */
+.radar-onboard-category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  margin-bottom: 16px;
+  animation: fade-in-up 0.4s ease 0.1s both;
+}
+
+.radar-onboard-cat-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* SVG visual */
+.radar-onboard-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  animation: fade-in-up 0.4s ease 0.15s both;
+}
+
+.radar-onboard-svg {
+  width: 160px;
+  height: 160px;
+  filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.2));
+}
+
+.radar-onboard-sweep {
+  transform-origin: 80px 80px;
+  animation: sweep-rotate 3s linear infinite;
+}
+
+@keyframes sweep-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.blip-pulse {
+  animation: blip-twinkle 2s ease-in-out infinite;
+}
+
+@keyframes blip-twinkle {
+  0%, 100% { opacity: 0.6; r: 4; }
+  50% { opacity: 1; r: 5; }
+}
+
+/* Category grid visual */
+.radar-onboard-category-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.radar-onboard-cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.radar-onboard-cat-chip:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Briefing visual */
+.radar-onboard-briefing-visual {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(6, 182, 212, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.radar-onboard-brief-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.radar-onboard-brief-icon {
+  font-size: 1.4rem;
+}
+
+.radar-onboard-brief-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #06b6d4;
+  letter-spacing: 0.12em;
+}
+
+.radar-onboard-brief-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(6, 182, 212, 0.4);
+  letter-spacing: 0.15em;
+}
+
+.radar-onboard-brief-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radar-onboard-brief-line {
+  height: 8px;
+  background: rgba(6, 182, 212, 0.12);
+  border-radius: 4px;
+  animation: line-draw 0.5s ease both;
+}
+
+@keyframes line-draw {
+  from { width: 0 !important; opacity: 0; }
+  to { opacity: 1; }
+}
+
+.radar-onboard-brief-sentiment {
+  display: flex;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Thread visual */
+.radar-onboard-thread-visual {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 12px;
+}
+
+.radar-onboard-thread-node {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.radar-onboard-thread-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.radar-onboard-thread-line {
+  width: 32px;
+  height: 2px;
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.radar-onboard-thread-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: rgba(139, 92, 246, 0.6);
+}
+
+.radar-onboard-thread-prediction {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Title + body */
+.radar-onboard-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e4e4e7;
+  margin: 0 0 10px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  animation: fade-in-up 0.4s ease 0.2s both;
+}
+
+.radar-onboard-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: #71717a;
+  margin: 0 0 16px;
+  animation: fade-in-up 0.4s ease 0.25s both;
+}
+
+/* Hint */
+.radar-onboard-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  margin-bottom: 20px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.radar-onboard-hint.visible {
+  opacity: 0.75;
+}
+
+/* Progress dots */
+.radar-onboard-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.radar-onboard-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.radar-onboard-dot.active {
+  background: #06b6d4;
+  border-color: #06b6d4;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+  transform: scale(1.35);
+}
+
+.radar-onboard-dot.done {
+  background: rgba(6, 182, 212, 0.3);
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+/* Controls */
+.radar-onboard-controls {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.radar-onboard-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  min-width: 88px;
+  text-align: center;
+}
+
+.radar-onboard-back {
+  background: transparent;
+  color: rgba(113, 113, 122, 0.5);
+}
+
+.radar-onboard-back:hover:not(:disabled) {
+  color: #71717a;
+  border-color: rgba(113, 113, 122, 0.3);
+}
+
+.radar-onboard-back:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.radar-onboard-next {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.radar-onboard-next:hover {
+  background: rgba(6, 182, 212, 0.18);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Progress track */
+.radar-onboard-progress-track {
+  flex: 1;
+  height: 3px;
+  background: rgba(6, 182, 212, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.radar-onboard-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0891b2, #06b6d4, #22d3ee);
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+}
+
+/* Keyboard hint */
+.radar-onboard-hint-line {
+  position: relative;
+  z-index: 2;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  color: rgba(113, 113, 122, 0.2);
+  letter-spacing: 0.1em;
+}
+
+/* Utility */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 560px) {
+  .radar-onboard-card { padding: 22px 18px; }
+  .radar-onboard-eyebrow { font-size: 1.5rem; }
+  .radar-onboard-title { font-size: 0.9rem; }
+  .radar-onboard-btn { min-width: 72px; padding: 8px 12px; font-size: 0.65rem; }
+  .radar-onboard-category-grid { grid-template-columns: 1fr; }
+}

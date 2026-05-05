@@ -440,7 +440,7 @@ pub struct FamilyMember {
     pub id: String,
     pub name: String,
     pub age: Option<i64>,
-    pub age_group: String,  // 'toddler' | 'preschool' | 'kid' | 'teen' | 'young_adult' | 'adult'
+    pub age_group: String, // 'toddler' | 'preschool' | 'kid' | 'teen' | 'young_adult' | 'adult'
     pub avatar: Option<String>,
     pub color: String,
     pub default_agent_id: Option<String>,
@@ -486,12 +486,12 @@ pub struct StoryGame {
     pub member_id: Option<String>,
     pub agent_id: String,
     pub title: String,
-    pub genre: String,       // 'adventure' | 'mystery' | 'fantasy' | 'scifi' | 'horror'
+    pub genre: String, // 'adventure' | 'mystery' | 'fantasy' | 'scifi' | 'horror'
     pub age_group: String,
-    pub difficulty: String,  // 'easy' | 'normal' | 'hard'
-    pub status: String,      // 'active' | 'completed' | 'paused'
+    pub difficulty: String, // 'easy' | 'normal' | 'hard'
+    pub status: String,     // 'active' | 'completed' | 'paused'
     pub current_chapter: i64,
-    pub story_state: Option<String>,  // JSON
+    pub story_state: Option<String>, // JSON
     pub created_at: String,
     pub updated_at: String,
 }
@@ -514,7 +514,7 @@ pub struct StoryChapter {
     pub chapter_number: i64,
     pub title: Option<String>,
     pub narrative: String,
-    pub choices: String,      // JSON array
+    pub choices: String,        // JSON array
     pub puzzle: Option<String>, // JSON
     pub puzzle_solved: bool,
     pub image_prompt: Option<String>,
@@ -532,7 +532,7 @@ pub struct StoryChoice {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoryPuzzle {
-    pub puzzle_type: String,  // 'riddle' | 'pattern' | 'logic' | 'word' | 'code'
+    pub puzzle_type: String, // 'riddle' | 'pattern' | 'logic' | 'word' | 'code'
     pub question: String,
     pub answer: String,
     pub hint: Option<String>,
@@ -562,14 +562,14 @@ pub struct LearningActivity {
     pub member_id: String,
     pub agent_id: String,
     pub session_id: Option<String>,
-    pub activity_type: String,  // 'reading' | 'math' | 'science' | 'coding' | 'creative' | etc.
+    pub activity_type: String, // 'reading' | 'math' | 'science' | 'coding' | 'creative' | etc.
     pub topic: Option<String>,
     pub description: Option<String>,
     pub difficulty: Option<String>,
     pub score: Option<f64>,
     pub duration_sec: Option<i64>,
     pub tokens_used: i64,
-    pub metadata: Option<String>,  // JSON
+    pub metadata: Option<String>, // JSON
     pub created_at: String,
 }
 
@@ -577,7 +577,7 @@ pub struct LearningActivity {
 pub struct LearningGoal {
     pub id: String,
     pub member_id: String,
-    pub goal_type: String,  // 'streak' | 'mastery' | 'exploration' | 'custom'
+    pub goal_type: String, // 'streak' | 'mastery' | 'exploration' | 'custom'
     pub activity_type: Option<String>,
     pub title: String,
     pub target_value: f64,
@@ -627,8 +627,8 @@ pub struct MealPlan {
     pub id: String,
     pub member_id: Option<String>,
     pub week_start: String,
-    pub plan_data: String,   // JSON
-    pub grocery_list: Option<String>,  // JSON
+    pub plan_data: String,            // JSON
+    pub grocery_list: Option<String>, // JSON
     pub created_at: String,
     pub updated_at: String,
 }
@@ -639,7 +639,7 @@ pub struct MealPlan {
 pub struct BudgetEntry {
     pub id: String,
     pub member_id: Option<String>,
-    pub entry_type: String,  // 'income' | 'expense' | 'savings' | 'goal'
+    pub entry_type: String, // 'income' | 'expense' | 'savings' | 'goal'
     pub category: String,
     pub amount: f64,
     pub description: Option<String>,
@@ -681,7 +681,7 @@ pub struct BudgetGoal {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BudgetPattern {
     pub category: String,
-    pub pattern_type: String,  // "recurring", "increasing", "decreasing", "seasonal"
+    pub pattern_type: String, // "recurring", "increasing", "decreasing", "seasonal"
     pub description: String,
     pub avg_amount: f64,
     pub frequency: String,
@@ -761,7 +761,7 @@ pub struct MonthlyReport {
 pub struct ContentFeedItem {
     pub id: String,
     pub member_id: Option<String>,
-    pub content_type: String,  // 'news' | 'tip' | 'challenge' | 'fun_fact' | 'reminder'
+    pub content_type: String, // 'news' | 'tip' | 'challenge' | 'fun_fact' | 'reminder'
     pub title: String,
     pub body: String,
     pub source_url: Option<String>,
@@ -780,7 +780,7 @@ pub struct Meal {
     pub name: String,
     pub description: Option<String>,
     pub cuisine: Option<String>,
-    pub category: Option<String>,  // 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert'
+    pub category: Option<String>, // 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert'
     pub photo_url: Option<String>,
     pub prep_time_min: Option<i64>,
     pub cook_time_min: Option<i64>,
@@ -790,7 +790,7 @@ pub struct Meal {
     pub estimated_cost: Option<f64>,
     pub cost_per_serving: Option<f64>,
     pub calories: Option<i64>,
-    pub tags: Option<String>,  // JSON array
+    pub tags: Option<String>, // JSON array
     pub source: String,
     pub is_favorite: bool,
     pub last_made: Option<String>,
@@ -817,8 +817,8 @@ pub struct MealIngredient {
 pub struct MealPlanEntry {
     pub id: String,
     pub week_start: String,
-    pub day_of_week: i64,   // 0=Mon ... 6=Sun
-    pub meal_slot: String,  // 'breakfast' | 'lunch' | 'dinner' | 'snack'
+    pub day_of_week: i64,  // 0=Mon ... 6=Sun
+    pub meal_slot: String, // 'breakfast' | 'lunch' | 'dinner' | 'snack'
     pub meal_id: Option<String>,
     pub notes: Option<String>,
     pub created_at: String,
@@ -855,7 +855,7 @@ pub struct HomeMenuItem {
     pub meal_id: String,
     pub name: String,
     pub emoji: String,
-    pub reason: String,          // "You have all ingredients" / "Uses expiring X"
+    pub reason: String, // "You have all ingredients" / "Uses expiring X"
     pub estimated_minutes: i64,
     pub missing_ingredients: Vec<String>,
 }
@@ -863,7 +863,7 @@ pub struct HomeMenuItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PantryHeatItem {
     pub name: String,
-    pub freshness: f64,          // 0.0 (expired) to 1.0 (fresh)
+    pub freshness: f64, // 0.0 (expired) to 1.0 (fresh)
     pub days_until_expiry: Option<i64>,
     pub location: String,
 }
@@ -880,7 +880,7 @@ pub struct CookingStep {
 pub struct KitchenDigest {
     pub week_start: String,
     pub meals_cooked: i64,
-    pub variety_score: f64,      // 0-100
+    pub variety_score: f64, // 0-100
     pub unique_cuisines: i64,
     pub estimated_savings: f64,
     pub top_cuisine: Option<String>,
@@ -889,7 +889,7 @@ pub struct KitchenDigest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KitchenNudge {
-    pub nudge_type: String,      // "expiring", "variety", "budget", "health"
+    pub nudge_type: String, // "expiring", "variety", "budget", "health"
     pub message: String,
     pub action_label: String,
     pub emoji: String,
@@ -904,7 +904,7 @@ pub struct KitchenInventoryItem {
     pub unit: Option<String>,
     pub category: Option<String>,
     pub expiry_date: Option<String>,
-    pub location: Option<String>,  // 'fridge' | 'freezer' | 'pantry'
+    pub location: Option<String>, // 'fridge' | 'freezer' | 'pantry'
     pub last_restocked: Option<String>,
     pub created_at: String,
     pub updated_at: String,
@@ -948,7 +948,7 @@ pub struct LifeDocument {
     pub title: String,
     pub content: Option<String>,
     pub ai_summary: Option<String>,
-    pub ai_key_dates: Option<String>,   // JSON
+    pub ai_key_dates: Option<String>,    // JSON
     pub ai_action_items: Option<String>, // JSON
     pub source: String,
     pub file_url: Option<String>,
@@ -1069,6 +1069,7 @@ pub struct LifeNudge {
 pub struct OrbitDashboard {
     pub today_focus: Vec<LifeDailyFocus>,
     pub pending_tasks: Vec<LifeTask>,
+    pub completed_tasks: Vec<LifeTask>,
     pub active_habits: Vec<LifeHabit>,
     pub nudges: Vec<LifeNudge>,
     pub streak_total: i64,
@@ -1278,7 +1279,7 @@ pub struct DreamVelocity {
     pub tasks_completed: i64,
     pub tasks_total: i64,
     pub progress_pct: f64,
-    pub pace: String,          // "ahead", "on_track", "behind"
+    pub pace: String, // "ahead", "on_track", "behind"
     pub days_remaining: Option<i64>,
     pub estimated_completion: Option<String>,
 }
@@ -1286,7 +1287,7 @@ pub struct DreamVelocity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineEntry {
     pub date: String,
-    pub event_type: String,    // "milestone", "task", "progress"
+    pub event_type: String, // "milestone", "task", "progress"
     pub title: String,
     pub completed: bool,
 }
@@ -1374,7 +1375,7 @@ pub struct VaultProject {
     pub is_archived: bool,
     pub created_at: String,
     pub updated_at: String,
-    pub file_count: Option<i64>,  // populated via JOIN
+    pub file_count: Option<i64>, // populated via JOIN
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1383,7 +1384,7 @@ pub struct VaultTag {
     pub name: String,
     pub color: Option<String>,
     pub tag_type: String,
-    pub file_count: Option<i64>,  // populated via JOIN
+    pub file_count: Option<i64>, // populated via JOIN
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1397,18 +1398,26 @@ pub struct VaultProjectDetail {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StudioGeneration {
     pub id: String,
-    pub module: String,           // 'image' | 'video' | 'music' | 'voice' | 'code' | 'design'
+    pub module: String, // 'image' | 'video' | 'music' | 'voice' | 'code' | 'design'
     pub prompt: String,
     pub remix_of: Option<String>,
     pub model: String,
     pub provider: String,
-    pub status: String,           // 'pending' | 'generating' | 'complete' | 'failed'
+    pub status: String, // 'pending' | 'generating' | 'complete' | 'failed'
     pub output_path: Option<String>,
     pub output_url: Option<String>,
     pub metadata_json: Option<String>,
     pub cost_cents: i64,
     pub vault_file_id: Option<String>,
+    pub project_id: Option<String>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StudioProject {
+    pub id: String,
+    pub name: String,
+    pub path: String, // compatibility placeholder; Studio projects are not file-based
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1443,10 +1452,10 @@ pub struct OrbitInsight {
     pub title: String,
     pub message: String,
     pub icon: String,
-    pub source_apps: Vec<String>,  // ["budget", "kitchen", "dreams"]
-    pub confidence: f64,            // 0.0 - 1.0
+    pub source_apps: Vec<String>, // ["budget", "kitchen", "dreams"]
+    pub confidence: f64,          // 0.0 - 1.0
     pub action_suggestion: Option<String>,
-    pub priority: String,           // "high", "medium", "low"
+    pub priority: String, // "high", "medium", "low"
     pub created_at: String,
 }
 

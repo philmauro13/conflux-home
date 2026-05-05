@@ -53,8 +53,8 @@
   z-index: 0;
   background-color: var(--radar-bg);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -147,24 +147,18 @@
   to { transform: rotate(360deg); }
 }
 
-/* Radar blips (expandable ripples) */
+/* Radar blips — static position, no drift, no scale animation */
 .radar-blip {
   cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .radar-blip:hover {
-  filter: brightness(1.3);
-  transform: scale(1.2);
+  filter: brightness(1.4);
 }
 
 .radar-blip-circle {
-  animation: blipPulse 2s ease-in-out infinite;
-}
-
-@keyframes blipPulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
+  /* Static glow — no pulsing, no scale animation */
+  filter: drop-shadow(0 0 6px currentColor);
 }
 
 /* Expanding ripple rings */

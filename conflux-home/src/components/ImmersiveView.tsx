@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { View } from '../types';
+import { playNavSwish, startPulseAmbient, startHearthAmbient, startOrbitAmbient, startEchoAmbient } from '../lib/sound';
 
 interface ImmersiveViewProps {
   view: View;
@@ -12,6 +13,7 @@ export default function ImmersiveView({ view, backgroundUrl, onClose, children }
   const [exiting, setExiting] = useState(false);
 
   const handleClose = useCallback(() => {
+    playNavSwish('back');
     setExiting(true);
     // Match the exit animation duration
     setTimeout(() => onClose(), 200);
@@ -26,6 +28,24 @@ export default function ImmersiveView({ view, backgroundUrl, onClose, children }
     return () => window.removeEventListener('keydown', handler);
   }, [handleClose]);
 
+  // Play swish-in on mount
+  useEffect(() => {
+    playNavSwish('forward');
+  }, []);
+
+  // Per-app ambient soundscape — starts on mount, stops on unmount
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    switch (view) {
+      case 'budget':  stop = startPulseAmbient(); break;
+      case 'kitchen':  stop = startHearthAmbient(); break;
+      case 'life':     /* stop = startOrbitAmbient(); */ break;
+      case 'echo':     stop = startEchoAmbient(); break;
+      // horizon (dreams) and other apps — no ambient (could add later)
+    }
+    return () => { stop?.(); };
+  }, [view]);
+
   return (
     <div className={`immersive-overlay ${exiting ? 'immersive-exiting' : ''}`}>
       {backgroundUrl && (
@@ -38,7 +58,7 @@ export default function ImmersiveView({ view, backgroundUrl, onClose, children }
         </>
       )}
       <button className="immersive-back-btn" onClick={handleClose}>
-        ← Desktop
+        Desktop →
       </button>
       <div className="immersive-content">
         {children}

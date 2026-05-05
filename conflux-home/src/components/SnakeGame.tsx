@@ -120,6 +120,8 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
   const [difficulty, setDifficulty] = useState<SnakeDifficulty>('classic');
   const [score, setScore] = useState(0);
   const [bestScores, setBestScores] = useState<Record<string, number>>(loadBestScores);
+  const bestScoresRef = useRef(bestScores);
+  useEffect(() => { bestScoresRef.current = bestScores; }, [bestScores]);
   const [isNewBest, setIsNewBest] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -138,6 +140,7 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
   const trailsRef = useRef<TrailSegment[]>([]);
   const foodSpawnTimeRef = useRef<number>(0);
   const touchStartRef = useRef<Position | null>(null);
+  const dyingRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => { gameStatusRef.current = status; }, [status]);
@@ -183,15 +186,15 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
   // ── Save Best Score ──────────────────────────────────────────────────────
 
   const maybeSaveBestScore = useCallback((diff: SnakeDifficulty, newScore: number): boolean => {
-    const current = bestScores[diff] || 0;
+    const current = bestScoresRef.current[diff] || 0;
     if (newScore > current) {
-      const updated = { ...bestScores, [diff]: newScore };
+      const updated = { ...bestScoresRef.current, [diff]: newScore };
       setBestScores(updated);
       saveBestScores(updated);
       return true;
     }
     return false;
-  }, [bestScores]);
+  }, []);
 
   // ── Reset Game ───────────────────────────────────────────────────────────
 
@@ -234,6 +237,7 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
     particlesRef.current = [];
     trailsRef.current = [];
     tickAccumRef.current = 0;
+    dyingRef.current = false;
 
     let obs: Position[] = [];
     if (config.hasObstacles) {
@@ -356,15 +360,15 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
         // Wall handling
         if (config.wallsKill) {
           if (newHead.x < 0 || newHead.x >= config.gridSize || newHead.y < 0 || newHead.y >= config.gridSize) {
-            // Death
+            // Death — defer status change so particles render
             playSound('death');
             spawnDeathParticles(snakeRef.current, config.cellSize);
             const finalScore = scoreRef.current;
             const wasNewBest = maybeSaveBestScore(difficulty, finalScore);
             setIsNewBest(wasNewBest);
             if (wasNewBest) playSound('newbest');
-            setStatus('dead');
-            return;
+            dyingRef.current = true;
+            break;
           }
         } else {
           // Wrap
@@ -380,8 +384,8 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
           const wasNewBest = maybeSaveBestScore(difficulty, finalScore);
           setIsNewBest(wasNewBest);
           if (wasNewBest) playSound('newbest');
-          setStatus('dead');
-          return;
+          dyingRef.current = true;
+          break;
         }
 
         // Obstacle collision
@@ -392,8 +396,8 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
           const wasNewBest = maybeSaveBestScore(difficulty, finalScore);
           setIsNewBest(wasNewBest);
           if (wasNewBest) playSound('newbest');
-          setStatus('dead');
-          return;
+          dyingRef.current = true;
+          break;
         }
 
         // Add trail for tail before moving
@@ -412,7 +416,7 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
 
           // Speed up
           const newSpeed = Math.max(config.minSpeed, speedRef.current - config.speedIncrement);
-          if (newSpeed < speedRef.current && scoreRef.current % 5 === 0) {
+          if (newSpeed < speedRef.current && config.speedIncrement > 0 && scoreRef.current % 5 === 0) {
             playSound('speedup');
           }
           speedRef.current = newSpeed;
@@ -604,6 +608,13 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
       }
       ctx.globalAlpha = 1;
 
+      // If dying, render this final frame with particles then transition
+      if (dyingRef.current) {
+        dyingRef.current = false;
+        setStatus('dead');
+        return;
+      }
+
       animFrameRef.current = requestAnimationFrame(gameLoop);
     };
 
@@ -614,7 +625,7 @@ export default function SnakeGame({ onBack }: SnakeGameProps) {
       running = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [status, difficulty, playSound, spawnDeathParticles, maybeSaveBestScore]);
+  }, [status, difficulty, spawnDeathParticles]);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────
 

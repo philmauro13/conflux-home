@@ -45,7 +45,7 @@ export interface PipelineStatus {
   uptime: string;
 }
 
-export type View = 'dashboard' | 'chat' | 'google' | 'marketplace' | 'settings' | 'onboarding' | 'games' | 'agents' | 'kitchen' | 'budget' | 'feed' | 'life' | 'home' | 'dreams' | 'echo' | 'vault' | 'studio' | 'api-dashboard';
+export type View = 'dashboard' | 'chat' | 'google' | 'marketplace' | 'settings' | 'onboarding' | 'games' | 'agents' | 'kitchen' | 'budget' | 'feed' | 'life' | 'home' | 'dreams' | 'echo' | 'vault' | 'studio' | 'api-dashboard' | 'security' | 'security-hub' | 'aegis' | 'viper' | 'agent-audit' | 'siem';
 
 // Agent accent colors for avatar rendering
 export const AGENT_COLORS: Record<string, string> = {
@@ -61,6 +61,8 @@ export const AGENT_COLORS: Record<string, string> = {
   catalyst: '#ffcc00',  // gold/yellow
   aegis: '#6366f1',     // steel indigo
   viper: '#22c55e',     // venom green
+  hearth: '#f59e0b',    // warm orange (chef's egg / nutrition)
+  echo:   '#a78bfa',    // soft violet (wellbeing coach)
 };
 
 // ── Family Profiles ──
@@ -1308,6 +1310,7 @@ export interface LifeNudge {
 export interface OrbitDashboard {
   today_focus: LifeDailyFocus[];
   pending_tasks: LifeTask[];
+  completed_tasks: LifeTask[];
   active_habits: LifeHabit[];
   nudges: LifeNudge[];
   streak_total: number;
@@ -1496,6 +1499,7 @@ export interface StudioGeneration {
   metadata_json: string | null;
   cost_cents: number;
   vault_file_id: string | null;
+  project_id?: string;
   created_at: string;
 }
 

@@ -107,6 +107,12 @@ export function useConfluxController(options: UseConfluxControllerOptions = {}) 
 
       tokens.forEach((_, index) => {
         const timer = window.setTimeout(() => {
+          // Fire a visible pulse on the NeuralBrain — drives pulseImpulse and signalCount
+          triggerPulseRef.current(
+            strength + (index % 2 === 0 ? 1.2 : 0),
+            detail.status ?? fallbackStatus
+          );
+          // Also route the pulse to specific brain lobes
           routePulseRef.current(
             {
               route,

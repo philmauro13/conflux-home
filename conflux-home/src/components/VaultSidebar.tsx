@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { VaultProject, VaultTag } from '../types';
 
 interface Props {
@@ -6,6 +8,8 @@ interface Props {
   projects: VaultProject[];
   tags: VaultTag[];
   onCreateProject: () => void;
+  onEditProject: (id: string, name: string, description: string | null) => void;
+  onDeleteProject: (id: string) => void;
 }
 
 const SECTIONS = [
@@ -22,7 +26,24 @@ const FILE_TYPES = [
   { key: 'document', icon: '📄', label: 'Documents' },
 ];
 
-export default function VaultSidebar({ activeSection, onSectionChange, projects, tags, onCreateProject }: Props) {
+export default function VaultSidebar({ activeSection, onSectionChange, projects, tags, onCreateProject, onEditProject, onDeleteProject }: Props) {
+  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
+
+  const handleEdit = (e: React.MouseEvent, project: VaultProject) => {
+    e.stopPropagation();
+    const newName = prompt('Rename project:', project.name);
+    if (newName && newName.trim() && newName.trim() !== project.name) {
+      onEditProject(project.id, newName.trim(), project.description ?? null);
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent, project: VaultProject) => {
+    e.stopPropagation();
+    if (confirm(`Delete project "${project.name}"? This won't delete the files.`)) {
+      onDeleteProject(project.id);
+    }
+  };
+
   return (
     <div className="vault-sidebar">
       <div className="vault-sidebar-section">
@@ -55,12 +76,24 @@ export default function VaultSidebar({ activeSection, onSectionChange, projects,
         <div className="vault-sidebar-title">Projects</div>
         <ul className="vault-project-list">
           {projects.map(p => (
-            <li key={p.id} className="vault-project-item" onClick={() => onSectionChange(`project:${p.id}`)}>
+            <li
+              key={p.id}
+              className={`vault-project-item ${activeSection === `project:${p.id}` ? 'active' : ''}`}
+              onClick={() => onSectionChange(`project:${p.id}`)}
+              onMouseEnter={() => setHoveredProject(p.id)}
+              onMouseLeave={() => setHoveredProject(null)}
+            >
               <span className="vault-project-icon">📂</span>
               <div className="vault-project-meta">
                 <span className="vault-project-name">{p.name}</span>
                 <span className="vault-project-file-count">{p.file_count} files</span>
               </div>
+              {hoveredProject === p.id && (
+                <div className="vault-project-actions">
+                  <button className="vault-project-action-btn" onClick={(e) => handleEdit(e, p)} title="Rename">✏️</button>
+                  <button className="vault-project-action-btn vault-project-action-delete" onClick={(e) => handleDelete(e, p)} title="Delete">🗑️</button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

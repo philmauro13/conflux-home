@@ -1,0 +1,714 @@
+/* ═══════════════════════════════════════════════════════════════
+   HEARTH ONBOARDING + BOOT SEQUENCE STYLES
+   Warm fire aesthetic: heat shimmer, flame animation,
+   floating embers, recipe card reveal, guided tour
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Boot Sequence ─────────────────────────────────────────── */
+
+.hearth-boot {
+  position: fixed;
+  inset: 0;
+  background: #0c0a09;
+  z-index: 99999;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hearth-boot-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hearth-boot-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  pointer-events: none;
+}
+
+.hearth-boot-content.visible {
+  opacity: 1;
+}
+
+.hearth-boot-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.hearth-boot-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 3.2rem;
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: #fbbf24;
+  text-shadow:
+    0 0 20px rgba(245, 158, 11, 0.7),
+    0 0 40px rgba(245, 158, 11, 0.5),
+    0 0 80px rgba(245, 158, 11, 0.3),
+    0 0 120px rgba(245, 158, 11, 0.15);
+  animation: hearth-logo-breathe 2.5s ease-in-out infinite;
+}
+
+@keyframes hearth-logo-breathe {
+  0%, 100% {
+    text-shadow:
+      0 0 20px rgba(245, 158, 11, 0.6),
+      0 0 40px rgba(245, 158, 11, 0.4),
+      0 0 80px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(245, 158, 11, 0.85),
+      0 0 60px rgba(245, 158, 11, 0.55),
+      0 0 100px rgba(245, 158, 11, 0.3),
+      0 0 160px rgba(245, 158, 11, 0.15);
+  }
+}
+
+.hearth-boot-tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  margin: 0;
+}
+
+.hearth-boot-tagline.visible {
+  opacity: 1;
+}
+
+/* Flame animation */
+.hearth-boot-flame {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
+}
+
+.hearth-boot-flame.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.hearth-boot-flame-svg {
+  width: 80px;
+  height: 96px;
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.5)) drop-shadow(0 0 40px rgba(245, 158, 11, 0.3));
+  animation: hearth-flame-flicker 1.8s ease-in-out infinite;
+}
+
+@keyframes hearth-flame-flicker {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.04) rotate(-1.5deg); }
+  50% { transform: scale(0.97) rotate(1deg); }
+  75% { transform: scale(1.02) rotate(-0.5deg); }
+}
+
+.hearth-boot-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.hearth-boot-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b45309, #f59e0b, #fbbf24);
+  transition: width 0.1s linear;
+}
+
+/* ── Onboarding Root ───────────────────────────────────────── */
+
+.hearth-onboard-root {
+  position: fixed;
+  inset: 0;
+  background: #0c0a09;
+  z-index: 9997;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hearth-onboard-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hearth-onboard-center {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 580px;
+  padding: 0 24px;
+  animation: onboard-enter 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes onboard-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Prompt group */
+.hearth-onboard-prompt-group {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.hearth-onboard-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: rgba(245, 158, 11, 0.55);
+  text-transform: uppercase;
+  animation: fade-in-up 0.5s ease both 0.1s;
+}
+
+.hearth-onboard-question {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(1.8rem, 5.5vw, 2.8rem);
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 50%, rgba(245,158,11,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fade-in-up 0.5s ease both 0.2s;
+}
+
+.hearth-onboard-hint {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.38);
+  margin: 0;
+  font-style: italic;
+  animation: fade-in-up 0.5s ease both 0.3s;
+}
+
+/* Input area */
+.hearth-onboard-input-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fade-in-up 0.5s ease both 0.4s;
+}
+
+.hearth-onboard-input {
+  width: 100%;
+  background: rgba(20, 15, 10, 0.8);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 16px;
+  padding: 18px 20px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.05rem;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 72px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.hearth-onboard-input:focus {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.1), 0 0 0 1px rgba(245, 158, 11, 0.08) inset;
+}
+
+.hearth-onboard-input::placeholder {
+  color: rgba(255, 255, 255, 0.22);
+  font-style: italic;
+}
+
+.hearth-onboard-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0f172a;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 13px 26px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  align-self: flex-end;
+}
+
+.hearth-onboard-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.4);
+}
+
+.hearth-onboard-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Example chips */
+.hearth-onboard-examples {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fade-in-up 0.5s ease both 0.5s;
+}
+
+.hearth-onboard-example-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hearth-onboard-example-chip:hover {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: rgba(245, 158, 11, 0.9);
+}
+
+/* Interpreting phase */
+.hearth-onboard-interpreting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.hearth-onboard-flame-orb {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.85) 0%, rgba(245, 158, 11, 0.35) 40%, transparent 70%);
+  animation: flame-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.45);
+}
+
+@keyframes flame-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+
+.hearth-onboard-interpreting-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85rem;
+  color: rgba(245, 158, 11, 0.8);
+  letter-spacing: 0.1em;
+  animation: text-fade 0.5s ease both;
+}
+
+/* Preview phase */
+.hearth-onboard-preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: rgba(12, 10, 8, 0.9);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 24px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 460px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 60px rgba(245, 158, 11, 0.06), 0 30px 80px rgba(0, 0, 0, 0.5);
+  animation: card-appear 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* Flame glow behind preview card */
+.hearth-onboard-card-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  pointer-events: none;
+  transition: background 0.8s ease;
+}
+
+.hearth-onboard-preview-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: rgba(245, 158, 11, 0.45);
+  text-transform: uppercase;
+}
+
+/* Recipe preview */
+.hearth-onboard-recipe-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hearth-onboard-recipe-emoji {
+  font-size: 3.5rem;
+  line-height: 1;
+  animation: recipe-bounce 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes recipe-bounce {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.hearth-onboard-recipe-cuisine {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.7rem;
+  color: rgba(245, 158, 11, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Editable name */
+.hearth-onboard-title-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Orbitron', monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 12px 16px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hearth-onboard-title-input:focus {
+  border-color: rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
+}
+
+/* Description */
+.hearth-onboard-desc {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  margin: 0;
+}
+
+/* Launch button */
+.hearth-onboard-launch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0f172a;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
+  width: 100%;
+}
+
+.hearth-onboard-launch-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.4);
+}
+
+.hearth-onboard-retry {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.28);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.hearth-onboard-retry:hover {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Saving phase */
+.hearth-onboard-save {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.hearth-onboard-save-flame {
+  width: 60px;
+  height: 80px;
+  position: relative;
+  animation: save-flame 1s ease-in-out infinite;
+}
+
+@keyframes save-flame {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.08) rotate(-2deg); }
+}
+
+.hearth-onboard-save-flame-path {
+  fill: #f59e0b;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+}
+
+.hearth-onboard-saving-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  color: rgba(245, 158, 11, 0.9);
+  letter-spacing: 0.1em;
+  animation: text-fade 0.5s ease both;
+}
+
+/* Utilities */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes text-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: scale(0.9) translateY(16px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Hearth Tour Tooltip ─────────────────────────────────── */
+
+.hearth-tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9996;
+  pointer-events: none;
+  animation: tour-appear 0.3s ease both;
+}
+
+@keyframes tour-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hearth-tour-root .hearth-tour-tooltip,
+.hearth-tour-root .tour-spotlight-full,
+.hearth-tour-root .tour-spotlight-svg {
+  pointer-events: auto;
+}
+
+.hearth-tour-tooltip {
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: rgba(12, 10, 8, 0.93);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 40px rgba(245, 158, 11, 0.05);
+  animation: tooltip-enter 250ms ease-out;
+  overflow: visible;
+}
+
+@keyframes tooltip-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hearth-tour-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: rgba(12, 10, 8, 0.93);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.hearth-tour-tooltip--bottom .hearth-tour-arrow {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.hearth-tour-tooltip--top .hearth-tour-arrow {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+}
+
+.hearth-tour-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 0;
+}
+
+.hearth-tour-step-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: rgba(245, 158, 11, 0.55);
+  text-transform: uppercase;
+}
+
+.hearth-tour-close {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.32);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.73rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.hearth-tour-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Progress dots */
+.hearth-tour-progress {
+  display: flex;
+  gap: 5px;
+  padding: 10px 20px;
+}
+
+.hearth-tour-dot {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.hearth-tour-dot.active {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  transform: scaleY(1.4);
+}
+
+.hearth-tour-dot.done {
+  background: rgba(245, 158, 11, 0.32);
+}
+
+.hearth-tour-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 8px;
+  padding: 0 20px;
+  letter-spacing: 0.01em;
+}
+
+.hearth-tour-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.865rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.58);
+  margin: 0 0 16px;
+  padding: 0 20px;
+}
+
+.hearth-tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hearth-tour-skip {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.28);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.76rem;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.hearth-tour-skip:hover {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.hearth-tour-next {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 10px;
+  color: #0f172a;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+  letter-spacing: 0.03em;
+}
+
+.hearth-tour-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .hearth-onboard-preview { padding: 28px 20px; }
+  .hearth-onboard-question { font-size: 1.8rem; }
+  .hearth-onboard-logo { font-size: 2.2rem; letter-spacing: 0.2em; }
+  .hearth-tour-tooltip { width: calc(100vw - 32px); }
+}

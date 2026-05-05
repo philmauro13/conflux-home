@@ -1,6 +1,6 @@
 [package]
 name = "conflux-home"
-version = "0.1.66"
+version = "0.1.72"
 description = "Conflux Home — Your AI Family Lives Here"
 authors = ["The Conflux AI"]
 license = "MIT"
@@ -22,7 +22,8 @@ dotenvy = "0.15"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.10.3", features = [] }
+tauri = { version = "2.10.3", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "=2.6.0"
@@ -51,11 +52,14 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"                              # Auto-update from GitHub Releases
 tauri-plugin-process = "2"                             # Process control (graceful exit)
 lettre = { version = "0.11", features = ["smtp-transport", "builder", "hostname", "rustls-tls"], default-features = false }  # Email sending (SMTP, rustls)
+dirs = "6.0.0"
+zip = "0.6"                                             # ZIP archive creation for bulk export
 
-# Voice Engine — desktop only (cpal for capture, ElevenLabs for STT/TTS)
+# Voice Engine — desktop only (cpal for capture, ElevenLabs for STT/TTS, whisper-rs for local STT)
 [target.'cfg(not(target_os = "android"))'.dependencies]
 cpal = "0.15"
-# Removed whisper-rs, piper-rs, and hound to avoid ort-sys linker conflicts and remove unused local processing
+hound = "3.5"
+whisper-rs = "0.16"
 
 # imap = "2"                                              # TODO: Add when OpenSSL available
 # native-tls = "0.2"                                      # TODO: Add when OpenSSL available

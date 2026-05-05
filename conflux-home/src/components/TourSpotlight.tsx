@@ -4,9 +4,10 @@ interface TourSpotlightProps {
   targetRect: DOMRect | null;
   padding?: number;
   borderRadius?: number;
+  verticalOffset?: number;
 }
 
-export default function TourSpotlight({ targetRect, padding = 8, borderRadius = 12 }: TourSpotlightProps) {
+export default function TourSpotlight({ targetRect, padding = 8, borderRadius = 12, verticalOffset = 0 }: TourSpotlightProps) {
   const [adjustedRect, setAdjustedRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
@@ -29,6 +30,8 @@ export default function TourSpotlight({ targetRect, padding = 8, borderRadius = 
 
   const pad = padding;
   const rx = borderRadius;
+  // Apply vertical offset — negative pushes spotlight up, positive pushes down
+  const topOffset = adjustedRect.top + verticalOffset;
 
   return (
     <svg className="tour-spotlight-svg" width="100%" height="100%">
@@ -37,7 +40,7 @@ export default function TourSpotlight({ targetRect, padding = 8, borderRadius = 
           <rect width="100%" height="100%" fill="white" />
           <rect
             x={adjustedRect.left - pad}
-            y={adjustedRect.top - pad}
+            y={topOffset - pad}
             width={adjustedRect.width + pad * 2}
             height={adjustedRect.height + pad * 2}
             rx={rx}
@@ -56,7 +59,7 @@ export default function TourSpotlight({ targetRect, padding = 8, borderRadius = 
       <rect
         className="tour-spotlight-border"
         x={adjustedRect.left - pad}
-        y={adjustedRect.top - pad}
+        y={topOffset - pad}
         width={adjustedRect.width + pad * 2}
         height={adjustedRect.height + pad * 2}
         rx={rx}

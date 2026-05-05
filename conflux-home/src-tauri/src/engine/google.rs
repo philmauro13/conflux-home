@@ -28,7 +28,8 @@ const SCOPES: &str = "https://www.googleapis.com/auth/gmail.send https://www.goo
 
 // Built-in OAuth credentials — Conflux Home registered Google Cloud app.
 // Users never need to enter their own credentials.
-const DEFAULT_CLIENT_ID: &str = "372361303204-ad5o8asv9qmbq6o12d954et8gsj82sft.apps.googleusercontent.com";
+const DEFAULT_CLIENT_ID: &str =
+    "372361303204-ad5o8asv9qmbq6o12d954et8gsj82sft.apps.googleusercontent.com";
 const DEFAULT_CLIENT_SECRET: &str = "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";
 
 const OAUTH_PORT: u16 = 8899;
@@ -36,17 +37,24 @@ const OAUTH_PORT: u16 = 8899;
 /// Get the effective client ID — DB override or built-in default.
 fn get_client_id(db: &EngineDb) -> Result<String> {
     let db_id = db.get_config("google_client_id")?;
-    Ok(db_id.filter(|s| !s.is_empty()).unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string()))
+    Ok(db_id
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string()))
 }
 
 /// Get the effective client secret — DB override or built-in default.
 fn get_client_secret(db: &EngineDb) -> Result<String> {
     let db_secret = db.get_config("google_client_secret")?;
-    Ok(db_secret.filter(|s| !s.is_empty()).unwrap_or_else(|| DEFAULT_CLIENT_SECRET.to_string()))
+    Ok(db_secret
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| DEFAULT_CLIENT_SECRET.to_string()))
 }
 
 /// Accept a TCP connection with a timeout. Uses non-blocking mode + polling.
-fn accept_with_timeout(listener: &TcpListener, timeout_secs: u64) -> Option<(std::net::TcpStream, std::net::SocketAddr)> {
+fn accept_with_timeout(
+    listener: &TcpListener,
+    timeout_secs: u64,
+) -> Option<(std::net::TcpStream, std::net::SocketAddr)> {
     listener.set_nonblocking(true).ok()?;
     let deadline = std::time::Instant::now() + Duration::from_secs(timeout_secs);
 
@@ -116,10 +124,15 @@ pub fn handle_oauth_callback(db: &EngineDb) -> Result<GoogleTokens> {
     let client_secret = get_client_secret(db)?;
 
     // Start temp server
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", OAUTH_PORT))
-        .context(format!("Failed to bind to port {}. Is another instance running?", OAUTH_PORT))?;
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", OAUTH_PORT)).context(format!(
+        "Failed to bind to port {}. Is another instance running?",
+        OAUTH_PORT
+    ))?;
 
-    log::info!("[Google] Waiting for OAuth callback on port {}...", OAUTH_PORT);
+    log::info!(
+        "[Google] Waiting for OAuth callback on port {}...",
+        OAUTH_PORT
+    );
 
     // Accept one connection (with a thread-based timeout)
     let (mut stream, _) = accept_with_timeout(&listener, 120)
@@ -162,7 +175,10 @@ pub fn handle_oauth_callback(db: &EngineDb) -> Result<GoogleTokens> {
         email_str = Some(email);
     }
 
-    Ok(GoogleTokens { email: email_str, ..tokens })
+    Ok(GoogleTokens {
+        email: email_str,
+        ..tokens
+    })
 }
 
 fn extract_code_from_request(request: &str) -> Result<String> {
@@ -188,7 +204,11 @@ fn extract_code_from_request(request: &str) -> Result<String> {
     anyhow::bail!("No authorization code in callback request")
 }
 
-fn exchange_code_for_tokens(client_id: &str, client_secret: &str, code: &str) -> Result<GoogleTokens> {
+fn exchange_code_for_tokens(
+    client_id: &str,
+    client_secret: &str,
+    code: &str,
+) -> Result<GoogleTokens> {
     let client = reqwest::blocking::Client::new();
 
     let params = [
@@ -199,7 +219,8 @@ fn exchange_code_for_tokens(client_id: &str, client_secret: &str, code: &str) ->
         ("grant_type", "authorization_code"),
     ];
 
-    let resp = client.post(TOKEN_URL)
+    let resp = client
+        .post(TOKEN_URL)
         .form(&params)
         .send()
         .context("Failed to send token exchange request")?;
@@ -209,16 +230,16 @@ fn exchange_code_for_tokens(client_id: &str, client_secret: &str, code: &str) ->
         anyhow::bail!("Token exchange failed: {}", body);
     }
 
-    let token_resp: TokenResponse = resp.json()
-        .context("Failed to parse token response")?;
+    let token_resp: TokenResponse = resp.json().context("Failed to parse token response")?;
 
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let expires_at = now + token_resp.expires_in.unwrap_or(3600);
 
     Ok(GoogleTokens {
         access_token: token_resp.access_token,
-        refresh_token: token_resp.refresh_token
-            .ok_or_else(|| anyhow::anyhow!("No refresh token returned. Try revoking access and reconnecting."))?,
+        refresh_token: token_resp.refresh_token.ok_or_else(|| {
+            anyhow::anyhow!("No refresh token returned. Try revoking access and reconnecting.")
+        })?,
         expires_at: format_timestamp(expires_at),
         scope: token_resp.scope,
         email: None,
@@ -227,7 +248,8 @@ fn exchange_code_for_tokens(client_id: &str, client_secret: &str, code: &str) ->
 
 fn fetch_user_email(access_token: &str) -> Result<String> {
     let client = reqwest::blocking::Client::new();
-    let resp = client.get("https://www.googleapis.com/oauth2/v2/userinfo")
+    let resp = client
+        .get("https://www.googleapis.com/oauth2/v2/userinfo")
         .header("Authorization", format!("Bearer {}", access_token))
         .send()?;
 
@@ -250,7 +272,12 @@ pub fn store_tokens(db: &EngineDb, tokens: &GoogleTokens) -> Result<()> {
          ON CONFLICT(id) DO UPDATE SET
             access_token = ?1, refresh_token = ?2, expires_at = ?3, scope = ?4,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
-        rusqlite::params![tokens.access_token, tokens.refresh_token, tokens.expires_at, tokens.scope],
+        rusqlite::params![
+            tokens.access_token,
+            tokens.refresh_token,
+            tokens.expires_at,
+            tokens.scope
+        ],
     )?;
     Ok(())
 }
@@ -322,7 +349,8 @@ fn refresh_access_token(db: &EngineDb, tokens: &GoogleTokens) -> Result<GoogleTo
         ("grant_type", "refresh_token"),
     ];
 
-    let resp = client.post(TOKEN_URL)
+    let resp = client
+        .post(TOKEN_URL)
         .form(&params)
         .send()
         .context("Failed to send token refresh request")?;
@@ -355,7 +383,8 @@ fn api_get(db: &EngineDb, url: &str) -> Result<serde_json::Value> {
     let token = get_valid_token(db)?;
     let client = reqwest::blocking::Client::new();
 
-    let resp = client.get(url)
+    let resp = client
+        .get(url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .send()?;
@@ -374,7 +403,8 @@ fn api_post(db: &EngineDb, url: &str, body: &serde_json::Value) -> Result<serde_
     let token = get_valid_token(db)?;
     let client = reqwest::blocking::Client::new();
 
-    let resp = client.post(url)
+    let resp = client
+        .post(url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .json(body)
@@ -394,7 +424,8 @@ fn api_patch(db: &EngineDb, url: &str, body: &serde_json::Value) -> Result<serde
     let token = get_valid_token(db)?;
     let client = reqwest::blocking::Client::new();
 
-    let resp = client.patch(url)
+    let resp = client
+        .patch(url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .json(body)
@@ -414,14 +445,21 @@ fn api_patch(db: &EngineDb, url: &str, body: &serde_json::Value) -> Result<serde
 /// Send an email via Gmail.
 pub fn gmail_send(db: &EngineDb, to: &str, subject: &str, body: &str) -> Result<String> {
     // Build RFC 2822 message
-    let email = format!("To: {}\r\nSubject: {}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n{}", to, subject, body);
+    let email = format!(
+        "To: {}\r\nSubject: {}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n{}",
+        to, subject, body
+    );
     let encoded = base64_encode_url_safe(&email);
 
     let payload = serde_json::json!({
         "raw": encoded
     });
 
-    let _resp = api_post(db, "https://gmail.googleapis.com/gmail/v1/users/me/messages/send", &payload)?;
+    let _resp = api_post(
+        db,
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        &payload,
+    )?;
     Ok(format!("Email sent to {}", to))
 }
 
@@ -435,7 +473,8 @@ pub fn gmail_search(db: &EngineDb, query: &str, max_results: i64) -> Result<Stri
 
     let resp = api_get(db, &url)?;
 
-    let messages = resp.get("messages")
+    let messages = resp
+        .get("messages")
         .and_then(|m| m.as_array())
         .ok_or_else(|| anyhow::anyhow!("No messages found"))?;
 
@@ -450,7 +489,8 @@ pub fn gmail_search(db: &EngineDb, query: &str, max_results: i64) -> Result<Stri
         );
 
         if let Ok(detail) = api_get(db, &detail_url) {
-            let headers = detail.get("payload")
+            let headers = detail
+                .get("payload")
                 .and_then(|p| p.get("headers"))
                 .and_then(|h| h.as_array());
 
@@ -474,7 +514,9 @@ pub fn gmail_search(db: &EngineDb, query: &str, max_results: i64) -> Result<Stri
             let snippet = detail.get("snippet").and_then(|s| s.as_str()).unwrap_or("");
             results.push(format!(
                 "• From: {}\n  Subject: {}\n  Date: {}\n  {}",
-                from, subject, date,
+                from,
+                subject,
+                date,
                 &snippet[..snippet.len().min(150)]
             ));
         }
@@ -502,7 +544,8 @@ pub fn drive_list(db: &EngineDb, query: Option<&str>, max_results: i64) -> Resul
 
     let resp = api_get(db, &url)?;
 
-    let files = resp.get("files")
+    let files = resp
+        .get("files")
         .and_then(|f| f.as_array())
         .ok_or_else(|| anyhow::anyhow!("No files found"))?;
 
@@ -510,18 +553,21 @@ pub fn drive_list(db: &EngineDb, query: Option<&str>, max_results: i64) -> Resul
         return Ok("No files found.".to_string());
     }
 
-    let results: Vec<String> = files.iter().map(|f| {
-        let name = f.get("name").and_then(|n| n.as_str()).unwrap_or("Unknown");
-        let mime = f.get("mimeType").and_then(|m| m.as_str()).unwrap_or("");
-        let icon = match mime {
-            "application/vnd.google-apps.document" => "📄",
-            "application/vnd.google-apps.spreadsheet" => "📊",
-            "application/vnd.google-apps.presentation" => "📽️",
-            "application/vnd.google-apps.folder" => "📁",
-            _ => "📎",
-        };
-        format!("{} {}", icon, name)
-    }).collect();
+    let results: Vec<String> = files
+        .iter()
+        .map(|f| {
+            let name = f.get("name").and_then(|n| n.as_str()).unwrap_or("Unknown");
+            let mime = f.get("mimeType").and_then(|m| m.as_str()).unwrap_or("");
+            let icon = match mime {
+                "application/vnd.google-apps.document" => "📄",
+                "application/vnd.google-apps.spreadsheet" => "📊",
+                "application/vnd.google-apps.presentation" => "📽️",
+                "application/vnd.google-apps.folder" => "📁",
+                _ => "📎",
+            };
+            format!("{} {}", icon, name)
+        })
+        .collect();
 
     Ok(results.join("\n"))
 }
@@ -533,9 +579,13 @@ pub fn doc_read(db: &EngineDb, document_id: &str) -> Result<String> {
     let url = format!("https://docs.googleapis.com/v1/documents/{}", document_id);
     let resp = api_get(db, &url)?;
 
-    let title = resp.get("title").and_then(|t| t.as_str()).unwrap_or("Untitled");
+    let title = resp
+        .get("title")
+        .and_then(|t| t.as_str())
+        .unwrap_or("Untitled");
 
-    let body = resp.get("body")
+    let body = resp
+        .get("body")
         .and_then(|b| b.get("content"))
         .and_then(|c| c.as_array())
         .ok_or_else(|| anyhow::anyhow!("Could not read document body"))?;
@@ -544,7 +594,8 @@ pub fn doc_read(db: &EngineDb, document_id: &str) -> Result<String> {
     for element in body {
         if let Some(paragraph) = element.get("paragraph") {
             if let Some(elements) = paragraph.get("elements").and_then(|e| e.as_array()) {
-                let line: String = elements.iter()
+                let line: String = elements
+                    .iter()
                     .filter_map(|e| e.get("textRun"))
                     .filter_map(|tr| tr.get("content").and_then(|c| c.as_str()))
                     .collect();
@@ -565,16 +616,21 @@ pub fn doc_write(db: &EngineDb, document_id: &str, content: &str) -> Result<Stri
     let resp = api_get(db, &url)?;
 
     // Find the end index
-    let end_index = resp.get("body")
+    let end_index = resp
+        .get("body")
         .and_then(|b| b.get("content"))
         .and_then(|c| c.as_array())
         .and_then(|arr| arr.last())
         .and_then(|last| last.get("endIndex"))
         .and_then(|i| i.as_i64())
-        .unwrap_or(1) - 1;
+        .unwrap_or(1)
+        - 1;
 
     // Batch update to insert text
-    let update_url = format!("https://docs.googleapis.com/v1/documents/{}:batchUpdate", document_id);
+    let update_url = format!(
+        "https://docs.googleapis.com/v1/documents/{}:batchUpdate",
+        document_id
+    );
     let body = serde_json::json!({
         "requests": [
             {
@@ -587,7 +643,11 @@ pub fn doc_write(db: &EngineDb, document_id: &str, content: &str) -> Result<Stri
     });
 
     api_post(db, &update_url, &body)?;
-    Ok(format!("Wrote {} chars to document {}", content.len(), document_id))
+    Ok(format!(
+        "Wrote {} chars to document {}",
+        content.len(),
+        document_id
+    ))
 }
 
 // ── Google Sheets Tools ──
@@ -602,7 +662,8 @@ pub fn sheet_read(db: &EngineDb, spreadsheet_id: &str, range: &str) -> Result<St
 
     let resp = api_get(db, &url)?;
 
-    let values = resp.get("values")
+    let values = resp
+        .get("values")
         .and_then(|v| v.as_array())
         .ok_or_else(|| anyhow::anyhow!("No data in range"))?;
 
@@ -610,21 +671,30 @@ pub fn sheet_read(db: &EngineDb, spreadsheet_id: &str, range: &str) -> Result<St
         return Ok("No data found.".to_string());
     }
 
-    let rows: Vec<String> = values.iter().map(|row| {
-        let cells: Vec<String> = match row.as_array() {
-            Some(arr) => arr.iter()
-                .map(|cell| cell.as_str().unwrap_or("").to_string())
-                .collect(),
-            None => vec![format!("{}", row)],
-        };
-        cells.join(" | ")
-    }).collect();
+    let rows: Vec<String> = values
+        .iter()
+        .map(|row| {
+            let cells: Vec<String> = match row.as_array() {
+                Some(arr) => arr
+                    .iter()
+                    .map(|cell| cell.as_str().unwrap_or("").to_string())
+                    .collect(),
+                None => vec![format!("{}", row)],
+            };
+            cells.join(" | ")
+        })
+        .collect();
 
     Ok(rows.join("\n"))
 }
 
 /// Write values to a Google Sheet.
-pub fn sheet_write(db: &EngineDb, spreadsheet_id: &str, range: &str, values: Vec<Vec<String>>) -> Result<String> {
+pub fn sheet_write(
+    db: &EngineDb,
+    spreadsheet_id: &str,
+    range: &str,
+    values: Vec<Vec<String>>,
+) -> Result<String> {
     let url = format!(
         "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}?valueInputOption=USER_ENTERED",
         spreadsheet_id,
@@ -645,7 +715,8 @@ fn api_put(db: &EngineDb, url: &str, body: &serde_json::Value) -> Result<serde_j
     let token = get_valid_token(db)?;
     let client = reqwest::blocking::Client::new();
 
-    let resp = client.put(url)
+    let resp = client
+        .put(url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
         .json(body)
@@ -663,7 +734,11 @@ fn api_put(db: &EngineDb, url: &str, body: &serde_json::Value) -> Result<serde_j
 // ── Tool Dispatch ──
 
 /// Execute a Google tool by name.
-pub async fn execute_google_tool(tool_name: &str, args: &serde_json::Value, db: &EngineDb) -> Result<super::tools::ToolResult> {
+pub async fn execute_google_tool(
+    tool_name: &str,
+    args: &serde_json::Value,
+    db: &EngineDb,
+) -> Result<super::tools::ToolResult> {
     // Clone db ref isn't possible, so we'll use the global engine
     // This is called from tools.rs which has access to the db
     match tool_name {
@@ -671,7 +746,10 @@ pub async fn execute_google_tool(tool_name: &str, args: &serde_json::Value, db: 
             let url = get_auth_url(db)?;
             Ok(super::tools::ToolResult {
                 success: true,
-                output: format!("Open this URL to connect Google:\n{}\n\nWaiting for callback on port {}...", url, OAUTH_PORT),
+                output: format!(
+                    "Open this URL to connect Google:\n{}\n\nWaiting for callback on port {}...",
+                    url, OAUTH_PORT
+                ),
                 error: None,
             })
         }
@@ -680,68 +758,154 @@ pub async fn execute_google_tool(tool_name: &str, args: &serde_json::Value, db: 
             let subject = args.get("subject").and_then(|v| v.as_str()).unwrap_or("");
             let body = args.get("body").and_then(|v| v.as_str()).unwrap_or("");
             match gmail_send(db, to, subject, body) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         "gmail_search" => {
             let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
-            let max = args.get("max_results").and_then(|v| v.as_i64()).unwrap_or(5);
+            let max = args
+                .get("max_results")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(5);
             match gmail_search(db, query, max) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         "google_drive_list" => {
             let query = args.get("query").and_then(|v| v.as_str());
-            let max = args.get("max_results").and_then(|v| v.as_i64()).unwrap_or(10);
+            let max = args
+                .get("max_results")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(10);
             match drive_list(db, query, max) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         "google_doc_read" => {
-            let doc_id = args.get("document_id").and_then(|v| v.as_str()).unwrap_or("");
+            let doc_id = args
+                .get("document_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             match doc_read(db, doc_id) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         "google_doc_write" => {
-            let doc_id = args.get("document_id").and_then(|v| v.as_str()).unwrap_or("");
+            let doc_id = args
+                .get("document_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let content = args.get("content").and_then(|v| v.as_str()).unwrap_or("");
             match doc_write(db, doc_id, content) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         "google_sheet_read" => {
-            let sheet_id = args.get("spreadsheet_id").and_then(|v| v.as_str()).unwrap_or("");
-            let range = args.get("range").and_then(|v| v.as_str()).unwrap_or("Sheet1");
+            let sheet_id = args
+                .get("spreadsheet_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let range = args
+                .get("range")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Sheet1");
             match sheet_read(db, sheet_id, range) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         "google_sheet_write" => {
-            let sheet_id = args.get("spreadsheet_id").and_then(|v| v.as_str()).unwrap_or("");
-            let range = args.get("range").and_then(|v| v.as_str()).unwrap_or("Sheet1");
+            let sheet_id = args
+                .get("spreadsheet_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let range = args
+                .get("range")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Sheet1");
             let values_raw = args.get("values").and_then(|v| v.as_array());
             let values: Vec<Vec<String>> = match values_raw {
-                Some(arr) => arr.iter().map(|row| {
-                    if let Some(s) = row.as_str() {
-                        vec![s.to_string()]
-                    } else if let Some(row_arr) = row.as_array() {
-                        row_arr.iter().map(|cell| cell.as_str().unwrap_or("").to_string()).collect()
-                    } else {
-                        vec![format!("{}", row)]
-                    }
-                }).collect(),
+                Some(arr) => arr
+                    .iter()
+                    .map(|row| {
+                        if let Some(s) = row.as_str() {
+                            vec![s.to_string()]
+                        } else if let Some(row_arr) = row.as_array() {
+                            row_arr
+                                .iter()
+                                .map(|cell| cell.as_str().unwrap_or("").to_string())
+                                .collect()
+                        } else {
+                            vec![format!("{}", row)]
+                        }
+                    })
+                    .collect(),
                 None => vec![],
             };
             match sheet_write(db, sheet_id, range, values) {
-                Ok(result) => Ok(super::tools::ToolResult { success: true, output: result, error: None }),
-                Err(e) => Ok(super::tools::ToolResult { success: false, output: String::new(), error: Some(e.to_string()) }),
+                Ok(result) => Ok(super::tools::ToolResult {
+                    success: true,
+                    output: result,
+                    error: None,
+                }),
+                Err(e) => Ok(super::tools::ToolResult {
+                    success: false,
+                    output: String::new(),
+                    error: Some(e.to_string()),
+                }),
             }
         }
         _ => Ok(super::tools::ToolResult {
@@ -762,9 +926,10 @@ fn format_timestamp(secs: u64) -> String {
 }
 
 fn parse_timestamp(ts: &str) -> Result<u64> {
-    let dt = chrono::DateTime::parse_from_rfc3339(ts)
-        .or_else(|_| chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%SZ")
-            .map(|ndt| ndt.and_utc().fixed_offset()))?;
+    let dt = chrono::DateTime::parse_from_rfc3339(ts).or_else(|_| {
+        chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%SZ")
+            .map(|ndt| ndt.and_utc().fixed_offset())
+    })?;
     Ok(dt.timestamp() as u64)
 }
 

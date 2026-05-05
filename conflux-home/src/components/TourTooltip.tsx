@@ -10,6 +10,7 @@ interface TourTooltipProps {
   onSkip: () => void;
   isLast?: boolean;
   isFirst?: boolean;
+  finishLabel?: string;
 }
 
 export default function TourTooltip({
@@ -22,6 +23,7 @@ export default function TourTooltip({
   onSkip,
   isLast = false,
   isFirst = false,
+  finishLabel = 'Enter Conflux Home',
 }: TourTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; placement: 'top' | 'bottom' }>({
@@ -106,7 +108,7 @@ export default function TourTooltip({
             Skip tour
           </button>
           <button className="tour-tooltip-next" onClick={onNext}>
-            {isLast ? "Enter Conflux Home" : isFirst ? "Let's Go" : "Next →"}
+            {isLast ? finishLabel : isFirst ? "Let's Go" : "Next →"}
           </button>
         </div>
       </div>

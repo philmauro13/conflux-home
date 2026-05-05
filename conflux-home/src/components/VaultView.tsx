@@ -31,11 +31,11 @@ export default function VaultView() {
         const result = await invoke<VaultFile[]>('vault_get_favorites');
         setFiles(result);
       } else if (activeSection === 'all') {
-        const result = await invoke<VaultFile[]>('vault_get_files', { fileType: null, limit: 100, offset: 0 });
+        const result = await invoke<VaultFile[]>('vault_get_files', { file_type: null, limit: 100, offset: 0 });
         setFiles(result);
       } else {
         // file type filter
-        const result = await invoke<VaultFile[]>('vault_get_files', { fileType: activeSection, limit: 100, offset: 0 });
+        const result = await invoke<VaultFile[]>('vault_get_files', { file_type: activeSection, limit: 100, offset: 0 });
         setFiles(result);
       }
     } catch (e) {
@@ -91,14 +91,27 @@ export default function VaultView() {
   const handleCreateProject = async () => {
     const name = prompt('Project name:');
     if (!name) return;
-    await invoke('vault_create_project', { name, description: null, projectType: null });
+    await invoke('vault_create_project', { name, description: null, project_type: null });
+    loadProjects();
+  };
+
+  const handleEditProject = async (id: string, name: string, description: string | null) => {
+    await invoke('vault_edit_project', { id, name, description });
+    loadProjects();
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    await invoke('vault_delete_project', { id });
+    if (activeSection === `project:${id}`) {
+      setActiveSection('recent');
+    }
     loadProjects();
   };
 
   const handleScan = async () => {
     // Scan the vault directory
     const home = '/home/calo/.conflux/vault';
-    await invoke('vault_scan_directory', { dirPath: home });
+    await invoke('vault_scan_directory', { dir_path: home });
     loadFiles();
     loadStats();
   };
@@ -112,12 +125,37 @@ export default function VaultView() {
 
   return (
     <div className="vault-container">
+      {/* Hero Header */}
+      <div className="vault-hero">
+        <div className="vault-hero-glow" />
+        <div className="vault-hero-content">
+          <div className="vault-hero-icon">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M32 4L8 14V28C8 42.36 18.24 55.64 32 60C45.76 55.64 56 42.36 56 28V14L32 4Z" fill="url(#shield_grad)" opacity="0.2"/>
+              <path d="M32 4L8 14V28C8 42.36 18.24 55.64 32 60C45.76 55.64 56 42.36 56 28V14L32 4Z" stroke="url(#shield_grad)" strokeWidth="2" fill="none"/>
+              <path d="M24 32L29 37L40 26" stroke="#a78bfa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="32" cy="28" r="6" fill="none" stroke="#8b5cf6" strokeWidth="1.5" opacity="0.5"/>
+              <defs>
+                <linearGradient id="shield_grad" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#8b5cf6"/>
+                  <stop offset="1" stopColor="#3b82f6"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1 className="vault-hero-title">Vault</h1>
+          <p className="vault-hero-sub">Encrypted file storage & project folders</p>
+        </div>
+      </div>
+
       <VaultSidebar
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         projects={projects}
         tags={tags}
         onCreateProject={handleCreateProject}
+        onEditProject={handleEditProject}
+        onDeleteProject={handleDeleteProject}
       />
       <div className="vault-main">
         <VaultSearchBar query={searchQuery} onQueryChange={setSearchQuery} />
@@ -130,14 +168,21 @@ export default function VaultView() {
         <div className="vault-content-area">
           {loading ? (
             <div className="vault-empty">
-              <div className="vault-empty-icon">⏳</div>
+              <svg className="vault-empty-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M32 4L8 14V28C8 42.36 18.24 55.64 32 60C45.76 55.64 56 42.36 56 28V14L32 4Z" stroke="#8b5cf6" strokeWidth="2" fill="none" opacity="0.4"/>
+                <path d="M24 32L29 37L40 26" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+              </svg>
               <div className="vault-empty-title">Loading...</div>
             </div>
           ) : files.length === 0 ? (
             <div className="vault-empty">
-              <div className="vault-empty-icon">📦</div>
+              <svg className="vault-empty-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M32 4L8 14V28C8 42.36 18.24 55.64 32 60C45.76 55.64 56 42.36 56 28V14L32 4Z" stroke="#8b5cf6" strokeWidth="2" fill="none"/>
+                <circle cx="32" cy="28" r="8" stroke="#8b5cf6" strokeWidth="2" fill="none"/>
+                <path d="M32 20V28" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
               <div className="vault-empty-title">
-                {searchQuery ? 'No results found' : 'No files yet'}
+                {searchQuery ? 'No results found' : 'Vault is empty'}
               </div>
               <div className="vault-empty-desc">
                 {searchQuery

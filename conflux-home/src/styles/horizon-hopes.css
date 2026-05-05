@@ -33,7 +33,7 @@
   height: 100%;
   color: var(--horizon-text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 40px 48px;
+  padding: 0 48px 56px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -904,7 +904,7 @@
 
 @media (min-width: 640px) {
   .horizon-view {
-    padding: 0 24px 40px;
+    padding: 0 24px 56px;
   }
 
   .horizon-header {
@@ -957,8 +957,8 @@
 
 @media (min-width: 1024px) {
   .horizon-view {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
   }
 
   .horizon-dream-grid {

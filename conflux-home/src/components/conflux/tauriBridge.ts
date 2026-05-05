@@ -20,7 +20,7 @@ export async function attachTauriConfluxListeners(
   const ttsEventName = eventNames.tts ?? "conflux:tts-audio";
 
   const unlistenState = await listen<ConfluxExternalEvent>(stateEventName, (event) => {
-    applyEvent(event.payload, "backend");
+    applyEvent(event.payload as ConfluxExternalEvent, "backend");
   });
 
   const unlistenPulse = await listen<ConfluxExternalEvent>(pulseEventName, (event) => {

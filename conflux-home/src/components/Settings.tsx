@@ -11,9 +11,11 @@ import CronManager from './settings/CronManager';
 import TaskView from './settings/TaskView';
 import WebhookManager from './settings/WebhookManager';
 import SkillsBrowser from './settings/SkillsBrowser';
+import SkillGarden from './settings/SkillGarden';
 import BillingSection from './settings/BillingSection';
 import UsageSection from './settings/UsageSection';
 import SoundSection from './settings/SoundSection';
+import SecuritySettings from './settings/SecuritySettings';
 import { useAuth } from '../hooks/useAuth';
 import { playToggleOn, playToggleOff } from '../lib/sound';
 import { useTourState } from '../hooks/useTourState';
@@ -424,13 +426,14 @@ export default function Settings() {
           🧩 Open Agents App
         </button>
       </div>
+      <SecuritySettings />
       <div className="settings-section">
         <div className="settings-section-title">🔧 Engine</div>
       </div>
       <CronManager />
       <TaskView />
       <WebhookManager />
-      <SkillsBrowser />
+      <SkillGarden />
       <DataSection />
     </div>
   );

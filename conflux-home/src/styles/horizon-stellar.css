@@ -828,6 +828,7 @@
 }
 
 .stellar-dream-card {
+  position: relative;
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(6, 182, 212, 0.2);
@@ -841,6 +842,46 @@
   border-color: rgba(6, 182, 212, 0.5);
   transform: translateY(-4px);
   box-shadow: 0 0 30px rgba(6, 182, 212, 0.15);
+}
+
+/* Newly lit dream — star glow animation */
+.stellar-dream-card.newly-lit {
+  animation: newly-lit-pulse 1.5s ease-in-out infinite;
+}
+
+.stellar-dream-card-star-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, rgba(251, 191, 36, 0.1) 40%, transparent 70%);
+  border-radius: 50%;
+  animation: star-glow-pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes newly-lit-pulse {
+  0%, 100% {
+    border-color: rgba(251, 191, 36, 0.3);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
+  }
+  50% {
+    border-color: rgba(251, 191, 36, 0.6);
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.25);
+  }
+}
+
+@keyframes star-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+}
+
+.stellar-dream-card-content {
+  position: relative;
+  z-index: 1;
 }
 
 .stellar-dream-card-emoji {
@@ -1177,5 +1218,378 @@
 
   .stellar-form-row {
     flex-direction: column;
+  }
+}
+/* Dream detail action bar */
+.stellar-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 2rem 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+.stellar-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Milestone list in detail view */
+.horizon-milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.horizon-milestone {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.horizon-milestone:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.horizon-milestone.completed {
+  opacity: 0.6;
+}
+
+.horizon-milestone-check {
+  font-size: 1rem;
+}
+
+.horizon-milestone-title {
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.horizon-milestone-date {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+/* AI Planning Card */
+.stellar-ai-section {
+  margin-top: -0.5rem;
+}
+
+.stellar-ai-card {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stellar-ai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stellar-ai-icon {
+  font-size: 1.25rem;
+}
+
+.stellar-ai-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #93c5fd;
+  margin: 0;
+}
+
+.stellar-ai-desc {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  margin: 0;
+}
+
+.stellar-input-ai {
+  font-size: 1rem;
+}
+
+.stellar-btn-ai {
+  align-self: flex-start;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border: none;
+  font-weight: 600;
+}
+
+/* ── Horizon Hero Banner ── */
+.horizon-hero-banner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 20px;
+  margin-top: 1rem;
+  padding: 1.5rem 2rem;
+}
+
+.horizon-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+.horizon-hero-velocity-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.velocity-ring-svg {
+  width: 80px;
+  height: 80px;
+}
+
+.velocity-ring-arc {
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.velocity-ring-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.velocity-ring-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fbbf24;
+  line-height: 1;
+}
+
+.velocity-ring-label {
+  font-size: 0.5rem;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.horizon-hero-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.horizon-hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.horizon-hero-stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1;
+}
+
+.horizon-hero-stat-label {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.horizon-hero-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── New Constellation Button ── */
+.horizon-new-btn {
+  position: relative;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: 12px;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  animation: horizon-btn-breathe 3s ease-in-out infinite;
+}
+
+@keyframes horizon-btn-breathe {
+  0%, 100% { box-shadow: 0 0 15px rgba(6, 182, 212, 0.15); }
+  50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.35), 0 0 60px rgba(139, 92, 246, 0.15); }
+}
+
+.horizon-new-btn:hover {
+  border-color: rgba(6, 182, 212, 0.7);
+  transform: translateY(-2px) scale(1.02);
+  animation: none;
+  box-shadow: 0 0 40px rgba(6, 182, 212, 0.4);
+}
+
+.horizon-new-btn-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  pointer-events: none;
+}
+
+.horizon-new-btn-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+}
+
+.horizon-new-btn-icon {
+  font-size: 1.1rem;
+}
+
+.horizon-new-btn-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #67e8f9;
+  letter-spacing: 0.05em;
+}
+
+/* ── New Dream Form ── */
+.horizon-new-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  width: 100%;
+  max-width: 480px;
+  animation: form-appear 0.25s ease-out;
+}
+
+@keyframes form-appear {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Section Label ── */
+.horizon-section-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.horizon-section-label-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.3), transparent);
+}
+
+.horizon-section-label-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.7rem;
+  color: rgba(6, 182, 212, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}
+
+/* ── Dream Card Improvements ── */
+.stellar-dream-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.stellar-dream-card-category {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.stellar-dream-card-desc {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stellar-dream-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.stellar-dream-card-progress {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.stellar-dream-card-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Entrance animations */
+.stellar-dream-card {
+  animation: card-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .horizon-hero-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .horizon-hero-right {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .horizon-new-form {
+    max-width: 100%;
+  }
+  .horizon-hero-stats {
+    gap: 1.25rem;
   }
 }

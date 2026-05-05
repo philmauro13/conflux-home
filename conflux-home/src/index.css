@@ -107,9 +107,9 @@
 
 /* === SETTINGS PAGE === */
 .settings-page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 24px;
+  max-width: none;
+  margin: 0;
+  padding: 0 24px 56px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -325,7 +325,7 @@ body {
   justify-content: space-between;
   padding: 0 20px;
   flex-shrink: 0;
-  z-index: 100;
+  z-index: 200;
   position: relative;
 }
 
@@ -389,6 +389,22 @@ body {
   box-shadow: 0 0 6px var(--accent-error);
 }
 
+.topbar-status-dot.local {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+.topbar-status-dot.local-pulse {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: localPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes localPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .topbar-theme-btn {
   background: none;
   border: none;
@@ -420,6 +436,23 @@ body {
   transform: rotate(45deg);
 }
 
+/* === TOPBAR NOTIFICATION BELL === */
+.topbar-notif-btn {
+  position: relative;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+  line-height: 1;
+}
+
+.topbar-notif-btn:hover {
+  background: var(--bg-hover);
+}
+
 /* === DESKTOP AREA === */
 .desktop-area {
   flex: 1;
@@ -429,7 +462,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 56px; /* space for dock */
+  /* padding-bottom removed — ConfluxBar floats at z-150 above overlay, no space needed here */
 }
 
 .desktop-bg-pattern {
@@ -1483,9 +1516,9 @@ body {
 
 /* === SETTINGS PAGE === */
 .settings-page {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 16px 0 32px;
+  max-width: none;
+  margin: 0;
+  padding: 0 16px 56px;
   display: flex;
   flex-direction: column;
   gap: 20px;

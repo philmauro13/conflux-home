@@ -16,7 +16,7 @@ struct ExtractedMemories {
 #[derive(Debug, Deserialize)]
 struct ExtractedMemory {
     #[serde(rename = "type")]
-    memory_type: String,  // "fact", "preference", "correction", "knowledge"
+    memory_type: String, // "fact", "preference", "correction", "knowledge"
     key: Option<String>,
     content: String,
     confidence: Option<f64>,
@@ -78,13 +78,18 @@ pub async fn extract_and_store(
         Some(500),
         Some(0.0), // low temperature for consistency
         None,      // no tools needed
-    ).await?;
+    )
+    .await?;
 
     // Parse the response
     let extracted: ExtractedMemories = match serde_json::from_str(&response.content) {
         Ok(e) => e,
         Err(e) => {
-            log::warn!("[Memory] Failed to parse extraction response: {} — raw: {}", e, &response.content[..response.content.len().min(200)]);
+            log::warn!(
+                "[Memory] Failed to parse extraction response: {} — raw: {}",
+                e,
+                &response.content[..response.content.len().min(200)]
+            );
             return Ok(()); // Don't fail the conversation for extraction errors
         }
     };
@@ -96,7 +101,11 @@ pub async fn extract_and_store(
             if let Ok(Some(existing)) = db.get_memory_by_key(agent_id, key) {
                 // Update if content changed
                 if existing.content != mem.content {
-                    log::info!("[Memory] Updating existing memory: {} = {}", key, mem.content);
+                    log::info!(
+                        "[Memory] Updating existing memory: {} = {}",
+                        key,
+                        mem.content
+                    );
                     // Delete old, insert new
                     let _ = db.delete_memory(&existing.id);
                 } else {
@@ -119,7 +128,12 @@ pub async fn extract_and_store(
             let _ = db.set_memory_confidence(&id, conf);
         }
 
-        log::info!("[Memory] Stored: [{}] {} = {}", mem.memory_type, mem.key.as_deref().unwrap_or("-"), &mem.content[..mem.content.len().min(100)]);
+        log::info!(
+            "[Memory] Stored: [{}] {} = {}",
+            mem.memory_type,
+            mem.key.as_deref().unwrap_or("-"),
+            &mem.content[..mem.content.len().min(100)]
+        );
     }
 
     // Log telemetry
@@ -127,10 +141,13 @@ pub async fn extract_and_store(
         "memory_extracted",
         Some(agent_id),
         Some(session_id),
-        Some(&serde_json::json!({
-            "user_msg_len": user_message.len(),
-            "assistant_msg_len": assistant_response.len(),
-        }).to_string()),
+        Some(
+            &serde_json::json!({
+                "user_msg_len": user_message.len(),
+                "assistant_msg_len": assistant_response.len(),
+            })
+            .to_string(),
+        ),
     );
 
     Ok(())

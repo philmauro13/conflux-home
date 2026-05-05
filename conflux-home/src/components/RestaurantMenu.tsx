@@ -79,7 +79,16 @@ export default function RestaurantMenu({ chefsSpecials, yourRegulars, onSelect, 
                 className="regular-card"
                 onClick={() => onSelect(meal.id)}
               >
-                <span className="regular-emoji">{meal.category ? getCategoryEmoji(meal.category) : '🍽️'}</span>
+                {meal.photo_url ? (
+                  <img
+                    src={meal.photo_url}
+                    alt={meal.name}
+                    className="regular-img"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="regular-emoji">{meal.category ? getCategoryEmoji(meal.category) : '🍽️'}</span>
+                )}
                 <div className="regular-info">
                   <span className="regular-name">{meal.name}</span>
                   {meal.prep_time_min && meal.cook_time_min && (

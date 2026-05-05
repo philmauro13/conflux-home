@@ -16,30 +16,30 @@ function getColorClass(category: string): string {
   return 'cyan'; // default
 }
 
-/** Convert priority/confidence to SVG ring radius position */
-function getBlipPosition(index: number, total: number, confidence: number) {
-  // Place blips around the radar based on index
-  const angle = (index / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2;
-  // Distance from center based on confidence (higher = closer to center)
-  const distance = 40 + (100 - confidence) * 0.5; // 40-90 range
-  const cx = 100 + distance * Math.cos(angle);
-  const cy = 100 + distance * Math.sin(angle);
-  return { cx, cy, angle };
+/** Stable blip position: sort by id first so order never shifts between re-renders */
+function sortRipples(ripples: RippleSignal[]): RippleSignal[] {
+  return [...ripples].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Convert confidence (0–100) to distance from center (20–90px in SVG coords) */
+function confidenceToDistance(confidence: number): number {
+  // Higher confidence → closer to center
+  return 20 + (100 - confidence) * 0.7;
 }
 
 function RadarBlip({
   ripple,
-  index,
-  total,
+  position,
+  animationDelay,
   onClick,
 }: {
   ripple: RippleSignal;
-  index: number;
-  total: number;
+  position: { cx: number; cy: number };
+  animationDelay: number;
   onClick?: () => void;
 }) {
   const colorClass = getColorClass(ripple.category);
-  const pos = getBlipPosition(index, total, ripple.confidence);
+  const radius = 6 + ripple.confidence * 0.05;
 
   return (
     <g
@@ -47,26 +47,26 @@ function RadarBlip({
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      {/* Expanding ripple rings */}
+      {/* Expanding ripple ring — CSS handles the expansion */}
       <circle
         className="radar-ripple-ring"
-        cx={pos.cx}
-        cy={pos.cy}
+        cx={position.cx}
+        cy={position.cy}
         r="0"
-        style={{ animationDelay: `${index * 0.5}s` }}
+        style={{ animationDelay: `${animationDelay}s` }}
       />
-      {/* Blip dot */}
+      {/* Blip dot with stable pulse */}
       <circle
         className="radar-blip-circle"
-        cx={pos.cx}
-        cy={pos.cy}
-        r={6 + ripple.confidence * 0.05}
-        style={{ animationDelay: `${index * 0.3}s` }}
+        cx={position.cx}
+        cy={position.cy}
+        r={radius}
+        style={{ animationDelay: `${animationDelay}s` }}
       />
-      {/* Small label */}
+      {/* Label — static, no animation */}
       <text
-        x={pos.cx}
-        y={pos.cy + 18}
+        x={position.cx}
+        y={position.cy + 18}
         textAnchor="middle"
         fill="var(--radar-text-muted)"
         fontSize="7"
@@ -79,8 +79,26 @@ function RadarBlip({
 }
 
 export default function RadarView({ ripples, loading, onBlipClick }: RadarViewProps) {
-  // Concentric ring radii
+  // Concentric ring radii in SVG viewBox coords (200x200)
   const rings = [30, 55, 80, 105];
+
+  // Stable sorted ripples so blip order never shifts between renders
+  const sortedRipples = useMemo(() => sortRipples(ripples), [ripples]);
+
+  // Precompute positions once — stable based on sorted order
+  const blipPositions = useMemo(() => {
+    const total = sortedRipples.length;
+    if (total === 0) return [];
+    return sortedRipples.map((ripple, i) => {
+      // Angle: distribute evenly around circle, start from top (-π/2)
+      const angle = (i / total) * 2 * Math.PI - Math.PI / 2;
+      const distance = confidenceToDistance(ripple.confidence);
+      return {
+        cx: 100 + distance * Math.cos(angle),
+        cy: 100 + distance * Math.sin(angle),
+      };
+    });
+  }, [sortedRipples]);
 
   if (loading) {
     return (
@@ -139,13 +157,13 @@ export default function RadarView({ ripples, loading, onBlipClick }: RadarViewPr
         {/* Center dot */}
         <circle cx="100" cy="100" r="3" fill="var(--radar-cyan)" opacity="0.8" />
 
-        {/* Signal blips */}
-        {ripples.map((ripple, idx) => (
+        {/* Signal blips — positions precomputed, stable across re-renders */}
+        {sortedRipples.map((ripple, idx) => (
           <RadarBlip
             key={ripple.id}
             ripple={ripple}
-            index={idx}
-            total={ripples.length}
+            position={blipPositions[idx]}
+            animationDelay={idx * 0.4}
             onClick={() => onBlipClick?.(ripple)}
           />
         ))}

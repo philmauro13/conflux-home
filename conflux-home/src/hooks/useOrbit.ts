@@ -5,22 +5,22 @@ import { useAuthContext } from '../contexts/AuthContext';
 
 export function useOrbit() {
   const { user } = useAuthContext();
-  const userId = user?.id || '';
+  const user_id = user?.id || '';
   const [dashboard, setDashboard] = useState<OrbitDashboard | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadDashboard = useCallback(async () => {
-    if (!userId) return;
+    if (!user_id) return;
     try {
       setLoading(true);
-      const d = await invoke<OrbitDashboard>('life_get_orbit_dashboard', { userId });
+      const d = await invoke<OrbitDashboard>('life_get_orbit_dashboard', { user_id });
       setDashboard(d);
     } catch (e) {
       console.error('Failed:', e);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [user_id]);
 
   useEffect(() => {
     loadDashboard();
@@ -29,82 +29,90 @@ export function useOrbit() {
   const addTask = useCallback(
     async (title: string, category?: string, priority?: string, dueDate?: string, energyType?: string) => {
       await invoke('life_add_task', {
-        userId,
+        user_id,
         title,
         category: category ?? null,
         priority: priority ?? null,
-        dueDate: dueDate ?? null,
-        energyType: energyType ?? null,
+        due_date: dueDate ?? null,
+        energy_type: energyType ?? null,
       });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   const completeTask = useCallback(
-    async (taskId: string) => {
-      await invoke('life_complete_task', { userId, taskId });
+    async (task_id: string) => {
+      await invoke('life_complete_task', { user_id, task_id });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   const deleteTask = useCallback(
-    async (taskId: string) => {
-      await invoke('life_delete_task', { userId, taskId });
+    async (task_id: string) => {
+      await invoke('life_delete_task', { user_id, task_id });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   const addHabit = useCallback(
     async (name: string, category?: string, frequency?: string, targetCount?: number) => {
       await invoke('life_add_habit', {
-        userId,
+        user_id,
         name,
         category: category ?? null,
         frequency: frequency ?? null,
-        targetCount: targetCount ?? null,
+        target_count: targetCount ?? null,
       });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   const logHabit = useCallback(
     async (habitId: string) => {
-      await invoke('life_log_habit', { userId, habitId });
+      await invoke('life_log_habit', { user_id, habit_id: habitId });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   const addFocus = useCallback(
-    async (taskId: string, position?: number) => {
-      await invoke('life_add_daily_focus', { userId, taskId, position: position ?? null });
+    async (task_id: string, position?: number) => {
+      await invoke('life_add_daily_focus', { user_id, task_id, position: position ?? null });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   const morningBrief = useCallback(async () => {
-    return await invoke<string>('life_morning_brief', { userId });
-  }, [userId]);
+    return await invoke<string>('life_morning_brief', { user_id });
+  }, [user_id]);
 
-  const smartReschedule = useCallback(async (taskId: string) => {
-    return await invoke<LifeSchedule>('life_smart_reschedule', { taskId });
+  const smartReschedule = useCallback(async (task_id: string) => {
+    return await invoke<LifeSchedule>('life_smart_reschedule', { task_id });
   }, []);
 
   const parseInput = useCallback(async (input: string) => {
-    return await invoke<{ action: string; title: string; parsed: boolean }>('life_parse_input', { input });
+    return await invoke<{
+      action: string;
+      title: string;
+      due_date?: string;
+      priority?: string;
+      category?: string;
+      energy_type?: string;
+      parsed: boolean;
+    }>('life_parse_input', { input });
   }, []);
 
   const dismissNudge = useCallback(
     async (nudgeId: string) => {
-      await invoke('life_dismiss_nudge', { userId, nudgeId });
+      await invoke('life_dismiss_nudge', { user_id, nudgeId });
       await loadDashboard();
     },
-    [userId, loadDashboard]
+    [user_id, loadDashboard]
   );
 
   return {

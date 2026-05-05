@@ -5,14 +5,14 @@
 use anyhow::{Context, Result};
 use reqwest::Client;
 use serde_json::json;
-use tauri::{Emitter, Window};
+use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Clone)]
 pub struct OpenAIConfig {
     pub api_key: String,
-    pub model_tts: String,   // "tts-1" or "tts-1-hd"
-    pub voice: String,       // "alloy", "echo", "fable", "onyx", "nova", "shimmer"
-    pub model_stt: String,   // "whisper-1"
+    pub model_tts: String, // "tts-1" or "tts-1-hd"
+    pub voice: String,     // "alloy", "echo", "fable", "onyx", "nova", "shimmer"
+    pub model_stt: String, // "whisper-1"
 }
 
 impl Default for OpenAIConfig {
@@ -21,7 +21,11 @@ impl Default for OpenAIConfig {
             api_key: std::env::var("OPENAI_API_KEY")
                 .ok()
                 .filter(|k| !k.is_empty())
-                .or_else(|| option_env!("OPENAI_API_KEY").map(|s| s.to_string()).filter(|k| !k.is_empty()))
+                .or_else(|| {
+                    option_env!("OPENAI_API_KEY")
+                        .map(|s| s.to_string())
+                        .filter(|k| !k.is_empty())
+                })
                 .unwrap_or_default(),
             model_tts: "tts-1".to_string(),
             voice: "nova".to_string(), // Friendly, clear voice
@@ -31,9 +35,9 @@ impl Default for OpenAIConfig {
 }
 
 /// Stream TTS audio from OpenAI and emit events to the Fairy.
-pub async fn stream_tts(text: &str, config: OpenAIConfig, window: Window) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn stream_tts(text: &str, config: OpenAIConfig, app: AppHandle) -> anyhow::Result<()> {
     if config.api_key.is_empty() {
-        return Err(Box::from("OPENAI_API_KEY is not set"));
+        return Err(anyhow::anyhow!("OPENAI_API_KEY is not set"));
     }
 
     let client = Client::new();
@@ -57,7 +61,7 @@ pub async fn stream_tts(text: &str, config: OpenAIConfig, window: Window) -> Res
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(Box::from(format!("OpenAI TTS API Error {}: {}", status, body)));
+        return Err(anyhow::anyhow!("OpenAI TTS API Error {}: {}", status, body));
     }
 
     let bytes = response.bytes().await?;
@@ -67,17 +71,20 @@ pub async fn stream_tts(text: &str, config: OpenAIConfig, window: Window) -> Res
     // Parse text into tokens for animation
     let tokens: Vec<String> = text.split_whitespace().map(|s| s.to_string()).collect();
 
-    let _ = window.emit("conflux:tts-audio", serde_json::json!({
-        "audio_base64": audio_base64,
-        "sample_rate": 24000,
-        "cadence": {
-            "tokens": tokens,
-            "intervalMs": 110,
-            "strength": 7,
-            "burstsPerToken": 1,
-            "route": ["speech", "memory"],
-        }
-    }));
+    let _ = app.emit(
+        "conflux:tts-audio",
+        serde_json::json!({
+            "audio_base64": audio_base64,
+            "sample_rate": 24000,
+            "cadence": {
+                "tokens": tokens,
+                "intervalMs": 110,
+                "strength": 7,
+                "burstsPerToken": 1,
+                "route": ["speech", "memory"],
+            }
+        }),
+    );
 
     Ok(())
 }

@@ -1,4 +1,5 @@
 export { ConfluxPresence } from "./ConfluxPresence";
+export type { FairyExpression, FairyNudge } from "./ConfluxPresence";
 export { ConfluxDebugPanel } from "./ConfluxDebugPanel";
 export { ConfluxTauriHost } from "./ConfluxTauriHost";
 export { useConfluxController } from "./useConfluxController";

@@ -2,6 +2,7 @@
 // Echo: Your reflective wellness companion
 // NOT a therapist. A warm, present, insightful conversation partner.
 
+import { playSuccess } from '../lib/sound';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEchoCounselor } from '../hooks/useEchoCounselor';
@@ -9,6 +10,10 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import type { EchoCounselorMessage, EchoCrisisFlag, EchoCounselorSession, EchoWeeklyLetter } from '../types';
 import { ECHO_CRISIS_RESOURCES } from '../types';
 import '../styles-echo-counselor.css';
+import '../styles-echo-onboarding.css';
+import EchoBoot from './EchoBoot';
+import EchoOnboarding, { hasCompletedEchoOnboarding } from './EchoOnboarding';
+import EchoTour, { hasCompletedEchoTour } from './EchoTour';
 
 type ViewMode = 'session' | 'journal' | 'tools' | 'letter';
 
@@ -30,6 +35,10 @@ export default function EchoCounselorView() {
     getWeeklyLetterHistory,
     setEveningReminder,
     writeGratitude,
+    getGratitudeEntries,
+    completeExercise,
+    getEveningReminder,
+    setCurrentSessionData,
     refresh,
   } = useEchoCounselor();
 
@@ -37,6 +46,16 @@ export default function EchoCounselorView() {
   const [input, setInput] = useState('');
   const [journal, setJournal] = useState<EchoCounselorSession[]>([]);
   const [showCrisisResources, setShowCrisisResources] = useState(false);
+
+  // Boot → Onboarding → Tour → Main
+  const [bootDone, setBootDone] = useState(() => localStorage.getItem('echo-boot-done') === 'true');
+  const hasOnboarded = hasCompletedEchoOnboarding();
+  const hasTakenTour = hasCompletedEchoTour();
+  const [showOnboarding, setShowOnboarding] = useState(!bootDone && !hasOnboarded);
+  const [showTour, setShowTour] = useState(!bootDone ? false : !hasTakenTour);
+
+  // After onboarding starts session, switch to session tab
+  const switchToSession = useCallback(() => setView('session'), []);
 
   // Voice input — streams transcript into the textarea
   const [voiceText, setVoiceText] = useState('');
@@ -57,12 +76,11 @@ export default function EchoCounselorView() {
     getCounselorJournal().then(j => setJournal(j));
   }, [getCounselorJournal]);
 
-  // Auto-start a session if none exists and we have data
+  // Auto-start a session if none exists and we have data (only after onboarding complete)
   useEffect(() => {
-    if (!loading && state && !state.current_session && state.recent_sessions.length === 0) {
-      startSession();
-    }
-  }, [loading, state, startSession]);
+    if (!bootDone || showOnboarding || !loading || !state || state.current_session || state.recent_sessions.length > 0) return;
+    startSession();
+  }, [bootDone, showOnboarding, loading, state, startSession]);
 
   const handleSubmit = async () => {
     if (!input.trim() || !state?.current_session?.id) return;
@@ -73,6 +91,7 @@ export default function EchoCounselorView() {
 
     try {
       await sendMessage(sessionId, content);
+      playSuccess();
     } catch (e) {
       console.error('Failed to send:', e);
       // Restore input on error
@@ -117,6 +136,21 @@ export default function EchoCounselorView() {
         <div className="echo-loading">Loading Echo...</div>
       </div>
     );
+  }
+
+  // Boot sequence
+  if (!bootDone) {
+    return <EchoBoot onComplete={() => { localStorage.setItem('echo-boot-done', 'true'); setBootDone(true); }} />;
+  }
+
+  // Onboarding (starts first session internally)
+  if (showOnboarding) {
+    return <EchoOnboarding onComplete={(createdSession?: EchoCounselorSession) => { if (createdSession) setCurrentSessionData(createdSession); setShowOnboarding(false); if (!hasTakenTour) setShowTour(true); }} onStartSession={switchToSession} />;
+  }
+
+  // Guided tour
+  if (showTour) {
+    return <EchoTour onComplete={() => setShowTour(false)} />;
   }
 
   return (
@@ -367,19 +401,25 @@ export default function EchoCounselorView() {
           <div className="echo-counselor-tools-section">
             <h3>🙏 Gratitude Practice</h3>
             <p>Write three things you're grateful for. Echo may suggest this during sessions.</p>
-            <GratitudeWidget writeGratitude={writeGratitude} />
+            <GratitudeWidget
+              writeGratitude={writeGratitude}
+              getGratitudeEntries={getGratitudeEntries}
+            />
           </div>
 
           <div className="echo-counselor-tools-section">
             <h3>🫁 Grounding Exercises</h3>
             <p>Quick exercises to bring you back to the present moment.</p>
-            <GroundingExercises />
+            <GroundingExercises completeExercise={completeExercise} />
           </div>
 
           <div className="echo-counselor-tools-section">
             <h3>🌙 Evening Ritual</h3>
             <p>A gentle reminder to check in with Echo before bed.</p>
-            <EveningReminderWidget setEveningReminder={setEveningReminder} />
+            <EveningReminderWidget
+              setEveningReminder={setEveningReminder}
+              getEveningReminder={getEveningReminder}
+            />
           </div>
         </div>
       )}
@@ -400,12 +440,20 @@ export default function EchoCounselorView() {
 
 // ── Subcomponents ───────────────────────────────────────────────
 
-function GratitudeWidget({ writeGratitude }: { writeGratitude: (items: string[], context?: string) => Promise<void> }) {
+function GratitudeWidget({
+  writeGratitude,
+  getGratitudeEntries,
+}: {
+  writeGratitude: (items: string[], context?: string) => Promise<void>;
+  getGratitudeEntries: (limit?: number) => Promise<{ id: string; items: string[]; context: string | null; created_at: string }[]>;
+}) {
   const [item1, setItem1] = useState('');
   const [item2, setItem2] = useState('');
   const [item3, setItem3] = useState('');
   const [context, setContext] = useState('');
   const [saved, setSaved] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<{ id: string; items: string[]; context: string | null; created_at: string }[]>([]);
 
   const saveGratitude = async () => {
     const items = [item1, item2, item3].filter(Boolean);
@@ -420,6 +468,14 @@ function GratitudeWidget({ writeGratitude }: { writeGratitude: (items: string[],
       setContext('');
       setSaved(false);
     }, 2000);
+  };
+
+  const toggleHistory = async () => {
+    if (!showHistory) {
+      const entries = await getGratitudeEntries(10);
+      setHistory(entries);
+    }
+    setShowHistory(s => !s);
   };
 
   return (
@@ -457,56 +513,233 @@ function GratitudeWidget({ writeGratitude }: { writeGratitude: (items: string[],
       >
         {saved ? '✓ Saved!' : 'Save Gratitude'}
       </button>
+      <button className="echo-gratitude-history-toggle" onClick={toggleHistory}>
+        {showHistory ? 'Hide history' : 'Show past entries'}
+      </button>
+      {showHistory && (
+        <div className="echo-gratitude-history">
+          {history.length === 0 ? (
+            <p className="echo-gratitude-history-empty">No entries yet.</p>
+          ) : (
+            history.map(entry => {
+              return (
+                <div key={entry.id} className="echo-gratitude-history-entry">
+                  <div className="echo-gratitude-history-date">
+                    {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                  <ul className="echo-gratitude-history-items">
+                    {entry.items.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                  </ul>
+                  {entry.context && <p className="echo-gratitude-history-context">{entry.context}</p>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function GroundingExercises() {
+function GroundingExercises({
+  completeExercise,
+}: {
+  completeExercise: (id: string) => Promise<void>;
+}) {
   const [activeExercise, setActiveExercise] = useState<string | null>(null);
+  const [step, setStep] = useState<'list' | 'guide' | 'done'>('list');
+  const [timer, setTimer] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
 
   const exercises = [
     {
       id: 'breathing',
       title: '4-7-8 Breathing',
       description: 'Inhale for 4, hold for 7, exhale for 8. Repeat 4 times.',
-      duration: '2 min',
+      duration: 120, // seconds
+      phases: [
+        { label: 'Inhale', duration: 4, emoji: '🌬️' },
+        { label: 'Hold', duration: 7, emoji: '🫁' },
+        { label: 'Exhale', duration: 8, emoji: '💨' },
+      ],
     },
     {
       id: '54321',
       title: '5-4-3-2-1 Grounding',
-      description: 'Name 5 things you see, 4 you hear, 3 you feel, 2 you smell, 1 you taste.',
-      duration: '3 min',
+      description: 'Notice 5 things you see, 4 you hear, 3 you feel, 2 you smell, 1 you taste.',
+      duration: 180,
+      steps: ['5 things you see', '4 things you hear', '3 things you feel', '2 things you smell', '1 thing you taste'],
     },
     {
       id: 'body',
       title: 'Body Scan',
       description: 'Notice sensations from head to toe without judgment.',
-      duration: '2 min',
+      duration: 120,
+      steps: ['Head & face', 'Neck & shoulders', 'Arms & hands', 'Chest & stomach', 'Back', 'Hips & legs', 'Feet'],
     },
   ];
+
+  // Breathing timer
+  const exercise = exercises.find(e => e.id === activeExercise);
+  const isBreathing = activeExercise === 'breathing';
+
+  useEffect(() => {
+    if (!timerActive || timer <= 0) return;
+    const interval = setInterval(() => {
+      setTimer(t => {
+        if (t <= 1) {
+          setTimerActive(false);
+          setStep('done');
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerActive, timer]);
+
+  const startExercise = (id: string) => {
+    const ex = exercises.find(e => e.id === id);
+    if (!ex) return;
+    setActiveExercise(id);
+    setStep('guide');
+    setTimer(ex.duration);
+    setTimerActive(true);
+  };
+
+  const handleComplete = async () => {
+    if (!activeExercise) return;
+    await completeExercise(activeExercise);
+    setStep('done');
+    setTimerActive(false);
+  };
+
+  const resetExercise = () => {
+    setActiveExercise(null);
+    setStep('list');
+    setTimer(0);
+    setTimerActive(false);
+  };
+
+  if (step === 'done') {
+    return (
+      <div className="echo-grounding-done">
+        <div className="echo-grounding-done-icon">✨</div>
+        <h4>Well done.</h4>
+        <p>You took a moment to be present. That's worth noting.</p>
+        <button className="echo-grounding-reset" onClick={resetExercise}>
+          Back to exercises
+        </button>
+      </div>
+    );
+  }
+
+  if (step === 'guide' && exercise) {
+    return (
+      <div className="echo-grounding-guide">
+        <button className="echo-grounding-back" onClick={resetExercise}>← Back</button>
+        <h4 className="echo-grounding-guide-title">{exercise.title}</h4>
+        {isBreathing && exercise.phases && (
+          <div className="echo-breathing-phase">
+            {exercise.phases.map((phase, i) => {
+              const elapsed = exercise.duration - timer;
+              const cycleLen = 4 + 7 + 8; // 19s per cycle
+              const cyclePosition = elapsed % cycleLen;
+              let currentPhaseIdx = 0;
+              let phaseElapsed = cyclePosition;
+              if (cyclePosition < 4) { currentPhaseIdx = 0; phaseElapsed = cyclePosition; }
+              else if (cyclePosition < 11) { currentPhaseIdx = 1; phaseElapsed = cyclePosition - 4; }
+              else { currentPhaseIdx = 2; phaseElapsed = cyclePosition - 11; }
+              const phase_ = exercise.phases[currentPhaseIdx];
+              const progress = phaseElapsed / phase_.duration;
+              return (
+                <div key={i} className={`echo-breathing-phase-item ${i === currentPhaseIdx ? 'active' : ''}`}>
+                  <span className="echo-breathing-emoji">{phase_.emoji}</span>
+                  <span className="echo-breathing-label">{phase_.label}</span>
+                  {i === currentPhaseIdx && (
+                    <div className="echo-breathing-progress">
+                      <div
+                        className="echo-breathing-bar"
+                        style={{ width: `${progress * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {!isBreathing && exercise.steps && (
+          <div className="echo-grounding-steps">
+            {exercise.steps.map((s, i) => {
+              const elapsed = exercise.duration - timer;
+              const stepDuration = exercise.duration / exercise.steps.length;
+              const currentStep = Math.floor(elapsed / stepDuration);
+              return (
+                <div key={i} className={`echo-grounding-step ${i === currentStep ? 'current' : i < currentStep ? 'done' : ''}`}>
+                  <span className="echo-grounding-step-num">{i < currentStep ? '✓' : i + 1}</span>
+                  <span>{s}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="echo-grounding-timer">
+          <span className="echo-grounding-time-left">
+            {Math.floor(timer / 60)}:{String(timer % 60).padStart(2, '0')}
+          </span>
+          <button className="echo-grounding-pause" onClick={() => setTimerActive(t => !t)}>
+            {timerActive ? '⏸' : '▶'}
+          </button>
+        </div>
+        <button className="echo-grounding-finish" onClick={handleComplete}>
+          Finish early
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="echo-grounding-exercises">
       {exercises.map(ex => (
         <div
           key={ex.id}
-          className={`echo-grounding-card ${activeExercise === ex.id ? 'active' : ''}`}
-          onClick={() => setActiveExercise(activeExercise === ex.id ? null : ex.id)}
+          className="echo-grounding-card"
+          onClick={() => startExercise(ex.id)}
         >
           <div className="echo-grounding-title">{ex.title}</div>
           <div className="echo-grounding-desc">{ex.description}</div>
-          <div className="echo-grounding-duration">{ex.duration}</div>
+          <div className="echo-grounding-duration">{ex.duration}s</div>
         </div>
       ))}
     </div>
   );
 }
 
-function EveningReminderWidget({ setEveningReminder }: { setEveningReminder: (s: { enabled: boolean; hour: number; minute: number }) => Promise<void> }) {
+function EveningReminderWidget({
+  setEveningReminder,
+  getEveningReminder,
+}: {
+  setEveningReminder: (s: { enabled: boolean; hour: number; minute: number }) => Promise<void>;
+  getEveningReminder: () => Promise<{ enabled: boolean; hour: number; minute: number } | null>;
+}) {
   const [enabled, setEnabled] = useState(false);
   const [hour, setHour] = useState(20);
   const [minute, setMinute] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load saved reminder on mount
+  useEffect(() => {
+    getEveningReminder().then(reminder => {
+      if (reminder) {
+        setEnabled(reminder.enabled);
+        setHour(reminder.hour);
+        setMinute(reminder.minute);
+      }
+      setLoading(false);
+    });
+  }, [getEveningReminder]);
 
   const handleSave = async () => {
     await setEveningReminder({ enabled, hour, minute });

@@ -5,33 +5,58 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. 0.1.85)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 env:
   CARGO_TERM_COLOR: always
+  # Always use the version tag (v0.1.93) for release uploads/downloads — NOT github.ref_name
+  # github.ref_name is 'main' (branch) when triggered via workflow_dispatch, not the tag
+  RELEASE_TAG: "v${{ github.event.inputs.version || github.ref_name }}"
 
 jobs:
-  # ── Linux (.deb + .AppImage) ──
+  # ── Linux (.deb) ──
   build-linux:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create GitHub Release
+        if: github.event.inputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.inputs.version }}"
+          VER="${TAG#v}"
+          gh release view "v${VER}" &>/dev/null && echo "Release v${VER} already exists, skipping create" || gh release create "v${VER}" \
+            --title "Conflux Home v${VER}" \
+            --notes "See release notes"
+
       - name: Patch version from tag
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
-            VER="${{ github.ref_name }}"
-            VER="${VER#v}"
-            echo "Patching version to $VER"
-            sed -i "s/^version = .*/version = \"$VER\"/" src-tauri/Cargo.toml
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
-            sed -i "0,/\"version\": \"[^\"]*\"/{s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/}" package.json
-          else
-            echo "Not a tag push — keeping existing version from config files"
-          fi
-
+          VER="${{ github.event.inputs.version || github.ref_name }}"
+          VER="${VER#v}"
+          echo "Patching version to $VER"
+          cat << 'PYEOF' > /tmp/patch_version.py
+          import re, sys
+          ver = sys.argv[1]
+          for f in ['src-tauri/Cargo.toml', 'src-tauri/tauri.conf.json', 'package.json']:
+              with open(f, 'r') as fh:
+                  txt = fh.read()
+              if f == 'src-tauri/Cargo.toml':
+                  txt = re.sub(r'^version = .+$', f'version = "{ver}"', txt, flags=re.MULTILINE)
+              else:
+                  txt = re.sub(r'"version":\s*"[^"]*"', f'"version": "{ver}"', txt)
+              with open(f, 'w') as fh:
+                  fh.write(txt)
+          PYEOF
+          python3 /tmp/patch_version.py "$VER"
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,11 +80,22 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             libasound2-dev \
+            libfuse2 \
             patchelf
 
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Download bundled models
+        env:
+          MODEL_BASE_URL: ${{ secrets.MODEL_BASE_URL }}
+        run: ./scripts/download-models.sh
+
+      - name: Download llama-server binary
+        env:
+          LLAMA_SERVER_VERSION: ${{ secrets.LLAMA_SERVER_VERSION }}
+          LLAMA_SERVER_PLATFORM: ubuntu-x64
+        run: ./scripts/download-llama-server.sh
 
       - name: Build Tauri app (signed)
         env:
@@ -95,21 +131,15 @@ jobs:
           for f in src-tauri/target/release/bundle/deb/*.deb.sig; do
             mv "$f" "src-tauri/target/release/bundle/deb/Conflux.Home_amd64.deb.sig"
           done
-          for f in src-tauri/target/release/bundle/appimage/*.AppImage; do
-            mv "$f" "src-tauri/target/release/bundle/appimage/Conflux.Home_amd64.AppImage"
-          done
-          for f in src-tauri/target/release/bundle/appimage/*.AppImage.sig; do
-            mv "$f" "src-tauri/target/release/bundle/appimage/Conflux.Home_amd64.AppImage.sig"
-          done
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          overwrite_files: true
           files: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/deb/*.deb.sig
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/appimage/*.AppImage.sig
 
       - name: Upload to R2
         env:
@@ -117,7 +147,6 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           aws s3 cp src-tauri/target/release/bundle/deb/Conflux.Home_amd64.deb s3://${{ secrets.R2_BUCKET }}/Conflux.Home_amd64.deb --endpoint-url ${{ secrets.R2_ENDPOINT }}
-          aws s3 cp src-tauri/target/release/bundle/appimage/Conflux.Home_amd64.AppImage s3://${{ secrets.R2_BUCKET }}/Conflux.Home_amd64.AppImage --endpoint-url ${{ secrets.R2_ENDPOINT }}
 
   # ── Windows (.msi) ──
   build-windows:
@@ -128,17 +157,23 @@ jobs:
       - name: Patch version from tag
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
-            VER="${{ github.ref_name }}"
-            VER="${VER#v}"
-            echo "Patching version to $VER"
-            sed -i "s/^version = .*/version = \"$VER\"/" src-tauri/Cargo.toml
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
-            sed -i "0,/\"version\": \"[^\"]*\"/{s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/}" package.json
-          else
-            echo "Not a tag push — keeping existing version from config files"
-          fi
-
+          VER="${{ github.event.inputs.version || github.ref_name }}"
+          VER="${VER#v}"
+          echo "Patching version to $VER"
+          cat << 'PYEOF' > /tmp/patch_version.py
+          import re, sys
+          ver = sys.argv[1]
+          for f in ['src-tauri/Cargo.toml', 'src-tauri/tauri.conf.json', 'package.json']:
+              with open(f, 'r') as fh:
+                  txt = fh.read()
+              if f == 'src-tauri/Cargo.toml':
+                  txt = re.sub(r'^version = .+$', f'version = "{ver}"', txt, flags=re.MULTILINE)
+              else:
+                  txt = re.sub(r'"version":\s*"[^"]*"', f'"version": "{ver}"', txt)
+              with open(f, 'w') as fh:
+                  fh.write(txt)
+          PYEOF
+          python3 /tmp/patch_version.py "$VER"
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -158,6 +193,18 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Download bundled models
+        shell: bash
+        env:
+          MODEL_BASE_URL: ${{ secrets.MODEL_BASE_URL }}
+        run: ./scripts/download-models.sh
+
+      - name: Download llama-server binary
+        shell: bash
+        env:
+          LLAMA_SERVER_VERSION: ${{ secrets.LLAMA_SERVER_VERSION }}
+          LLAMA_SERVER_PLATFORM: win-cpu-x64
+        run: ./scripts/download-llama-server.sh
 
       - name: Build Tauri app (signed)
         env:
@@ -207,6 +254,8 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          overwrite_files: true
           files: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/msi/*.msi.sig
@@ -237,17 +286,23 @@ jobs:
 
       - name: Patch version from tag
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
-            VER="${{ github.ref_name }}"
-            VER="${VER#v}"
-            echo "Patching version to $VER"
-            sed -i '' "s/^version = .*/version = \"$VER\"/" src-tauri/Cargo.toml
-            sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
-            perl -i -pe 's/"version": "\K[^"]*/$ENV{VER}/ if !$done++' package.json
-          else
-            echo "Not a tag push — keeping existing version from config files"
-          fi
-
+          VER="${{ github.event.inputs.version || github.ref_name }}"
+          VER="${VER#v}"
+          echo "Patching version to $VER"
+          cat << 'PYEOF' > /tmp/patch_version.py
+          import re, sys
+          ver = sys.argv[1]
+          for f in ['src-tauri/Cargo.toml', 'src-tauri/tauri.conf.json', 'package.json']:
+              with open(f, 'r') as fh:
+                  txt = fh.read()
+              if f == 'src-tauri/Cargo.toml':
+                  txt = re.sub(r'^version = .+$', f'version = "{ver}"', txt, flags=re.MULTILINE)
+              else:
+                  txt = re.sub(r'"version":\s*"[^"]*"', f'"version": "{ver}"', txt)
+              with open(f, 'w') as fh:
+                  fh.write(txt)
+          PYEOF
+          python3 /tmp/patch_version.py "$VER"
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -267,6 +322,18 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Download bundled models
+        shell: bash
+        env:
+          MODEL_BASE_URL: ${{ secrets.MODEL_BASE_URL }}
+        run: ./scripts/download-models.sh
+
+      - name: Download llama-server binary
+        shell: bash
+        env:
+          LLAMA_SERVER_VERSION: ${{ secrets.LLAMA_SERVER_VERSION }}
+          LLAMA_SERVER_PLATFORM: ${{ matrix.arch == 'x64' && 'macos-x64' || 'macos-arm64' }}
+        run: ./scripts/download-llama-server.sh
 
       - name: Build Tauri app (signed)
         env:
@@ -312,6 +379,8 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          overwrite_files: true
           files: |
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
@@ -337,32 +406,32 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/sigs
-          gh release download "${{ github.ref_name }}" \
+          gh release download "${{ env.RELEASE_TAG }}" \
             --pattern '*.sig' \
             --dir /tmp/sigs/ \
             --repo "${{ github.repository }}" \
-            --skip-existing
+            --skip-existing \
+            || echo "No sig files found (this is OK if signing is disabled)"
 
       - name: Generate updates.json
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
           VER="${VERSION#v}"
           REPO="${{ github.repository }}"
-          TAG="${{ github.ref_name }}"
+          TAG="${{ env.RELEASE_TAG }}"
 
           DEB_SIG=$(cat /tmp/sigs/*.deb.sig 2>/dev/null | head -1 || echo "")
-          APPIMAGE_SIG=$(cat /tmp/sigs/*.AppImage.sig 2>/dev/null | head -1 || echo "")
           NSIS_SIG=$(cat /tmp/sigs/*.exe.sig 2>/dev/null | head -1 || echo "")
 
           # macOS updater artifacts: .app.tar.gz.sig (one per arch)
           # Try to get x64 and aarch64 sigs separately by matching naming convention
-          MAC_X64_SIG=$(find /tmp/sigs/ -name '*x64*.app.tar.gz.sig' -exec cat {} \; | head -1)
-          MAC_ARM_SIG=$(find /tmp/sigs/ -name '*aarch64*.app.tar.gz.sig' -exec cat {} \; | head -1)
+          MAC_X64_SIG=$(find /tmp/sigs/ -name '*x64*.app.tar.gz.sig' -exec cat {} \; 2>/dev/null | head -1 || echo "")
+          MAC_ARM_SIG=$(find /tmp/sigs/ -name '*aarch64*.app.tar.gz.sig' -exec cat {} \; 2>/dev/null | head -1 || echo "")
           # Fallback: if naming doesn't distinguish, use whatever .app.tar.gz.sig files exist
           if [ -z "$MAC_X64_SIG" ]; then
-            ALL_MAC_SIGS=($(find /tmp/sigs/ -name '*.app.tar.gz.sig' -exec cat {} \;))
+            ALL_MAC_SIGS=($(find /tmp/sigs/ -name '*.app.tar.gz.sig' -exec cat {} \; 2>/dev/null || echo ""))
             MAC_X64_SIG="${ALL_MAC_SIGS[0]:-}"
             MAC_ARM_SIG="${ALL_MAC_SIGS[1]:-${ALL_MAC_SIGS[0]:-}}"
           fi
@@ -374,10 +443,6 @@ jobs:
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "linux-x86_64": {
-                "signature": "${APPIMAGE_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/${TAG}/Conflux.Home_amd64.AppImage"
-              },
-              "linux-deb-x86_64": {
                 "signature": "${DEB_SIG}",
                 "url": "https://github.com/${REPO}/releases/download/${TAG}/Conflux.Home_amd64.deb"
               },
@@ -404,7 +469,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ github.ref_name }}" updates.json --clobber
+          gh release upload "${{ env.RELEASE_TAG }}" updates.json --clobber
 
   # ── Android (.apk) ──
   build-android:
@@ -414,17 +479,23 @@ jobs:
 
       - name: Patch version from tag
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
-            VER="${{ github.ref_name }}"
-            VER="${VER#v}"
-            echo "Patching version to $VER"
-            sed -i "s/^version = .*/version = \"$VER\"/" src-tauri/Cargo.toml
-            sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/" src-tauri/tauri.conf.json
-            sed -i "0,/\"version\": \"[^\"]*\"/{s/\"version\": \"[^\"]*\"/\"version\": \"$VER\"/}" package.json
-          else
-            echo "Not a tag push — keeping existing version from config files"
-          fi
-
+          VER="${{ github.event.inputs.version || github.ref_name }}"
+          VER="${VER#v}"
+          echo "Patching version to $VER"
+          cat << 'PYEOF' > /tmp/patch_version.py
+          import re, sys
+          ver = sys.argv[1]
+          for f in ['src-tauri/Cargo.toml', 'src-tauri/tauri.conf.json', 'package.json']:
+              with open(f, 'r') as fh:
+                  txt = fh.read()
+              if f == 'src-tauri/Cargo.toml':
+                  txt = re.sub(r'^version = .+$', f'version = "{ver}"', txt, flags=re.MULTILINE)
+              else:
+                  txt = re.sub(r'"version":\s*"[^"]*"', f'"version": "{ver}"', txt)
+              with open(f, 'w') as fh:
+                  fh.write(txt)
+          PYEOF
+          python3 /tmp/patch_version.py "$VER"
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -529,6 +600,8 @@ jobs:
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          overwrite_files: true
           files: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
 
       - name: Upload APK to R2

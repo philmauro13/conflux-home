@@ -17,7 +17,7 @@ export function useSeasonalTasks() {
 
   const complete = useCallback(async (taskId: string) => {
     try {
-      await invoke('home_complete_seasonal_task', { taskId });
+      await invoke('home_complete_seasonal_task', { task_id: taskId });
       // Reload to reflect completion
       await load();
     } catch (e) { console.error('Failed to complete seasonal task:', e); }

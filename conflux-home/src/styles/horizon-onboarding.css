@@ -1,0 +1,816 @@
+/* ═══════════════════════════════════════════════════════════════
+   HORIZON ONBOARDING + BOOT SEQUENCE STYLES
+   Deep space aesthetic: horizon-rising, constellation-drawing,
+   starfield, and the "First Horizon" one-question experience.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Boot Sequence ─────────────────────────────────────────── */
+
+.horizon-boot {
+  position: fixed;
+  inset: 0;
+  background: #000308;
+  z-index: 99999;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.horizon-boot-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Horizon rising line */
+.horizon-boot-horizon {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.horizon-boot-horizon.visible {
+  opacity: 1;
+}
+
+.horizon-boot-horizon-glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    rgba(120, 60, 20, 0.35) 0%,
+    rgba(200, 100, 40, 0.2) 20%,
+    rgba(251, 150, 60, 0.12) 40%,
+    rgba(100, 80, 160, 0.08) 60%,
+    rgba(15, 20, 60, 0.4) 80%,
+    transparent 100%
+  );
+  animation: horizon-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes horizon-shimmer {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.horizon-boot-horizon-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(251, 191, 36, 0.4) 20%,
+    rgba(251, 191, 36, 0.8) 40%,
+    rgba(251, 191, 36, 1) 50%,
+    rgba(251, 191, 36, 0.8) 60%,
+    rgba(251, 191, 36, 0.4) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5), 0 0 40px rgba(251, 191, 36, 0.2);
+}
+
+/* Logo + constellation content */
+.horizon-boot-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.horizon-boot-content.visible {
+  opacity: 1;
+}
+
+.horizon-boot-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.horizon-boot-constellation {
+  width: 120px;
+  height: 40px;
+  overflow: visible;
+}
+
+.horizon-boot-constellation-left {
+  transform: scaleX(-1);
+}
+
+.horizon-boot-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: 3.5rem;
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: #fbbf24;
+  text-shadow:
+    0 0 20px rgba(251, 191, 36, 0.6),
+    0 0 40px rgba(251, 191, 36, 0.4),
+    0 0 80px rgba(251, 191, 36, 0.2),
+    0 0 120px rgba(251, 191, 36, 0.1);
+  animation: logo-breathe 3s ease-in-out infinite;
+}
+
+@keyframes logo-breathe {
+  0%, 100% {
+    text-shadow:
+      0 0 20px rgba(251, 191, 36, 0.6),
+      0 0 40px rgba(251, 191, 36, 0.4),
+      0 0 80px rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(251, 191, 36, 0.8),
+      0 0 60px rgba(251, 191, 36, 0.5),
+      0 0 100px rgba(251, 191, 36, 0.3),
+      0 0 150px rgba(251, 191, 36, 0.15);
+  }
+}
+
+.horizon-boot-tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  margin: 0;
+}
+
+.horizon-boot-tagline.visible {
+  opacity: 1;
+}
+
+/* Progress bar */
+.horizon-boot-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.horizon-boot-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #06b6d4, #fbbf24);
+  transition: width 0.1s linear;
+}
+
+/* ── Onboarding Root ───────────────────────────────────────── */
+
+.horizon-onboard-root {
+  position: fixed;
+  inset: 0;
+  background: #000308;
+  z-index: 9997;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.horizon-onboard-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Horizon glow at bottom */
+.horizon-onboard-horizon {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(
+    to top,
+    rgba(80, 40, 120, 0.2) 0%,
+    rgba(50, 30, 100, 0.12) 30%,
+    rgba(15, 20, 60, 0.4) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.horizon-onboard-center {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 640px;
+  padding: 0 24px;
+  animation: onboard-enter 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes onboard-enter {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Prompt group */
+.horizon-onboard-prompt-group {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.horizon-onboard-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: rgba(251, 191, 36, 0.6);
+  text-transform: uppercase;
+  animation: fade-in-up 0.5s ease both 0.1s;
+}
+
+.horizon-onboard-question {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.85) 50%, rgba(251,191,36,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fade-in-up 0.5s ease both 0.2s;
+}
+
+.horizon-onboard-hint {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+  font-style: italic;
+  animation: fade-in-up 0.5s ease both 0.3s;
+}
+
+/* Input area */
+.horizon-onboard-input-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fade-in-up 0.5s ease both 0.4s;
+}
+
+.horizon-onboard-input {
+  width: 100%;
+  background: rgba(15, 20, 50, 0.7);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 16px;
+  padding: 18px 20px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.1rem;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 72px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.horizon-onboard-input:focus {
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.1), 0 0 0 1px rgba(251, 191, 36, 0.08) inset;
+}
+
+.horizon-onboard-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+}
+
+.horizon-onboard-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0f172a;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+  align-self: flex-end;
+}
+
+.horizon-onboard-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.4);
+}
+
+.horizon-onboard-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Example chips */
+.horizon-onboard-examples {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fade-in-up 0.5s ease both 0.5s;
+}
+
+.horizon-onboard-example-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.horizon-onboard-example-chip:hover {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: rgba(251, 191, 36, 0.9);
+}
+
+/* Interpreting phase */
+.horizon-onboard-interpreting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.horizon-onboard-star-orb {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.8) 0%, rgba(251, 191, 36, 0.3) 40%, transparent 70%);
+  animation: orb-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
+}
+
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+.horizon-onboard-interpreting-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.9rem;
+  color: rgba(251, 191, 36, 0.8);
+  letter-spacing: 0.1em;
+  animation: text-fade 0.5s ease both;
+}
+
+/* Preview phase */
+.horizon-onboard-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: rgba(10, 15, 40, 0.85);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 24px;
+  padding: 40px;
+  width: 100%;
+  max-width: 480px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 60px rgba(251, 191, 36, 0.06), 0 30px 80px rgba(0, 0, 0, 0.5);
+  animation: card-appear 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: scale(0.9) translateY(16px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.horizon-onboard-preview-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: rgba(251, 191, 36, 0.5);
+  text-transform: uppercase;
+}
+
+/* Star preview */
+.horizon-onboard-star-preview {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.horizon-onboard-star-svg {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  z-index: 1;
+}
+
+.horizon-onboard-star-pulse {
+  animation: star-pulse 2s ease-in-out infinite;
+}
+
+@keyframes star-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.horizon-onboard-star-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  filter: blur(16px);
+  opacity: 0.35;
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.9); }
+  50% { opacity: 0.4; transform: scale(1.1); }
+}
+
+/* Editable title */
+.horizon-onboard-title-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Orbitron', monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 12px 16px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.horizon-onboard-title-input:focus {
+  border-color: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.1);
+}
+
+/* Meta */
+.horizon-onboard-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.horizon-onboard-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.horizon-onboard-target {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Launch button */
+.horizon-onboard-launch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border: none;
+  border-radius: 12px;
+  color: #0f172a;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.05em;
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.25);
+  width: 100%;
+}
+
+.horizon-onboard-launch-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
+}
+
+.horizon-onboard-retry {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.horizon-onboard-retry:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Launching phase */
+.horizon-onboard-launching {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.horizon-onboard-launching-star {
+  width: 80px;
+  height: 80px;
+  position: relative;
+}
+
+.horizon-onboard-launch-ring {
+  transform-origin: center;
+}
+
+.horizon-onboard-launch-ring-1 {
+  animation: ring-expand 1.5s ease-out infinite;
+}
+
+.horizon-onboard-launch-ring-2 {
+  animation: ring-expand 1.5s ease-out infinite 0.5s;
+}
+
+@keyframes ring-expand {
+  0% { opacity: 0.8; r: 8; }
+  100% { opacity: 0; r: 35; }
+}
+
+.horizon-onboard-launch-core {
+  animation: core-pulse 1s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px #fbbf24);
+}
+
+@keyframes core-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.horizon-onboard-launching-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  color: rgba(251, 191, 36, 0.9);
+  letter-spacing: 0.1em;
+  animation: text-fade 0.5s ease both;
+}
+
+/* Utilities */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes text-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── Horizon Tour Tooltip ─────────────────────────────────── */
+
+.horizon-tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9996;
+  pointer-events: none;
+  animation: tour-appear 0.3s ease both;
+}
+
+@keyframes tour-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.horizon-tour-root .horizon-tour-tooltip,
+.horizon-tour-root .tour-spotlight-full,
+.horizon-tour-root .tour-spotlight-svg {
+  pointer-events: auto;
+}
+
+.horizon-tour-tooltip {
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  background: rgba(8, 12, 30, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 40px rgba(251, 191, 36, 0.05);
+  animation: tooltip-enter 250ms ease-out;
+  overflow: visible;
+}
+
+@keyframes tooltip-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.horizon-tour-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: rgba(8, 12, 30, 0.92);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.horizon-tour-tooltip--bottom .horizon-tour-arrow {
+  top: -7px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.horizon-tour-tooltip--top .horizon-tour-arrow {
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+}
+
+.horizon-tour-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 0;
+}
+
+.horizon-tour-step-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: rgba(251, 191, 36, 0.6);
+  text-transform: uppercase;
+}
+
+.horizon-tour-close {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.35);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.horizon-tour-close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Progress dots */
+.horizon-tour-progress {
+  display: flex;
+  gap: 5px;
+  padding: 10px 20px;
+}
+
+.horizon-tour-dot {
+  height: 3px;
+  flex: 1;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.horizon-tour-dot.active {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+  transform: scaleY(1.4);
+}
+
+.horizon-tour-dot.done {
+  background: rgba(251, 191, 36, 0.35);
+}
+
+/* Content */
+.horizon-tour-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 8px;
+  padding: 0 20px;
+  letter-spacing: 0.01em;
+}
+
+.horizon-tour-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 16px;
+  padding: 0 20px;
+}
+
+/* Footer */
+.horizon-tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.horizon-tour-skip {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.horizon-tour-skip:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.horizon-tour-next {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border: none;
+  border-radius: 10px;
+  color: #0f172a;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.25);
+  letter-spacing: 0.03em;
+}
+
+.horizon-tour-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .horizon-onboard-preview { padding: 28px 20px; }
+  .horizon-onboard-question { font-size: 1.8rem; }
+  .horizon-onboard-logo { font-size: 2.4rem; letter-spacing: 0.2em; }
+}

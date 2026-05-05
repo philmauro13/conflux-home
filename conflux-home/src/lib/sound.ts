@@ -551,6 +551,21 @@ class SoundManager {
     const ctx = this.getAudioContext();
     const gain = this.categoryGains.get('agents');
     if (!gain) return { stop: () => {} };
+
+    // Stop any existing oscillators before starting new ones — prevents
+    // overlapping drones from rapid thinking-state toggling
+    if (this.thinkingOscs.length > 0) {
+      const t = ctx.currentTime;
+      if (this.thinkingGain) {
+        this.thinkingGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      }
+      for (const osc of this.thinkingOscs) {
+        try { osc.stop(t + 0.1); } catch (_) { /* already stopped */ }
+      }
+      this.thinkingOscs = [];
+      this.thinkingGain = null;
+    }
+
     const now = ctx.currentTime;
     const thinkGain = ctx.createGain();
     thinkGain.gain.setValueAtTime(0, now);
@@ -571,9 +586,12 @@ class SoundManager {
     return {
       stop: () => {
         const t = ctx.currentTime;
-        thinkGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-        osc1.stop(t + 0.35);
-        osc2.stop(t + 0.35);
+        if (this.thinkingGain) {
+          this.thinkingGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+        }
+        for (const osc of this.thinkingOscs) {
+          try { osc.stop(t + 0.35); } catch (_) { /* already stopped */ }
+        }
         this.thinkingOscs = [];
         this.thinkingGain = null;
       },
@@ -1233,3 +1251,5 @@ export const playOrbitMorningBrief = () => soundManager.playOrbitMorningBrief();
 export const playUIClick = playClick;
 export const playHeartbeatPulse = playHeartbeat;
 export const playBootUpTone = playBootUp;
+export { startPulseAmbient, startHearthAmbient, startOrbitAmbient, startEchoAmbient } from './sounds';
+export { playFairyChime, playFairySparkle } from './sounds';

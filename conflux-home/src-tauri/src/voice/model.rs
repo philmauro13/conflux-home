@@ -46,7 +46,11 @@ pub fn model_exists(resource_dir: &PathBuf, app_data_dir: &PathBuf, model_name: 
 }
 
 /// Get model info: name, file size in bytes, and whether it exists.
-pub fn model_info(resource_dir: &PathBuf, app_data_dir: &PathBuf, model_name: &str) -> serde_json::Value {
+pub fn model_info(
+    resource_dir: &PathBuf,
+    app_data_dir: &PathBuf,
+    model_name: &str,
+) -> serde_json::Value {
     let path = model_path(resource_dir, app_data_dir, model_name);
     let exists = path.exists();
     let size_bytes = if exists {
@@ -58,7 +62,11 @@ pub fn model_info(resource_dir: &PathBuf, app_data_dir: &PathBuf, model_name: &s
 
     let source = if exists {
         let bundled = bundled_model_dir(resource_dir).join(format!("ggml-{}.bin", model_name));
-        if bundled.exists() { "bundled" } else { "user" }
+        if bundled.exists() {
+            "bundled"
+        } else {
+            "user"
+        }
     } else {
         "missing"
     };

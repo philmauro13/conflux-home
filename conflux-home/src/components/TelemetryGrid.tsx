@@ -9,6 +9,7 @@ interface TelemetryGridProps {
   onDelete: (taskId: string) => void;
   onLogHabit: (habitId: string) => void;
   onAddTask: (title: string, category?: string, priority?: string, dueDate?: string, energyType?: string) => Promise<void>;
+  onAddHabit: (name: string, category?: string, frequency?: string) => Promise<void>;
 }
 
 const PRIORITY_CONFIG: Record<string, { emoji: string; color: string; label: string }> = {
@@ -59,18 +60,21 @@ function TaskRow({ task, onComplete, onDelete }: {
   const pri = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.normal;
   const [completed, setCompleted] = useState(false);
   
-  const handleClick = (e: React.MouseEvent) => {
+  const handleComplete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleted(true);
-    // Play completion sound
     playOrbitTaskComplete();
-    // Delay to show the checkmark animation
     setTimeout(() => onComplete(task.id), 200);
   };
   
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(task.id);
+  };
+  
   return (
-    <div className={`mc-task-row ${completed ? 'completed' : ''}`} onClick={handleClick}>
-      <div className={`mc-task-check ${completed ? 'completed' : ''}`}>
+    <div className={`mc-task-row ${completed ? 'completed' : ''}`}>
+      <div className={`mc-task-check ${completed ? 'completed' : ''}`} onClick={handleComplete}>
         {completed && <span style={{ color: '#0b0f14', fontSize: '12px' }}>✓</span>}
       </div>
       <div className="mc-task-title">{task.title}</div>
@@ -80,6 +84,14 @@ function TaskRow({ task, onComplete, onDelete }: {
           {dueLabel(task.due_date)}
         </span>
       )}
+      <button
+        className="mc-task-delete"
+        onClick={handleDelete}
+        title="Delete task"
+        style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px', fontSize: '14px' }}
+      >
+        🗑️
+      </button>
     </div>
   );
 }
@@ -117,13 +129,17 @@ function HabitCard({ habit, onLog }: { habit: LifeHabit; onLog: (id: string) => 
   );
 }
 
-export function TelemetryGrid({ tasks, habits, onComplete, onDelete, onLogHabit, onAddTask }: TelemetryGridProps) {
-  const [showForm, setShowForm] = useState(false);
+export function TelemetryGrid({ tasks, habits, onComplete, onDelete, onLogHabit, onAddTask, onAddHabit }: TelemetryGridProps) {
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showHabitForm, setShowHabitForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskCategory, setTaskCategory] = useState('');
   const [taskPriority, setTaskPriority] = useState('normal');
   const [taskDueDate, setTaskDueDate] = useState('');
   const [taskEnergy, setTaskEnergy] = useState('');
+  const [habitName, setHabitName] = useState('');
+  const [habitCategory, setHabitCategory] = useState('');
+  const [habitFrequency, setHabitFrequency] = useState('daily');
 
   const handleAddTask = async () => {
     if (!taskTitle.trim()) return;
@@ -133,7 +149,16 @@ export function TelemetryGrid({ tasks, habits, onComplete, onDelete, onLogHabit,
     setTaskPriority('normal');
     setTaskDueDate('');
     setTaskEnergy('');
-    setShowForm(false);
+    setShowTaskForm(false);
+  };
+
+  const handleAddHabit = async () => {
+    if (!habitName.trim()) return;
+    await onAddHabit(habitName.trim(), habitCategory || undefined, habitFrequency);
+    setHabitName('');
+    setHabitCategory('');
+    setHabitFrequency('daily');
+    setShowHabitForm(false);
   };
 
   return (
@@ -146,15 +171,15 @@ export function TelemetryGrid({ tasks, habits, onComplete, onDelete, onLogHabit,
             <span className="mc-panel-count">{tasks.length} pending</span>
             <button 
               className="mc-btn-secondary" 
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => setShowTaskForm(!showTaskForm)}
               style={{ padding: '4px 12px', fontSize: '11px' }}
             >
-              {showForm ? '✕' : '+ Add'}
+              {showTaskForm ? '✕' : '+ Add'}
           </button>
           </div>
         </div>
         
-        {showForm && (
+        {showTaskForm && (
           <div className="mc-flex mc-gap-8" style={{ marginBottom: '12px' }}>
             <input
               type="text"
@@ -241,11 +266,67 @@ export function TelemetryGrid({ tasks, habits, onComplete, onDelete, onLogHabit,
       <div className="mc-panel">
         <div className="mc-panel-header">
           <h3 className="mc-panel-title">🔄 Habit Telemetry</h3>
-          <span className="mc-panel-count">{habits.length} active</span>
+          <div className="mc-flex mc-gap-8">
+            <span className="mc-panel-count">{habits.length} active</span>
+            <button
+              className="mc-btn-secondary"
+              onClick={() => setShowHabitForm(!showHabitForm)}
+              style={{ padding: '4px 12px', fontSize: '11px' }}
+            >
+              {showHabitForm ? '✕' : '+ Habit'}
+            </button>
+          </div>
         </div>
+
+        {showHabitForm && (
+          <div className="mc-flex mc-gap-8" style={{ marginBottom: '12px' }}>
+            <input
+              type="text"
+              className="mc-nl-input"
+              style={{ flex: 1 }}
+              value={habitName}
+              onChange={(e) => setHabitName(e.target.value)}
+              placeholder="Habit name (e.g. Drink 8 glasses of water)"
+              autoFocus
+            />
+            <select
+              className="mc-btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '11px' }}
+              value={habitCategory}
+              onChange={(e) => setHabitCategory(e.target.value)}
+            >
+              <option value="">Cat</option>
+              <option value="health">💪 Health</option>
+              <option value="work">💼 Work</option>
+              <option value="personal">🧑 Personal</option>
+              <option value="finance">💰 Finance</option>
+              <option value="learning">📚 Learning</option>
+              <option value="creative">🎨 Creative</option>
+              <option value="home">🏠 Home</option>
+            </select>
+            <select
+              className="mc-btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '11px' }}
+              value={habitFrequency}
+              onChange={(e) => setHabitFrequency(e.target.value)}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <button
+              className="mc-btn-primary"
+              style={{ padding: '6px 12px', fontSize: '11px' }}
+              onClick={handleAddHabit}
+              disabled={!habitName.trim()}
+            >
+              Add
+            </button>
+          </div>
+        )}
         
         {habits.length === 0 ? (
-          <div className="mc-empty">No habits tracked yet. Start building streaks!</div>
+          <div className="mc-empty">No habits tracked yet. Add one above to start building streaks! 🔥</div>
         ) : (
           <div className="mc-habit-grid">
             {habits.map(habit => (

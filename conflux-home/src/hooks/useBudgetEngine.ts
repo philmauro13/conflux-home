@@ -77,17 +77,46 @@ export function useBudgetEngine() {
   }, [refreshData, resolvedMemberId]);
 
   const createBucket = useCallback(async (bucket: { name: string; icon: string; monthly_goal: number; color: string }) => {
-    await invoke('budget_create_bucket', { 
+    await invoke('budget_create_bucket', {
       req: {
-        name: bucket.name, 
-        icon: bucket.icon, 
-        monthly_goal: bucket.monthly_goal, 
+        name: bucket.name,
+        icon: bucket.icon,
+        monthly_goal: bucket.monthly_goal,
         color: bucket.color,
       },
       member_id: resolvedMemberId
     });
     await refreshData();
   }, [refreshData, resolvedMemberId]);
+
+  const updateBucket = useCallback(async (id: string, bucket: { name: string; icon: string; monthly_goal: number; color: string; is_active?: boolean }) => {
+    await invoke('budget_update_bucket', {
+      id,
+      req: {
+        name: bucket.name,
+        icon: bucket.icon,
+        monthly_goal: bucket.monthly_goal,
+        color: bucket.color,
+        is_active: bucket.is_active,
+      },
+      member_id: resolvedMemberId,
+    });
+    await refreshData();
+  }, [refreshData, resolvedMemberId]);
+
+  const deleteBucket = useCallback(async (id: string) => {
+    await invoke('budget_delete_bucket', { id });
+    await refreshData();
+  }, [refreshData]);
+
+  const deleteTransaction = useCallback(async (id: string) => {
+    await invoke('budget_delete_transaction', { id });
+    await refreshData();
+  }, [refreshData]);
+
+  const parseNatural = useCallback(async (input: string) => {
+    return await invoke<{ entry_type: string; category: string; amount: number; description: string }>('budget_parse_natural', { input });
+  }, []);
 
   return {
     settings,
@@ -99,6 +128,10 @@ export function useBudgetEngine() {
     logTransaction,
     updateAllocation,
     createBucket,
+    updateBucket,
+    deleteBucket,
+    deleteTransaction,
+    parseNatural,
     refreshData,
   };
 }

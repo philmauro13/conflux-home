@@ -37,8 +37,13 @@ mod integration_tests {
             let result = router::chat("core", messages, Some(20), None, None).await;
             match &result {
                 Ok(resp) => {
-                    println!("✅ Core: '{}' ({}ms, {} tokens) via {}",
-                        resp.content.trim(), resp.latency_ms, resp.tokens_used, resp.provider_name);
+                    println!(
+                        "✅ Core: '{}' ({}ms, {} tokens) via {}",
+                        resp.content.trim(),
+                        resp.latency_ms,
+                        resp.tokens_used,
+                        resp.provider_name
+                    );
                     assert!(!resp.content.is_empty(), "Core tier should return content");
                 }
                 Err(e) => panic!("Core tier should always work: {}", e),
@@ -60,8 +65,12 @@ mod integration_tests {
             let result = router::chat("pro", messages, Some(20), None, None).await;
             match &result {
                 Ok(resp) => {
-                    println!("✅ Pro (free): '{}' ({}ms) via {}",
-                        resp.content.trim(), resp.latency_ms, resp.provider_name);
+                    println!(
+                        "✅ Pro (free): '{}' ({}ms) via {}",
+                        resp.content.trim(),
+                        resp.latency_ms,
+                        resp.provider_name
+                    );
                     assert!(!resp.content.is_empty());
                 }
                 Err(e) => println!("⚠️ Pro free providers all failed: {}", e),
@@ -73,7 +82,8 @@ mod integration_tests {
     fn test_openai_direct() {
         rt().block_on(async {
             // Set key and test OpenAI directly
-            let key = std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "test-key-not-set".to_string());
+            let key =
+                std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| "test-key-not-set".to_string());
             router::set_provider_key("openai-gpt4o-mini", &key);
 
             let messages = vec![router::OpenAIMessage {
@@ -86,8 +96,12 @@ mod integration_tests {
             let result = router::chat("pro", messages, Some(20), None, None).await;
             match &result {
                 Ok(resp) => {
-                    println!("✅ OpenAI GPT-4o-mini: '{}' ({}ms, {} tokens)",
-                        resp.content.trim(), resp.latency_ms, resp.tokens_used);
+                    println!(
+                        "✅ OpenAI GPT-4o-mini: '{}' ({}ms, {} tokens)",
+                        resp.content.trim(),
+                        resp.latency_ms,
+                        resp.tokens_used
+                    );
                     assert!(!resp.content.is_empty());
                 }
                 Err(e) => println!("❌ OpenAI failed: {}", e),
@@ -105,7 +119,8 @@ mod integration_tests {
             match mimo {
                 Some(mut provider) => {
                     // Inject the key
-                    let key = std::env::var("TEST_OPENROUTER_KEY").expect("TEST_OPENROUTER_KEY env var required");
+                    let key = std::env::var("TEST_OPENROUTER_KEY")
+                        .expect("TEST_OPENROUTER_KEY env var required");
                     router::set_provider_key("xiaomi-mimo-flash", &key);
                     provider.is_enabled = true;
 
@@ -119,8 +134,12 @@ mod integration_tests {
                     let result = router::chat_with_provider(&provider, messages, Some(20)).await;
                     match &result {
                         Ok(resp) => {
-                            println!("✅ MiMo Flash: '{}' ({}ms, {} tokens)",
-                                resp.content.trim(), resp.latency_ms, resp.tokens_used);
+                            println!(
+                                "✅ MiMo Flash: '{}' ({}ms, {} tokens)",
+                                resp.content.trim(),
+                                resp.latency_ms,
+                                resp.tokens_used
+                            );
                             assert!(!resp.content.is_empty());
                         }
                         Err(e) => println!("❌ MiMo Flash failed: {}", e),
@@ -139,7 +158,8 @@ mod integration_tests {
 
             match mimo {
                 Some(mut provider) => {
-                    let key = std::env::var("TEST_OPENROUTER_KEY").expect("TEST_OPENROUTER_KEY env var required");
+                    let key = std::env::var("TEST_OPENROUTER_KEY")
+                        .expect("TEST_OPENROUTER_KEY env var required");
                     router::set_provider_key("xiaomi-mimo-pro", &key);
                     provider.is_enabled = true;
 
@@ -153,8 +173,12 @@ mod integration_tests {
                     let result = router::chat_with_provider(&provider, messages, Some(50)).await;
                     match &result {
                         Ok(resp) => {
-                            println!("✅ MiMo Pro: '{}' ({}ms, {} tokens)",
-                                resp.content.trim(), resp.latency_ms, resp.tokens_used);
+                            println!(
+                                "✅ MiMo Pro: '{}' ({}ms, {} tokens)",
+                                resp.content.trim(),
+                                resp.latency_ms,
+                                resp.tokens_used
+                            );
                             assert!(!resp.content.is_empty());
                         }
                         Err(e) => println!("❌ MiMo Pro failed: {}", e),
@@ -169,11 +193,14 @@ mod integration_tests {
     fn test_anthropic_key_valid() {
         // Test that Anthropic key is accepted (even if credits are 0)
         rt().block_on(async {
-            let anthropic_key = std::env::var("TEST_ANTHROPIC_KEY").expect("TEST_ANTHROPIC_KEY env var required");
+            let anthropic_key =
+                std::env::var("TEST_ANTHROPIC_KEY").expect("TEST_ANTHROPIC_KEY env var required");
             router::set_provider_key("anthropic-claude-sonnet", &anthropic_key);
 
             let mut providers = router::get_all_providers();
-            let claude = providers.drain(..).find(|p| p.id == "anthropic-claude-sonnet");
+            let claude = providers
+                .drain(..)
+                .find(|p| p.id == "anthropic-claude-sonnet");
 
             match claude {
                 Some(mut provider) => {
@@ -188,12 +215,22 @@ mod integration_tests {
                     let result = router::chat_with_provider(&provider, messages, Some(20)).await;
                     match &result {
                         Ok(resp) => {
-                            println!("✅ Claude Sonnet: '{}' ({}ms)", resp.content.trim(), resp.latency_ms);
+                            println!(
+                                "✅ Claude Sonnet: '{}' ({}ms)",
+                                resp.content.trim(),
+                                resp.latency_ms
+                            );
                         }
                         Err(e) => {
                             let msg = e.to_string();
-                            if msg.contains("credit") || msg.contains("billing") || msg.contains("400") {
-                                println!("⚠️ Claude key valid but needs credits (expected): {}", &msg[..msg.len().min(80)]);
+                            if msg.contains("credit")
+                                || msg.contains("billing")
+                                || msg.contains("400")
+                            {
+                                println!(
+                                    "⚠️ Claude key valid but needs credits (expected): {}",
+                                    &msg[..msg.len().min(80)]
+                                );
                             } else {
                                 println!("❌ Claude failed: {}", e);
                             }
@@ -210,16 +247,23 @@ mod integration_tests {
         rt().block_on(async {
             use app_lib::engine::tools;
 
-            let result = tools::execute_tool("web_search", &serde_json::json!({
-                "query": "Rust programming language"
-            })).await;
+            let result = tools::execute_tool(
+                "web_search",
+                &serde_json::json!({
+                    "query": "Rust programming language"
+                }),
+            )
+            .await;
 
             match result {
                 Ok(tool_result) => {
                     if tool_result.success {
                         let preview = &tool_result.output[..200.min(tool_result.output.len())];
                         println!("✅ Web search works: {}...", preview);
-                        assert!(!tool_result.output.is_empty(), "Search should return results");
+                        assert!(
+                            !tool_result.output.is_empty(),
+                            "Search should return results"
+                        );
                     } else {
                         println!("⚠️ Web search returned error: {:?}", tool_result.error);
                     }
@@ -234,16 +278,23 @@ mod integration_tests {
         rt().block_on(async {
             use app_lib::engine::tools;
 
-            let result = tools::execute_tool("web_fetch", &serde_json::json!({
-                "url": "https://en.wikipedia.org/wiki/Rust_(programming_language)"
-            })).await;
+            let result = tools::execute_tool(
+                "web_fetch",
+                &serde_json::json!({
+                    "url": "https://en.wikipedia.org/wiki/Rust_(programming_language)"
+                }),
+            )
+            .await;
 
             match result {
                 Ok(tool_result) => {
                     if tool_result.success {
                         let preview = &tool_result.output[..200.min(tool_result.output.len())];
                         println!("✅ Web fetch works: {}...", preview);
-                        assert!(!tool_result.output.is_empty(), "Fetch should return content");
+                        assert!(
+                            !tool_result.output.is_empty(),
+                            "Fetch should return content"
+                        );
                     } else {
                         println!("⚠️ Web fetch returned error: {:?}", tool_result.error);
                     }

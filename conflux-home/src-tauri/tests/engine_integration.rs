@@ -16,7 +16,11 @@ mod integration_tests {
     fn test_agents_seeded() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
         let agents = db.get_active_agents().unwrap();
-        assert!(agents.len() >= 10, "Expected at least 10 seeded agents, got {}", agents.len());
+        assert!(
+            agents.len() >= 10,
+            "Expected at least 10 seeded agents, got {}",
+            agents.len()
+        );
 
         for agent in &agents {
             println!("  🤖 {} ({}) — {}", agent.emoji, agent.name, agent.role);
@@ -28,10 +32,17 @@ mod integration_tests {
     fn test_provider_templates() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
         let templates = db.get_provider_templates().unwrap();
-        assert!(templates.len() >= 5, "Expected at least 5 provider templates, got {}", templates.len());
+        assert!(
+            templates.len() >= 5,
+            "Expected at least 5 provider templates, got {}",
+            templates.len()
+        );
 
         for t in &templates {
-            println!("  {} {} — {} (free: {})", t.emoji, t.name, t.description, t.is_free);
+            println!(
+                "  {} {} — {} (free: {})",
+                t.emoji, t.name, t.description, t.is_free
+            );
         }
         println!("✅ {} provider templates loaded", templates.len());
     }
@@ -40,7 +51,9 @@ mod integration_tests {
     fn test_tools_seeded() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
         let conn = db.conn();
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM tools", [], |r| r.get(0)).unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM tools", [], |r| r.get(0))
+            .unwrap();
         assert!(count >= 12, "Expected at least 12 tools, got {}", count);
         println!("✅ {} tools seeded", count);
     }
@@ -49,10 +62,19 @@ mod integration_tests {
     fn test_skills_seeded() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
         let skills = db.get_skills(true).unwrap();
-        assert!(skills.len() >= 5, "Expected at least 5 skills, got {}", skills.len());
+        assert!(
+            skills.len() >= 5,
+            "Expected at least 5 skills, got {}",
+            skills.len()
+        );
 
         for s in &skills {
-            println!("  {} {} — {}", s.emoji, s.name, s.description.as_deref().unwrap_or(""));
+            println!(
+                "  {} {} — {}",
+                s.emoji,
+                s.name,
+                s.description.as_deref().unwrap_or("")
+            );
         }
         println!("✅ {} skills seeded", skills.len());
     }
@@ -61,7 +83,10 @@ mod integration_tests {
     fn test_skills_for_agent() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
         let helix_skills = db.get_skills_for_agent("helix").unwrap();
-        assert!(!helix_skills.is_empty(), "Helix should have at least one skill");
+        assert!(
+            !helix_skills.is_empty(),
+            "Helix should have at least one skill"
+        );
 
         for s in &helix_skills {
             println!("  Helix can: {} {}", s.emoji, s.name);
@@ -86,15 +111,24 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Prism should be able to talk to everyone
-        assert!(db.can_agent_talk_to("prism", "helix").unwrap(), "Prism should talk to Helix");
-        assert!(db.can_agent_talk_to("prism", "forge").unwrap(), "Prism should talk to Forge");
+        assert!(
+            db.can_agent_talk_to("prism", "helix").unwrap(),
+            "Prism should talk to Helix"
+        );
+        assert!(
+            db.can_agent_talk_to("prism", "forge").unwrap(),
+            "Prism should talk to Forge"
+        );
         println!("  Prism → Helix: ✅");
         println!("  Prism → Forge: ✅");
 
         // Forge should not be able to talk to everyone
         let forge_perms = db.get_agent_permissions("forge").unwrap().unwrap();
         println!("  Forge can_talk_to: {}", forge_perms.can_talk_to);
-        println!("  Forge requires_verification: {}", forge_perms.requires_verification);
+        println!(
+            "  Forge requires_verification: {}",
+            forge_perms.requires_verification
+        );
 
         println!("✅ Agent permissions work");
     }
@@ -104,9 +138,33 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Store some memories
-        let id1 = db.store_memory("conflux", "preference", Some("name"), "User's name is Don", Some("test")).unwrap();
-        let id2 = db.store_memory("conflux", "fact", Some("timezone"), "User is in Mountain Time zone", Some("test")).unwrap();
-        let id3 = db.store_memory("conflux", "preference", Some("style"), "User prefers direct, actionable responses", Some("test")).unwrap();
+        let id1 = db
+            .store_memory(
+                "conflux",
+                "preference",
+                Some("name"),
+                "User's name is Don",
+                Some("test"),
+            )
+            .unwrap();
+        let id2 = db
+            .store_memory(
+                "conflux",
+                "fact",
+                Some("timezone"),
+                "User is in Mountain Time zone",
+                Some("test"),
+            )
+            .unwrap();
+        let id3 = db
+            .store_memory(
+                "conflux",
+                "preference",
+                Some("style"),
+                "User prefers direct, actionable responses",
+                Some("test"),
+            )
+            .unwrap();
 
         // Search with FTS
         let results = db.search_memory("conflux", "Don", 5).unwrap();
@@ -129,8 +187,20 @@ mod integration_tests {
         println!("  Created session: {}", session.id);
 
         // Add messages
-        let msg1 = db.add_message(&session.id, "user", "Hello Conflux", 10, None, None, None).unwrap();
-        let msg2 = db.add_message(&session.id, "assistant", "Hello Don! How can I help?", 25, Some("conflux-fast"), Some("cerebras"), Some(150)).unwrap();
+        let msg1 = db
+            .add_message(&session.id, "user", "Hello Conflux", 10, None, None, None)
+            .unwrap();
+        let msg2 = db
+            .add_message(
+                &session.id,
+                "assistant",
+                "Hello Don! How can I help?",
+                25,
+                Some("conflux-fast"),
+                Some("cerebras"),
+                Some(150),
+            )
+            .unwrap();
 
         // Get messages
         let messages = db.get_messages(&session.id, 10).unwrap();
@@ -140,7 +210,10 @@ mod integration_tests {
         let updated = db.get_session(&session.id).unwrap().unwrap();
         assert_eq!(updated.message_count, 2);
         assert_eq!(updated.total_tokens, 35);
-        println!("  Messages: {}, Tokens: {}", updated.message_count, updated.total_tokens);
+        println!(
+            "  Messages: {}, Tokens: {}",
+            updated.message_count, updated.total_tokens
+        );
 
         println!("✅ Session CRUD works");
     }
@@ -175,7 +248,15 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Create cron job
-        let id = db.create_cron_job("Health Check", "catalyst", "0 * * * *", "UTC", "Run health checks").unwrap();
+        let id = db
+            .create_cron_job(
+                "Health Check",
+                "catalyst",
+                "0 * * * *",
+                "UTC",
+                "Run health checks",
+            )
+            .unwrap();
         println!("  Created cron: {}", id);
 
         // Get jobs
@@ -194,7 +275,15 @@ mod integration_tests {
     fn test_webhook_crud() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-        let id = db.create_webhook("Order Webhook", "catalyst", "/webhook/order", None, "New order received: {{body}}").unwrap();
+        let id = db
+            .create_webhook(
+                "Order Webhook",
+                "catalyst",
+                "/webhook/order",
+                None,
+                "New order received: {{body}}",
+            )
+            .unwrap();
         println!("  Created webhook: {}", id);
 
         let hook = db.get_webhook_by_path("/webhook/order").unwrap();
@@ -208,7 +297,14 @@ mod integration_tests {
     fn test_events() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-        let id = db.emit_event("test_event", Some("conflux"), None, Some("{\"data\": \"test\"}")).unwrap();
+        let id = db
+            .emit_event(
+                "test_event",
+                Some("conflux"),
+                None,
+                Some("{\"data\": \"test\"}"),
+            )
+            .unwrap();
         println!("  Emitted event: {}", id);
 
         let events = db.get_unprocessed_events(None).unwrap();
@@ -227,17 +323,30 @@ mod integration_tests {
     fn test_tasks() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-        let id = db.create_task("Research dental market", Some("Find pain points and AI use cases"), "helix", "prism", "high", true).unwrap();
+        let id = db
+            .create_task(
+                "Research dental market",
+                Some("Find pain points and AI use cases"),
+                "helix",
+                "prism",
+                "high",
+                true,
+            )
+            .unwrap();
         println!("  Created task: {}", id);
 
         let task = db.get_task(&id).unwrap().unwrap();
         assert_eq!(task.title, "Research dental market");
         assert_eq!(task.priority, "high");
         assert!(task.requires_verify);
-        println!("  Task: {} (priority: {}, verify: {})", task.title, task.priority, task.requires_verify);
+        println!(
+            "  Task: {} (priority: {}, verify: {})",
+            task.title, task.priority, task.requires_verify
+        );
 
         // Update status
-        db.update_task_status(&id, "completed", Some("Found 5 key pain points")).unwrap();
+        db.update_task_status(&id, "completed", Some("Found 5 key pain points"))
+            .unwrap();
         let updated = db.get_task(&id).unwrap().unwrap();
         assert_eq!(updated.status, "completed");
         println!("  Updated status: {}", updated.status);
@@ -249,14 +358,27 @@ mod integration_tests {
     fn test_verification() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-        let claim_id = db.create_verification("forge", Some("session-123"), "tool_result", "Built 100 prompts successfully").unwrap();
+        let claim_id = db
+            .create_verification(
+                "forge",
+                Some("session-123"),
+                "tool_result",
+                "Built 100 prompts successfully",
+            )
+            .unwrap();
         println!("  Created claim: {}", claim_id);
 
         let unverified = db.get_unverified_claims(None).unwrap();
         assert!(!unverified.is_empty());
         println!("  Unverified claims: {}", unverified.len());
 
-        db.complete_verification(&claim_id, "quanta", "verified", Some("Checked file, 100 prompts exist")).unwrap();
+        db.complete_verification(
+            &claim_id,
+            "quanta",
+            "verified",
+            Some("Checked file, 100 prompts exist"),
+        )
+        .unwrap();
         let after = db.get_unverified_claims(None).unwrap();
         assert_eq!(after.len(), unverified.len() - 1);
         println!("  After verification: {}", after.len());
@@ -282,7 +404,8 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         db.record_heartbeat("database", "ok", None).unwrap();
-        db.record_heartbeat("providers", "warning", Some("No providers configured")).unwrap();
+        db.record_heartbeat("providers", "warning", Some("No providers configured"))
+            .unwrap();
 
         let records = db.get_latest_heartbeats().unwrap();
         assert_eq!(records.len(), 2);
@@ -298,11 +421,20 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         db.install_skill(
-            "test-skill", "Test Skill", Some("A test skill"), "🧪", "1.0.0",
-            Some("Test Author"), "When testing, do this.",
-            Some("[\"test\"]"), "[\"catalyst\"]", Some("[\"file_read\"]"),
-            "local", None
-        ).unwrap();
+            "test-skill",
+            "Test Skill",
+            Some("A test skill"),
+            "🧪",
+            "1.0.0",
+            Some("Test Author"),
+            "When testing, do this.",
+            Some("[\"test\"]"),
+            "[\"catalyst\"]",
+            Some("[\"file_read\"]"),
+            "local",
+            None,
+        )
+        .unwrap();
 
         let skill = db.get_skill("test-skill").unwrap().unwrap();
         assert_eq!(skill.name, "Test Skill");
@@ -344,7 +476,7 @@ mod integration_tests {
 
     #[test]
     fn test_full_chat_cycle_catalyst() {
-        use app_lib::engine::{runtime, router};
+        use app_lib::engine::{router, runtime};
         use tokio::runtime::Runtime;
 
         let rt = Runtime::new().unwrap();
@@ -352,11 +484,20 @@ mod integration_tests {
             let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
             // Verify agent exists with personality
-            let agent = db.get_agent("catalyst").unwrap().expect("Catalyst agent should exist");
+            let agent = db
+                .get_agent("catalyst")
+                .unwrap()
+                .expect("Catalyst agent should exist");
             assert!(agent.soul.is_some(), "Catalyst should have a soul");
-            assert!(agent.instructions.is_some(), "Catalyst should have instructions");
+            assert!(
+                agent.instructions.is_some(),
+                "Catalyst should have instructions"
+            );
             println!("  🤖 {} — {}", agent.name, agent.role);
-            println!("  Soul: {}...", &agent.soul.as_ref().unwrap()[..60.min(agent.soul.as_ref().unwrap().len())]);
+            println!(
+                "  Soul: {}...",
+                &agent.soul.as_ref().unwrap()[..60.min(agent.soul.as_ref().unwrap().len())]
+            );
 
             // Create session
             let session = db.create_session("catalyst", "test-user").unwrap();
@@ -369,20 +510,31 @@ mod integration_tests {
                 "catalyst",
                 "What is 2+2? Reply with just the number.",
                 Some(20),
-            ).await;
+            )
+            .await;
 
             match &result {
                 Ok(resp) => {
-                    println!("  ✅ Response: '{}' ({}ms, {} tokens via {})",
-                        resp.content.trim(), resp.latency_ms, resp.tokens_used, resp.provider_name);
+                    println!(
+                        "  ✅ Response: '{}' ({}ms, {} tokens via {})",
+                        resp.content.trim(),
+                        resp.latency_ms,
+                        resp.tokens_used,
+                        resp.provider_name
+                    );
 
                     // Verify response was stored in DB
                     let messages = db.get_messages(&session.id, 10).unwrap();
                     let user_msgs: Vec<_> = messages.iter().filter(|m| m.role == "user").collect();
-                    let assistant_msgs: Vec<_> = messages.iter().filter(|m| m.role == "assistant").collect();
+                    let assistant_msgs: Vec<_> =
+                        messages.iter().filter(|m| m.role == "assistant").collect();
                     assert_eq!(user_msgs.len(), 1, "Should have 1 user message");
                     assert_eq!(assistant_msgs.len(), 1, "Should have 1 assistant message");
-                    println!("  DB: {} user + {} assistant messages stored", user_msgs.len(), assistant_msgs.len());
+                    println!(
+                        "  DB: {} user + {} assistant messages stored",
+                        user_msgs.len(),
+                        assistant_msgs.len()
+                    );
 
                     // Verify the system prompt was built with personality
                     assert!(!resp.content.is_empty(), "Response should not be empty");
@@ -393,7 +545,11 @@ mod integration_tests {
                     // Still verify the user message was stored
                     let messages = db.get_messages(&session.id, 10).unwrap();
                     let user_msgs: Vec<_> = messages.iter().filter(|m| m.role == "user").collect();
-                    assert_eq!(user_msgs.len(), 1, "User message should be stored even on failure");
+                    assert_eq!(
+                        user_msgs.len(),
+                        1,
+                        "User message should be stored even on failure"
+                    );
                     println!("  ✅ User message stored correctly despite provider error");
                 }
             }
@@ -402,15 +558,21 @@ mod integration_tests {
 
     #[test]
     fn test_full_chat_cycle_conflux() {
-        use app_lib::engine::{runtime, router};
+        use app_lib::engine::{router, runtime};
         use tokio::runtime::Runtime;
 
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-            let agent = db.get_agent("conflux").unwrap().expect("Conflux should exist");
-            assert_eq!(agent.model_alias, "conflux-core", "Conflux should use conflux-core");
+            let agent = db
+                .get_agent("conflux")
+                .unwrap()
+                .expect("Conflux should exist");
+            assert_eq!(
+                agent.model_alias, "conflux-core",
+                "Conflux should use conflux-core"
+            );
             println!("  🤖 Conflux — model: {}", agent.model_alias);
 
             let session = db.create_session("conflux", "test-user").unwrap();
@@ -421,16 +583,22 @@ mod integration_tests {
                 "conflux",
                 "Hello! What's your name and role?",
                 Some(50),
-            ).await;
+            )
+            .await;
 
             match &result {
                 Ok(resp) => {
-                    println!("  ✅ Conflux: '{}' ({}ms via {})",
-                        &resp.content[..100.min(resp.content.len())], resp.latency_ms, resp.provider_name);
+                    println!(
+                        "  ✅ Conflux: '{}' ({}ms via {})",
+                        &resp.content[..100.min(resp.content.len())],
+                        resp.latency_ms,
+                        resp.provider_name
+                    );
 
                     // The response should reference Conflux's identity (from the system prompt)
                     let content_lower = resp.content.to_lowercase();
-                    let has_identity = content_lower.contains("conflux") || content_lower.contains("strategic");
+                    let has_identity =
+                        content_lower.contains("conflux") || content_lower.contains("strategic");
                     if has_identity {
                         println!("  ✅ Agent identity confirmed in response");
                     }
@@ -442,7 +610,7 @@ mod integration_tests {
 
     #[test]
     fn test_conversation_history_loaded() {
-        use app_lib::engine::{runtime, router};
+        use app_lib::engine::{router, runtime};
         use tokio::runtime::Runtime;
 
         let rt = Runtime::new().unwrap();
@@ -452,25 +620,32 @@ mod integration_tests {
 
             // First message
             let _ = runtime::process_turn(
-                &db, &session.id, "catalyst",
+                &db,
+                &session.id,
+                "catalyst",
                 "My name is TestUser. Remember this.",
                 Some(30),
-            ).await;
+            )
+            .await;
 
             // Second message — runtime should load conversation history
-            let result = runtime::process_turn(
-                &db, &session.id, "catalyst",
-                "What is my name?",
-                Some(30),
-            ).await;
+            let result =
+                runtime::process_turn(&db, &session.id, "catalyst", "What is my name?", Some(30))
+                    .await;
 
             match &result {
                 Ok(resp) => {
-                    println!("  ✅ Follow-up: '{}'", &resp.content[..100.min(resp.content.len())]);
+                    println!(
+                        "  ✅ Follow-up: '{}'",
+                        &resp.content[..100.min(resp.content.len())]
+                    );
 
                     // Verify both messages are in DB
                     let messages = db.get_messages(&session.id, 10).unwrap();
-                    assert!(messages.len() >= 4, "Should have at least 4 messages (2 user + 2 assistant)");
+                    assert!(
+                        messages.len() >= 4,
+                        "Should have at least 4 messages (2 user + 2 assistant)"
+                    );
                     println!("  DB: {} messages stored across 2 turns", messages.len());
                 }
                 Err(e) => println!("  ⚠️ Follow-up failed: {}", e),
@@ -485,23 +660,42 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Create parent (head of household)
-        let parent = db.create_family_member(
-            "parent-1", "Don", Some(35), "adult",
-            Some("👨"), Some("#6366f1"), Some("conflux"), None
-        ).unwrap();
+        let parent = db
+            .create_family_member(
+                "parent-1",
+                "Don",
+                Some(35),
+                "adult",
+                Some("👨"),
+                Some("#6366f1"),
+                Some("conflux"),
+                None,
+            )
+            .unwrap();
         assert_eq!(parent.name, "Don");
         assert_eq!(parent.age_group, "adult");
         assert!(parent.parent_id.is_none());
         println!("  Created parent: {} ({})", parent.name, parent.age_group);
 
         // Create child
-        let child = db.create_family_member(
-            "child-1", "Alex", Some(8), "kid",
-            Some("🎮"), Some("#8b5cf6"), Some("playpal"), Some("parent-1")
-        ).unwrap();
+        let child = db
+            .create_family_member(
+                "child-1",
+                "Alex",
+                Some(8),
+                "kid",
+                Some("🎮"),
+                Some("#8b5cf6"),
+                Some("playpal"),
+                Some("parent-1"),
+            )
+            .unwrap();
         assert_eq!(child.name, "Alex");
         assert_eq!(child.parent_id, Some("parent-1".to_string()));
-        println!("  Created child: {} (parent: {:?})", child.name, child.parent_id);
+        println!(
+            "  Created child: {} (parent: {:?})",
+            child.name, child.parent_id
+        );
 
         // List all
         let members = db.get_family_members().unwrap();
@@ -526,12 +720,26 @@ mod integration_tests {
     fn test_family_member_age_groups() {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
-        let groups = ["toddler", "preschool", "kid", "teen", "young_adult", "adult"];
+        let groups = [
+            "toddler",
+            "preschool",
+            "kid",
+            "teen",
+            "young_adult",
+            "adult",
+        ];
         for (i, group) in groups.iter().enumerate() {
             db.create_family_member(
-                &format!("member-{}", i), &format!("Person{}", i),
-                None, group, None, None, None, None
-            ).unwrap();
+                &format!("member-{}", i),
+                &format!("Person{}", i),
+                None,
+                group,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
         }
 
         let members = db.get_family_members().unwrap();
@@ -553,15 +761,29 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         let templates = db.get_agent_templates(None).unwrap();
-        assert!(templates.len() >= 10, "Expected at least 10 templates, got {}", templates.len());
+        assert!(
+            templates.len() >= 10,
+            "Expected at least 10 templates, got {}",
+            templates.len()
+        );
 
         for t in &templates {
             assert!(!t.soul.is_empty(), "Template {} missing soul", t.id);
-            assert!(!t.instructions.is_empty(), "Template {} missing instructions", t.id);
-            println!("  {} {} — {} ({})", t.emoji, t.name, t.age_group, t.category);
+            assert!(
+                !t.instructions.is_empty(),
+                "Template {} missing instructions",
+                t.id
+            );
+            println!(
+                "  {} {} — {} ({})",
+                t.emoji, t.name, t.age_group, t.category
+            );
         }
 
-        println!("✅ {} agent templates seeded with soul + instructions", templates.len());
+        println!(
+            "✅ {} agent templates seeded with soul + instructions",
+            templates.len()
+        );
     }
 
     #[test]
@@ -584,8 +806,12 @@ mod integration_tests {
         let adult_templates = db.get_agent_templates(Some("adult")).unwrap();
         assert!(!adult_templates.is_empty(), "Should have adult templates");
 
-        println!("✅ Templates filter by age group (kid: {}, teen: {}, adult: {})",
-            kid_templates.len(), teen_templates.len(), adult_templates.len());
+        println!(
+            "✅ Templates filter by age group (kid: {}, teen: {}, adult: {})",
+            kid_templates.len(),
+            teen_templates.len(),
+            adult_templates.len()
+        );
     }
 
     #[test]
@@ -594,13 +820,19 @@ mod integration_tests {
 
         // Get a template by filtering all templates
         let all = db.get_agent_templates(None).unwrap();
-        let template = all.iter().find(|t| t.id == "tpl-playpal").expect("PlayPal template should exist");
+        let template = all
+            .iter()
+            .find(|t| t.id == "tpl-playpal")
+            .expect("PlayPal template should exist");
         assert_eq!(template.name, "PlayPal");
         println!("  Template: {} {}", template.emoji, template.name);
 
         // Verify it has quality soul content
         assert!(template.soul.len() > 100, "Soul should be substantial");
-        assert!(template.instructions.len() > 100, "Instructions should be substantial");
+        assert!(
+            template.instructions.len() > 100,
+            "Instructions should be substantial"
+        );
         println!("  Soul: {} chars", template.soul.len());
         println!("  Instructions: {} chars", template.instructions.len());
 
@@ -614,10 +846,17 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Create a game
-        let game = db.create_story_game(
-            "game-1", None, "The Dragon's Cave", "adventure",
-            "kid", "normal", Some("{\"location\":\"cave_entrance\"}")
-        ).unwrap();
+        let game = db
+            .create_story_game(
+                "game-1",
+                None,
+                "The Dragon's Cave",
+                "adventure",
+                "kid",
+                "normal",
+                Some("{\"location\":\"cave_entrance\"}"),
+            )
+            .unwrap();
         assert_eq!(game.title, "The Dragon's Cave");
         assert_eq!(game.status, "active");
         assert_eq!(game.current_chapter, 1);
@@ -641,13 +880,21 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Create family member first
-        db.create_family_member("kid-1", "Alex", Some(8), "kid", None, None, None, None).unwrap();
+        db.create_family_member("kid-1", "Alex", Some(8), "kid", None, None, None, None)
+            .unwrap();
 
         // Create game linked to member
-        let game = db.create_story_game(
-            "game-2", Some("kid-1"), "Space Adventure", "scifi",
-            "kid", "easy", None
-        ).unwrap();
+        let game = db
+            .create_story_game(
+                "game-2",
+                Some("kid-1"),
+                "Space Adventure",
+                "scifi",
+                "kid",
+                "easy",
+                None,
+            )
+            .unwrap();
         assert_eq!(game.member_id, Some("kid-1".to_string()));
 
         // List games for this member
@@ -666,25 +913,54 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // Create game
-        db.create_story_game("game-3", None, "Test Story", "fantasy", "kid", "normal", None).unwrap();
+        db.create_story_game(
+            "game-3",
+            None,
+            "Test Story",
+            "fantasy",
+            "kid",
+            "normal",
+            None,
+        )
+        .unwrap();
 
         // Add opening chapter
         let choices = r#"[{"id":"a","text":"Go left"},{"id":"b","text":"Go right"},{"id":"c","text":"Stay put"}]"#;
-        let ch1 = db.add_story_chapter(
-            "ch-1", "game-3", 1, Some("The Beginning"),
-            "You stand at a crossroads.", choices, None, None
-        ).unwrap();
+        let ch1 = db
+            .add_story_chapter(
+                "ch-1",
+                "game-3",
+                1,
+                Some("The Beginning"),
+                "You stand at a crossroads.",
+                choices,
+                None,
+                None,
+            )
+            .unwrap();
         assert_eq!(ch1.chapter_number, 1);
         println!("  Chapter 1: {:?}", ch1.title);
 
         // Add puzzle chapter
         let puzzle = r#"{"puzzle_type":"riddle","question":"What has keys but no locks?","answer":"keyboard","hint":"You use it to type"}"#;
-        let ch2 = db.add_story_chapter(
-            "ch-2", "game-3", 2, Some("The Riddle"),
-            "A mysterious door blocks your path.", choices, Some(puzzle), None
-        ).unwrap();
+        let ch2 = db
+            .add_story_chapter(
+                "ch-2",
+                "game-3",
+                2,
+                Some("The Riddle"),
+                "A mysterious door blocks your path.",
+                choices,
+                Some(puzzle),
+                None,
+            )
+            .unwrap();
         assert!(ch2.puzzle.is_some());
-        println!("  Chapter 2: {:?} (has puzzle: {})", ch2.title, ch2.puzzle.is_some());
+        println!(
+            "  Chapter 2: {:?} (has puzzle: {})",
+            ch2.title,
+            ch2.puzzle.is_some()
+        );
 
         // List chapters
         let chapters = db.get_story_chapters("game-3").unwrap();
@@ -715,9 +991,18 @@ mod integration_tests {
         assert!(!seeds.is_empty(), "Should have story seeds");
 
         for seed in &seeds {
-            assert!(!seed.opening.is_empty(), "Seed should have opening narrative");
-            assert!(!seed.initial_choices.is_empty(), "Seed should have initial choices");
-            println!("  {} — {} ({}, {})", seed.title, seed.genre, seed.age_group, seed.difficulty);
+            assert!(
+                !seed.opening.is_empty(),
+                "Seed should have opening narrative"
+            );
+            assert!(
+                !seed.initial_choices.is_empty(),
+                "Seed should have initial choices"
+            );
+            println!(
+                "  {} — {} ({}, {})",
+                seed.title, seed.genre, seed.age_group, seed.difficulty
+            );
         }
 
         // Filter by age group
@@ -743,20 +1028,43 @@ mod integration_tests {
         let db = app_lib::engine::db::EngineDb::open_in_memory().unwrap();
 
         // 1. Create family member
-        db.create_family_member("kid-1", "Sam", Some(10), "kid", Some("🎮"), None, None, None).unwrap();
+        db.create_family_member(
+            "kid-1",
+            "Sam",
+            Some(10),
+            "kid",
+            Some("🎮"),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
 
         // 2. Create story game
         db.create_story_game(
-            "game-flow", Some("kid-1"), "Mystery Manor", "mystery",
-            "kid", "normal", Some("{\"secrets_found\":0}")
-        ).unwrap();
+            "game-flow",
+            Some("kid-1"),
+            "Mystery Manor",
+            "mystery",
+            "kid",
+            "normal",
+            Some("{\"secrets_found\":0}"),
+        )
+        .unwrap();
 
         // 3. Add opening chapter
         let choices_a = r#"[{"id":"a","text":"Search the library"},{"id":"b","text":"Check the basement"},{"id":"c","text":"Ask the ghost"}]"#;
         db.add_story_chapter(
-            "ch-f-1", "game-flow", 1, Some("Arrival"),
-            "You arrive at Mystery Manor on a stormy night.", choices_a, None, None
-        ).unwrap();
+            "ch-f-1",
+            "game-flow",
+            1,
+            Some("Arrival"),
+            "You arrive at Mystery Manor on a stormy night.",
+            choices_a,
+            None,
+            None,
+        )
+        .unwrap();
 
         // 4. Player chooses
         db.choose_story_path("ch-f-1", "a").unwrap();
@@ -765,9 +1073,16 @@ mod integration_tests {
         let choices_b = r#"[{"id":"a","text":"Read the book"},{"id":"b","text":"Search the shelves"},{"id":"c","text":"Leave quickly"}]"#;
         let puzzle_b = r#"{"puzzle_type":"pattern","question":"What comes next: 2, 4, 8, 16, ?","answer":"32","hint":"Each number doubles"}"#;
         db.add_story_chapter(
-            "ch-f-2", "game-flow", 2, Some("The Library"),
-            "Dusty books line the walls. One glows faintly.", choices_b, Some(puzzle_b), None
-        ).unwrap();
+            "ch-f-2",
+            "game-flow",
+            2,
+            Some("The Library"),
+            "Dusty books line the walls. One glows faintly.",
+            choices_b,
+            Some(puzzle_b),
+            None,
+        )
+        .unwrap();
 
         // 6. Solve puzzle
         db.solve_puzzle("ch-f-2").unwrap();

@@ -30,7 +30,7 @@
   display: flex;
   height: 100%;
   background: #080c14;
-  padding: 40px 48px;
+  padding: 0 48px 56px;
   color: var(--vault-text);
   overflow: hidden;
   position: relative;
@@ -52,6 +52,60 @@
 .vault-container > * {
   position: relative;
   z-index: 1;
+}
+
+/* ---- Vault Hero ---- */
+
+.vault-hero {
+  position: absolute;
+  top: 0;
+  left: calc(var(--vault-sidebar-width) + 48px + 48px);
+  right: 48px;
+  padding: 32px 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+.vault-hero-glow {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  width: 400px;
+  height: 160px;
+  background: radial-gradient(ellipse, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+  animation: vault-hero-breathe 5s ease-in-out infinite;
+}
+
+@keyframes vault-hero-breathe {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.vault-hero-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 16px rgba(139, 92, 246, 0.6));
+  animation: vault-hero-breathe 5s ease-in-out infinite;
+}
+
+.vault-hero-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.vault-hero-sub {
+  font-size: 13px;
+  color: var(--vault-text-dim);
+  margin: 0;
 }
 
 /* ---- Sidebar ---- */
@@ -183,6 +237,34 @@
 
 .vault-project-item.active {
   background: rgba(139, 92, 246, 0.12);
+  border-left: 3px solid var(--vault-accent);
+  padding-left: 9px;
+}
+
+.vault-project-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.vault-project-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+.vault-project-action-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.vault-project-action-delete:hover {
+  background: rgba(248, 113, 113, 0.2);
 }
 
 .vault-project-icon { font-size: 18px; }
@@ -707,8 +789,10 @@
 }
 
 .vault-empty-icon {
-  font-size: 48px;
-  opacity: 0.4;
+  width: 64px;
+  height: 64px;
+  opacity: 0.5;
+  filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.4));
 }
 
 .vault-empty-title {

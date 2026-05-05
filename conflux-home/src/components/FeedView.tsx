@@ -12,6 +12,8 @@ import SignalCard from './SignalCard';
 import CognitiveSidebar from './CognitiveSidebar';
 import BriefingOverlay from './BriefingOverlay';
 import GridBackground from './GridBackground';
+import RadarBoot from './RadarBoot';
+import RadarOnboarding, { hasCompletedRadarOnboarding } from './RadarOnboarding';
 import type { RippleSignal } from '../types';
 
 export default function FeedView() {
@@ -27,6 +29,11 @@ export default function FeedView() {
   const [briefingOpen, setBriefingOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
+  // Boot → Onboarding state
+  const [bootDone, setBootDone] = useState(() => localStorage.getItem('radar-boot-done') === 'true');
+  const hasOnboarded = hasCompletedRadarOnboarding();
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+
   // Filter out dismissed signals
   const visibleRipples = ripples.filter(r => !dismissedIds.has(r.id));
 
@@ -37,13 +44,15 @@ export default function FeedView() {
 
   // Signal card handlers
   const handleSave = useCallback((signal: RippleSignal) => {
-    console.log('Saved signal:', signal.id);
+    // Remove from visible radar
     setDismissedIds(prev => new Set(prev).add(signal.id));
+    // Clear selected so card disappears
+    setSelectedSignal(null);
   }, []);
 
   const handleDismiss = useCallback((signal: RippleSignal) => {
-    console.log('Dismissed signal:', signal.id);
-    setDismissedIds(prev => new Set(prev).add(signal.id));
+    // Just close the card — leave the ripple on the radar
+    setSelectedSignal(null);
   }, []);
 
   const handleSignalExpand = useCallback((signal: RippleSignal) => {
@@ -62,6 +71,23 @@ export default function FeedView() {
 
   return (
     <>
+      {/* ── Boot Sequence ── */}
+      {!bootDone && (
+        <RadarBoot
+          onComplete={() => {
+            localStorage.setItem('radar-boot-done', 'true');
+            setBootDone(true);
+          }}
+        />
+      )}
+
+      {/* ── Onboarding Intelligence Briefing ── */}
+      {bootDone && !hasOnboarded && !onboardingComplete && (
+        <RadarOnboarding
+          onComplete={() => setOnboardingComplete(true)}
+        />
+      )}
+
       {/* Grid Background */}
       <GridBackground />
 

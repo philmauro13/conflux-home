@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 interface GamesHubProps {
   onOpenGame: (gameId: string) => void;
+  onBack?: () => void;
 }
 
 interface GameDef {
@@ -39,6 +40,22 @@ const GAMES: GameDef[] = [
     size: 'normal',
   },
   {
+    id: 'nani-solitaire',
+    name: 'Nani Solitaire',
+    icon: '🎴',
+    subtitle: 'Family Tradition · Unique',
+    status: 'available',
+    size: 'normal',
+  },
+  {
+    id: 'johnny-solitaire',
+    name: "Johnny C's Solitaire",
+    icon: '🀄',
+    subtitle: 'FreeCell Variant · 8 Columns',
+    status: 'available',
+    size: 'normal',
+  },
+  {
     id: 'snake',
     name: 'Snake',
     icon: '🐍',
@@ -62,7 +79,7 @@ export function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default function GamesHub({ onOpenGame }: GamesHubProps) {
+export default function GamesHub({ onOpenGame, onBack }: GamesHubProps) {
   const [bestTimes, setBestTimes] = useState<Record<string, number>>({});
   const [soundEnabled, setSoundEnabled] = useState(() => {
     try {
@@ -95,9 +112,27 @@ export default function GamesHub({ onOpenGame }: GamesHubProps) {
     <div className="games-hub">
       {/* Header */}
       <div className="games-hub-header">
-        <div>
-          <h2 className="games-hub-title">🎮 Games</h2>
-          <p className="games-hub-subtitle">Play, compete, and unwind</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: '#aaa',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              ← Discover
+            </button>
+          )}
+          <div>
+            <h2 className="games-hub-title">🎮 Games</h2>
+            <p className="games-hub-subtitle">Play, compete, and unwind</p>
+          </div>
         </div>
         <div className="games-header-actions">
           <button

@@ -53,15 +53,20 @@ function FocusCard({ focus, onComplete, onReschedule }: {
   if (!task) return null;
   const pri = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.normal;
   const energy = task.energy_type ? ENERGY_EMOJI[task.energy_type] : null;
-  
+
   const handleComplete = (e: React.MouseEvent) => {
     e.stopPropagation();
     playOrbitTaskComplete();
     onComplete(task.id);
   };
-  
+
+  const handleReschedule = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onReschedule(task.id);
+  };
+
   return (
-    <div className="mc-focus-card" onClick={handleComplete}>
+    <div className="mc-focus-card">
       <div className="mc-focus-priority">
         <span>{pri.emoji}</span>
         <span>Priority {pri.label}</span>
@@ -79,13 +84,21 @@ function FocusCard({ focus, onComplete, onReschedule }: {
           </span>
         )}
         {task.due_date && (
-          <span 
+          <span
             className="mc-focus-badge"
             style={{ color: dueColor(task.due_date), borderColor: dueColor(task.due_date) }}
           >
             📅 {dueLabel(task.due_date)}
           </span>
         )}
+      </div>
+      <div className="mc-focus-actions">
+        <button className="mc-focus-btn" onClick={handleComplete} title="Mark complete">
+          ✓
+        </button>
+        <button className="mc-focus-btn" onClick={handleReschedule} title="Reschedule">
+          ↻
+        </button>
       </div>
     </div>
   );

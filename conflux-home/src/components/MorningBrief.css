@@ -1,0 +1,289 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   MORNING BRIEF OVERLAY — First-app-open-of-day experience
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.morning-brief-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+  cursor: pointer;
+}
+
+.morning-brief-atmosphere {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(139, 92, 246, 0.12) 0%,
+    rgba(6, 182, 212, 0.06) 40%,
+    rgba(10, 10, 30, 0.85) 80%
+  );
+  pointer-events: none;
+}
+
+.morning-brief-dismiss-hint {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(160, 140, 200, 0.5);
+  font-family: 'Inter', -apple-system, sans-serif;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.morning-brief-dismiss-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+/* ── Main Card ── */
+.morning-brief-card {
+  position: relative;
+  background: rgba(12, 10, 28, 0.96);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 24px;
+  padding: 28px 32px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.1),
+    0 4px 40px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(139, 92, 246, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── Header ── */
+.morning-brief-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.morning-brief-greeting {
+  flex: 1;
+}
+
+.morning-brief-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: rgba(240, 235, 255, 0.95);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.morning-brief-date {
+  font-size: 14px;
+  color: rgba(160, 140, 200, 0.7);
+  margin-top: 4px;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.morning-brief-fairy {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.4));
+}
+
+/* ── Content Grid ── */
+.morning-brief-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.morning-brief-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.morning-brief-section-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.morning-brief-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(160, 140, 200, 0.6);
+  margin-bottom: 8px;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.morning-brief-count {
+  font-size: 13px;
+  color: rgba(220, 210, 255, 0.8);
+  font-family: 'Inter', -apple-system, sans-serif;
+  margin-bottom: 6px;
+}
+
+.morning-brief-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.morning-brief-task-list li {
+  font-size: 13px;
+  color: rgba(220, 210, 255, 0.85);
+  font-family: 'Inter', -apple-system, sans-serif;
+  line-height: 1.3;
+  padding-left: 12px;
+  position: relative;
+}
+
+.morning-brief-task-list li::before {
+  content: '◦';
+  position: absolute;
+  left: 0;
+  color: rgba(139, 92, 246, 0.6);
+}
+
+.morning-brief-more {
+  color: rgba(160, 140, 200, 0.5) !important;
+  font-style: italic;
+  font-size: 12px !important;
+}
+
+.morning-brief-empty {
+  font-size: 12px;
+  color: rgba(160, 140, 200, 0.45);
+  font-style: italic;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Budget section */
+.morning-brief-budget-text {
+  font-size: 13px;
+  color: rgba(220, 210, 255, 0.85);
+  font-family: 'Inter', -apple-system, sans-serif;
+  margin-bottom: 6px;
+}
+
+.morning-brief-pace-indicator {
+  font-size: 12px;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.pace-over { color: rgba(252, 165, 165, 0.9); }
+.pace-on-track { color: rgba(167, 243, 208, 0.85); }
+.pace-under { color: rgba(147, 236, 241, 0.9); }
+
+/* Dreams streak */
+.morning-brief-streak {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.streak-number {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a78bfa, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.streak-label {
+  font-size: 14px;
+  color: rgba(160, 140, 200, 0.7);
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.morning-brief-streak-msg {
+  font-size: 12px;
+  color: rgba(160, 140, 200, 0.6);
+  font-style: italic;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Weather */
+.morning-brief-weather {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.morning-brief-weather .morning-brief-section-icon {
+  font-size: 24px;
+  margin: 0;
+}
+
+.morning-brief-weather-temp {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(220, 210, 255, 0.85);
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Tasks — full width */
+.morning-brief-tasks {
+  grid-column: 1 / -1;
+}
+
+/* ── Continue Button ── */
+.morning-brief-continue {
+  display: block;
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.2));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 12px;
+  color: rgba(220, 210, 255, 0.9);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  letter-spacing: 0.01em;
+}
+
+.morning-brief-continue:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.45), rgba(6, 182, 212, 0.3));
+  border-color: rgba(139, 92, 246, 0.6);
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .morning-brief-card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+  .morning-brief-grid {
+    grid-template-columns: 1fr;
+  }
+  .morning-brief-title {
+    font-size: 22px;
+  }
+  .morning-brief-fairy {
+    display: none;
+  }
+}

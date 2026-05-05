@@ -49,16 +49,16 @@ pub enum ApiFormat {
 pub struct ModelProvider {
     pub id: String,
     pub name: String,
-    pub tier: String,          // "core", "pro", "ultra"
+    pub tier: String, // "core", "pro", "ultra"
     pub base_url: String,
-    pub model_id: String,      // provider's model name
+    pub model_id: String, // provider's model name
     pub auth_method: AuthMethod,
     pub api_format: ApiFormat,
-    pub priority: i32,         // lower = try first within tier
-    pub is_free: bool,         // true if $0 marginal cost
+    pub priority: i32, // lower = try first within tier
+    pub is_free: bool, // true if $0 marginal cost
     pub cost_per_1k_tokens: f64,
     pub max_tokens: i64,
-    pub rate_limit_rpm: i64,   // requests per minute
+    pub rate_limit_rpm: i64, // requests per minute
     pub is_enabled: bool,
 }
 
@@ -867,7 +867,11 @@ async fn send_gemini_chat(
         .iter()
         .filter(|m| m.role != "system") // Gemini handles system instruction differently
         .map(|m| {
-            let role = if m.role == "assistant" { "model" } else { "user" };
+            let role = if m.role == "assistant" {
+                "model"
+            } else {
+                "user"
+            };
             serde_json::json!({
                 "role": role,
                 "parts": [{ "text": m.content.clone().unwrap_or_default() }]

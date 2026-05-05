@@ -2,8 +2,8 @@
 // Tests for Day 2: Orchestration + Concurrency + Spawn Runtime
 
 use app_lib::engine;
-use app_lib::engine::subagent::{ConcurrencyLimiter, make_run_id, make_session_key};
 use app_lib::engine::orchestrator::Orchestrator;
+use app_lib::engine::subagent::{make_run_id, make_session_key, ConcurrencyLimiter};
 use app_lib::engine::types::SpawnParams;
 use std::fs;
 
@@ -14,11 +14,11 @@ fn setup_test_engine() -> (String, engine::ConfluxEngine) {
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_nanos();
-    
+
     let temp_dir = std::env::temp_dir().join("conflux_test");
     fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
     let db_path = temp_dir.join(format!("test_{}.db", timestamp));
-    
+
     let engine = engine::ConfluxEngine::new(&db_path).expect("Failed to create test engine");
     (db_path.to_string_lossy().to_string(), engine)
 }
@@ -32,7 +32,7 @@ fn test_subagent_registry_basic() {
     let run_id = make_run_id();
     let session_key = make_session_key("test-agent", &run_id);
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     let record = engine::types::SubagentRunRecord {
         run_id: run_id.clone(),
         parent_run_id: None,
@@ -58,7 +58,9 @@ fn test_subagent_registry_basic() {
     };
 
     // Register the run
-    registry.register(record.clone()).expect("Failed to register run");
+    registry
+        .register(record.clone())
+        .expect("Failed to register run");
 
     // Verify it appears in list
     let runs = registry.list(None);
@@ -74,9 +76,10 @@ fn test_subagent_registry_basic() {
     assert_eq!(active.len(), 1);
 
     // Update status to completed and verify it's filtered out
-    registry.update_status(&run_id, "completed", Some("completed"), None)
+    registry
+        .update_status(&run_id, "completed", Some("completed"), None)
         .expect("Failed to update status");
-    
+
     let active = registry.list_active();
     assert_eq!(active.len(), 0);
 
@@ -94,11 +97,17 @@ fn test_concurrency_limiter() {
     // Acquire 2 permits concurrently
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
-        let permit1 = limiter.acquire("session1").await.expect("Failed to acquire permit 1");
+        let permit1 = limiter
+            .acquire("session1")
+            .await
+            .expect("Failed to acquire permit 1");
         assert_eq!(limiter.available(), 1);
         assert_eq!(limiter.active_count(), 1);
 
-        let permit2 = limiter.acquire("session2").await.expect("Failed to acquire permit 2");
+        let permit2 = limiter
+            .acquire("session2")
+            .await
+            .expect("Failed to acquire permit 2");
         assert_eq!(limiter.available(), 0);
         assert_eq!(limiter.active_count(), 2);
 
@@ -163,26 +172,28 @@ fn test_spawn_plan_validation() {
 #[tokio::test]
 async fn test_orchestrator_execute_spawn() {
     let (_temp_path, engine) = setup_test_engine();
-    
+
     // Create a test agent in the DB first
     let agent_id = "test-agent";
     let db = engine.db();
-    
+
     // Insert test agent
-    db.conn().execute(
-        "INSERT INTO agents (id, name, emoji, role, soul, instructions, model_alias, is_active)
+    db.conn()
+        .execute(
+            "INSERT INTO agents (id, name, emoji, role, soul, instructions, model_alias, is_active)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        rusqlite::params![
-            agent_id,
-            "Test Agent",
-            "🤖",
-            "Tester",
-            "I am a test agent.",
-            "Test instructions.",
-            "core",
-            1
-        ],
-    ).expect("Failed to insert test agent");
+            rusqlite::params![
+                agent_id,
+                "Test Agent",
+                "🤖",
+                "Tester",
+                "I am a test agent.",
+                "Test instructions.",
+                "core",
+                1
+            ],
+        )
+        .expect("Failed to insert test agent");
 
     let params = SpawnParams {
         agent_id: agent_id.to_string(),
@@ -195,8 +206,13 @@ async fn test_orchestrator_execute_spawn() {
         cleanup: "keep".to_string(),
     };
 
-    let plan = engine.orchestrator().plan_spawn(&params, None).expect("Failed to plan spawn");
-    let run_id = engine.orchestrator().execute_spawn(plan, engine.db())
+    let plan = engine
+        .orchestrator()
+        .plan_spawn(&params, None)
+        .expect("Failed to plan spawn");
+    let run_id = engine
+        .orchestrator()
+        .execute_spawn(plan, engine.db())
         .await
         .expect("Failed to execute spawn");
 
@@ -226,18 +242,27 @@ fn test_spawn_helpers() {
 #[tokio::test]
 async fn test_full_subagent_lifecycle() {
     let (_temp, engine) = setup_test_engine();
-    
+
     // Create test agent in DB
     let agent_id = "test-agent";
     let db = engine.db();
-    db.conn().execute(
-        "INSERT INTO agents (id, name, emoji, role, soul, instructions, model_alias, is_active)
+    db.conn()
+        .execute(
+            "INSERT INTO agents (id, name, emoji, role, soul, instructions, model_alias, is_active)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        rusqlite::params![
-            agent_id, "Test Agent", "🤖", "Tester", "I test.", "Be helpful.", "core", 1
-        ],
-    ).expect("Failed to insert test agent");
-    
+            rusqlite::params![
+                agent_id,
+                "Test Agent",
+                "🤖",
+                "Tester",
+                "I test.",
+                "Be helpful.",
+                "core",
+                1
+            ],
+        )
+        .expect("Failed to insert test agent");
+
     // Spawn sub-agent
     let params = SpawnParams {
         agent_id: agent_id.to_string(),
@@ -249,12 +274,19 @@ async fn test_full_subagent_lifecycle() {
         timeout_secs: Some(10),
         cleanup: "keep".to_string(),
     };
-    
-    let run_id = engine.orchestrator().execute_spawn(
-        engine.orchestrator().plan_spawn(&params, None).expect("Failed to plan"),
-        db
-    ).await.expect("Failed to spawn");
-    
+
+    let run_id = engine
+        .orchestrator()
+        .execute_spawn(
+            engine
+                .orchestrator()
+                .plan_spawn(&params, None)
+                .expect("Failed to plan"),
+            db,
+        )
+        .await
+        .expect("Failed to spawn");
+
     // Wait for completion by subscribing to events
     let mut subscriber = engine.subagent_registry().subscribe();
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(30), async {
@@ -268,61 +300,89 @@ async fn test_full_subagent_lifecycle() {
                 Err(_) => break String::from("error"),
             }
         }
-    }).await;
-    
+    })
+    .await;
+
     let status = match timeout {
         Ok(s) => s,
         Err(_) => "timeout".to_string(),
     };
-    
+
     // Verify run completed
     let run = db.get_subagent_run(&run_id).expect("Failed to get run");
     assert!(run.is_some());
     let run = run.unwrap();
     assert!(
         run.status == "completed" || run.status == "error" || run.status == "timeout",
-        "Expected completed/error/timeout but got: {} (event status: {})", 
-        run.status, status
+        "Expected completed/error/timeout but got: {} (event status: {})",
+        run.status,
+        status
     );
-    
-    println!("✓ test_full_subagent_lifecycle passed (run_id: {}, status: {})", run_id, run.status);
+
+    println!(
+        "✓ test_full_subagent_lifecycle passed (run_id: {}, status: {})",
+        run_id, run.status
+    );
 }
 
 #[tokio::test]
 async fn test_cascade_kill() {
     let (_temp, engine) = setup_test_engine();
-    
+
     // Create test agent in DB
     let agent_id = "test-agent";
     let db = engine.db();
-    db.conn().execute(
-        "INSERT INTO agents (id, name, emoji, role, soul, instructions, model_alias, is_active)
+    db.conn()
+        .execute(
+            "INSERT INTO agents (id, name, emoji, role, soul, instructions, model_alias, is_active)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        rusqlite::params![
-            agent_id, "Test Agent", "🤖", "Tester", "I test.", "Be helpful.", "core", 1
-        ],
-    ).expect("Failed to insert test agent");
-    
+            rusqlite::params![
+                agent_id,
+                "Test Agent",
+                "🤖",
+                "Tester",
+                "I test.",
+                "Be helpful.",
+                "core",
+                1
+            ],
+        )
+        .expect("Failed to insert test agent");
+
     // Spawn a parent
-    let parent_run_id = engine.orchestrator().execute_spawn(
-        engine.orchestrator().plan_spawn(&SpawnParams {
-            agent_id: agent_id.to_string(),
-            task: "Parent task".to_string(),
-            label: None,
-            mode: "run".to_string(),
-            parent_run_id: None,
-            model_override: None,
-            timeout_secs: Some(10),
-            cleanup: "keep".to_string(),
-        }, None).expect("Failed to plan"),
-        db
-    ).await.expect("Failed to spawn parent");
-    
+    let parent_run_id = engine
+        .orchestrator()
+        .execute_spawn(
+            engine
+                .orchestrator()
+                .plan_spawn(
+                    &SpawnParams {
+                        agent_id: agent_id.to_string(),
+                        task: "Parent task".to_string(),
+                        label: None,
+                        mode: "run".to_string(),
+                        parent_run_id: None,
+                        model_override: None,
+                        timeout_secs: Some(10),
+                        cleanup: "keep".to_string(),
+                    },
+                    None,
+                )
+                .expect("Failed to plan"),
+            db,
+        )
+        .await
+        .expect("Failed to spawn parent");
+
     // Kill the parent (should cascade)
-    let result = engine.orchestrator().cascade_kill(&parent_run_id, db).await.expect("Failed to cascade kill");
-    
+    let result = engine
+        .orchestrator()
+        .cascade_kill(&parent_run_id, db)
+        .await
+        .expect("Failed to cascade kill");
+
     // Verify cascaded (at least the parent should be killed)
     assert!(result.count >= 1);
-    
+
     println!("✓ test_cascade_kill passed (killed {} runs)", result.count);
 }

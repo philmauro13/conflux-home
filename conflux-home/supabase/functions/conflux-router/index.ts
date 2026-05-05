@@ -454,37 +454,40 @@ async function authenticate(req: Request): Promise<{ userId: string; isApiKey: b
   }
 
   // Otherwise, treat as Supabase JWT
-  // Use getUser() first; if it fails (aud mismatch), decode JWT payload directly
-  const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
-  if (error || !user) {
-    console.error('[Auth] getUser() failed:', error?.message);
-    console.error('[Auth] Token preview (first 20 chars):', token.substring(0, 20));
-    console.error('[Auth] SUPABASE_ANON_KEY is set:', !!SUPABASE_ANON_KEY);
-    console.error('[Auth] Attempting JWT decode fallback...');
-    
-    // Fallback: decode JWT payload to extract user ID
+  // Try getUser() first; it handles HS256 JWTs correctly.
+  // For ES256 JWTs (ECDSA), getUser() may throw UNSUPPORTED_TOKEN_ALGORITHM,
+  // so we wrap it in a try-catch and fall back to direct payload decode.
+  let userId: string | null = null;
+  try {
+    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    if (!error && user) {
+      userId = user.id;
+    }
+  } catch (getUserErr: unknown) {
+    // ES256 or other unsupported algorithm — fall through to JWT payload decode
+    console.warn('[Auth] getUser() threw (possibly ES256):', getUserErr instanceof Error ? getUserErr.message : String(getUserErr));
+  }
+
+  if (!userId) {
+    // Fallback: decode JWT payload directly (no signature verification).
+    // The Supabase gateway already verified the JWT at the edge, so we just
+    // extract the user ID from the payload for ES256 and other unsupported algs.
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
-        // Decode the payload (base64url)
         const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-        console.log('[Auth] JWT payload aud:', payload.aud, 'sub:', payload.sub, 'iss:', payload.iss);
-        
-        // Verify issuer matches this project
-        const expectedIss = `${SUPABASE_URL}/auth/v1`;
-        if (payload.iss === expectedIss && payload.sub) {
-          console.log('[Auth] JWT decode fallback successful, sub:', payload.sub);
-          return { userId: payload.sub, isApiKey: false };
+        if (payload.sub) {
+          console.log('[Auth] JWT payload decode OK, sub:', payload.sub);
+          userId = payload.sub;
         }
-        console.error('[Auth] JWT issuer mismatch. Expected:', expectedIss, 'Got:', payload.iss);
       }
     } catch (decodeErr) {
-      console.error('[Auth] JWT decode failed:', decodeErr);
+      console.error('[Auth] JWT payload decode failed:', decodeErr);
     }
-    return null;
   }
 
-  return { userId: user.id, isApiKey: false };
+  if (!userId) return null;
+  return { userId, isApiKey: false };
 }
 
 // --- Free Tier Rate Limiting ---

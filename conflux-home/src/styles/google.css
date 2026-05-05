@@ -1,30 +1,69 @@
 /* ═══════════════════════════════════════════
-   Google Center — Design System
-   Palette: Google Blue (#4285F4) + midnight
+   Google Center — Design System v2
+   Deep glassmorphism + Google Blue soul
    ═══════════════════════════════════════════ */
 
+/* ── CSS Variables ── */
+:root {
+  --google-blue: #4285F4;
+  --google-red: #EA4335;
+  --google-yellow: #FBBC05;
+  --google-green: #34A853;
+  --google-bg: #0d1117;
+  --google-card-bg: rgba(30, 35, 50, 0.6);
+  --google-card-border: rgba(66, 133, 244, 0.15);
+  --google-card-hover: rgba(66, 133, 244, 0.08);
+  --google-glow: rgba(66, 133, 244, 0.25);
+}
+
+/* ── View ── */
 .google-view {
   min-height: 100vh;
-  padding-bottom: 40px;
+  padding: 0 24px 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated background grid */
+.google-view::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(66, 133, 244, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(66, 133, 244, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ── Hero ── */
 .google-hero {
   position: relative;
-  padding: 48px 24px 32px;
+  padding: 56px 24px 40px;
   text-align: center;
   overflow: hidden;
+  z-index: 1;
 }
 
 .google-hero-glow {
   position: absolute;
-  top: -60px;
+  top: -80px;
   left: 50%;
   transform: translateX(-50%);
-  width: 400px;
-  height: 200px;
-  background: radial-gradient(ellipse, rgba(66, 133, 244, 0.15) 0%, transparent 70%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse, rgba(66, 133, 244, 0.2) 0%, rgba(66, 133, 244, 0.05) 40%, transparent 70%);
   pointer-events: none;
+  animation: hero-breathe 6s ease-in-out infinite;
+}
+
+@keyframes hero-breathe {
+  0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(1); }
+  50% { opacity: 1; transform: translateX(-50%) scale(1.08); }
 }
 
 .google-hero-content {
@@ -32,33 +71,56 @@
 }
 
 .google-hero-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 0 20px rgba(66, 133, 244, 0.4));
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.google-hero-icon svg {
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 0 24px rgba(66, 133, 244, 0.6));
+  animation: hero-icon-pulse 3s ease-in-out infinite;
+}
+
+@keyframes hero-icon-pulse {
+  0%, 100% { filter: drop-shadow(0 0 20px rgba(66, 133, 244, 0.5)); }
+  50% { filter: drop-shadow(0 0 36px rgba(66, 133, 244, 0.9)); }
 }
 
 .google-hero-title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
   color: var(--text-primary);
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, rgba(66, 133, 244, 0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .google-hero-sub {
   font-size: 14px;
   color: var(--text-muted);
   margin: 0;
+  letter-spacing: 0.5px;
 }
 
 /* ── Tabs ── */
 .google-tabs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   padding: 0 24px;
   margin-bottom: 20px;
   overflow-x: auto;
   scrollbar-width: none;
+  position: relative;
+  z-index: 1;
 }
 
 .google-tabs::-webkit-scrollbar {
@@ -69,69 +131,82 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 16px;
-  border: none;
-  background: var(--bg-card);
-  border-radius: 10px;
+  padding: 10px 18px;
+  border: 1px solid var(--google-card-border);
+  background: var(--google-card-bg);
+  border-radius: 12px;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
   font-family: inherit;
-  border: 1px solid transparent;
+  backdrop-filter: blur(12px);
 }
 
 .google-tab:hover {
-  background: var(--bg-hover);
+  background: var(--google-card-hover);
+  border-color: rgba(66, 133, 244, 0.3);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .google-tab.active {
-  background: rgba(66, 133, 244, 0.12);
-  color: #4285F4;
-  border-color: rgba(66, 133, 244, 0.25);
+  background: rgba(66, 133, 244, 0.15);
+  color: var(--google-blue);
+  border-color: rgba(66, 133, 244, 0.4);
+  box-shadow: 0 0 16px rgba(66, 133, 244, 0.2), inset 0 0 8px rgba(66, 133, 244, 0.05);
 }
 
 .google-tab-icon {
   font-size: 15px;
+  line-height: 1;
+}
+
+.google-tab-label {
+  font-weight: 600;
 }
 
 .google-tab-badge {
-  background: #4285F4;
+  background: var(--google-blue);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 10px;
   min-width: 18px;
   text-align: center;
+  box-shadow: 0 0 8px rgba(66, 133, 244, 0.5);
 }
 
 /* ── NL Command Bar ── */
 .google-nl-bar {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   padding: 0 24px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .google-nl-input {
   flex: 1;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 16px;
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 14px;
+  padding: 14px 18px;
   color: var(--text-primary);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: all 0.2s ease;
   font-family: inherit;
+  backdrop-filter: blur(12px);
 }
 
 .google-nl-input:focus {
-  border-color: #4285F4;
+  border-color: var(--google-blue);
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.15), 0 0 16px rgba(66, 133, 244, 0.1);
 }
 
 .google-nl-input::placeholder {
@@ -140,35 +215,41 @@
 }
 
 .google-nl-send {
-  background: #4285F4;
+  background: var(--google-blue);
   color: #fff;
   border: none;
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: 14px;
+  padding: 14px 20px;
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(66, 133, 244, 0.4);
 }
 
 .google-nl-send:hover {
   opacity: 0.9;
+  box-shadow: 0 0 24px rgba(66, 133, 244, 0.6);
+  transform: translateY(-1px);
 }
 
 .google-nl-send:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
 }
 
 .google-nl-result {
   position: relative;
   margin: 0 24px 16px;
-  background: var(--bg-card);
+  background: var(--google-card-bg);
   border: 1px solid rgba(66, 133, 244, 0.3);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 16px;
   overflow: auto;
   max-height: 200px;
+  backdrop-filter: blur(12px);
+  z-index: 1;
 }
 
 .google-nl-result pre {
@@ -187,12 +268,19 @@
   color: var(--text-muted);
   cursor: pointer;
   font-size: 14px;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.1s;
 }
 
 .google-nl-dismiss:hover {
-  background: var(--bg-hover);
+  background: var(--google-card-hover);
+}
+
+/* ── Content ── */
+.google-content {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Loading ── */
@@ -200,37 +288,63 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 60px 24px;
+  gap: 20px;
+  padding: 80px 24px;
   color: var(--text-muted);
   font-size: 14px;
 }
 
 .google-loading-pulse {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: rgba(66, 133, 244, 0.2);
-  animation: google-pulse 1.5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(66, 133, 244, 0.3) 0%, transparent 70%);
+  border: 2px solid rgba(66, 133, 244, 0.3);
+  animation: google-spin-orbit 2s linear infinite;
+  position: relative;
 }
 
-@keyframes google-pulse {
-  0%, 100% { transform: scale(0.8); opacity: 0.4; }
-  50% { transform: scale(1.2); opacity: 0.8; }
+.google-loading-pulse::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--google-blue);
+  box-shadow: 0 0 12px var(--google-blue);
+}
+
+@keyframes google-spin-orbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .google-error {
   padding: 24px;
   text-align: center;
-  color: #ff6666;
+  color: var(--google-red);
   font-size: 14px;
+  background: rgba(234, 67, 53, 0.08);
+  border: 1px solid rgba(234, 67, 53, 0.2);
+  border-radius: 12px;
+  margin: 0 24px;
 }
 
 .google-empty, .google-empty-state {
-  padding: 24px;
+  padding: 40px 24px;
   text-align: center;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.google-empty-state {
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 /* ── Overview Grid ── */
@@ -239,6 +353,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   padding: 0 24px;
+  animation: fadeInUp 0.4s ease-out;
 }
 
 @media (max-width: 768px) {
@@ -247,90 +362,123 @@
   }
 }
 
-/* ── Cards ── */
-.google-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  transition: border-color 0.15s ease;
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Cards ── */
+.google-card {
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(16px);
+  animation: fadeInUp 0.4s ease-out both;
+}
+
+.google-card:nth-child(1) { animation-delay: 0.05s; }
+.google-card:nth-child(2) { animation-delay: 0.1s; }
+.google-card:nth-child(3) { animation-delay: 0.15s; }
+.google-card:nth-child(4) { animation-delay: 0.2s; }
+
 .google-card:hover {
-  border-color: rgba(66, 133, 244, 0.3);
+  border-color: rgba(66, 133, 244, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 24px rgba(66, 133, 244, 0.1);
+  transform: translateY(-3px);
 }
 
 .google-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(66, 133, 244, 0.1);
 }
 
 .google-card-header h3 {
   flex: 1;
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: 0.2px;
 }
 
 .google-card-icon {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .google-card-count {
-  background: #4285F4;
+  background: var(--google-blue);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 10px;
+  box-shadow: 0 0 10px rgba(66, 133, 244, 0.4);
 }
 
 .google-card-action {
   background: none;
   border: none;
-  color: #4285F4;
+  color: var(--google-blue);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
   font-family: inherit;
-  transition: background 0.1s;
+  transition: all 0.15s;
 }
 
 .google-card-action:hover {
-  background: rgba(66, 133, 244, 0.1);
+  background: rgba(66, 133, 244, 0.12);
 }
 
 .google-card-body {
   padding: 8px 0;
-  max-height: 260px;
+  max-height: 280px;
   overflow-y: auto;
+}
+
+.google-card-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.google-card-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.google-card-body::-webkit-scrollbar-thumb {
+  background: rgba(66, 133, 244, 0.3);
+  border-radius: 4px;
 }
 
 /* ── Event Row (Overview) ── */
 .google-event-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 10px 16px;
-  transition: background 0.1s;
+  gap: 14px;
+  padding: 12px 18px;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
 }
 
 .google-event-row:hover {
-  background: var(--bg-hover);
+  background: var(--google-card-hover);
+  border-left-color: var(--google-blue);
 }
 
 .google-event-time {
-  font-size: 12px;
-  font-weight: 600;
-  color: #4285F4;
-  min-width: 60px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--google-blue);
+  min-width: 56px;
   padding-top: 2px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .google-event-info {
@@ -340,7 +488,7 @@
 
 .google-event-title {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -350,7 +498,7 @@
 .google-event-desc {
   font-size: 11px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -360,21 +508,24 @@
 .google-email-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  transition: background 0.1s;
+  gap: 12px;
+  padding: 12px 18px;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
 }
 
 .google-email-row:hover {
-  background: var(--bg-hover);
+  background: var(--google-card-hover);
+  border-left-color: var(--google-blue);
 }
 
 .google-email-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #4285F4;
+  background: var(--google-blue);
   flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(66, 133, 244, 0.6);
 }
 
 .google-email-info {
@@ -384,7 +535,7 @@
 
 .google-email-from {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -397,31 +548,35 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
 .google-email-time {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
+  font-weight: 500;
 }
 
 /* ── File Row (Overview) ── */
 .google-file-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 12px 18px;
   text-decoration: none;
   color: inherit;
-  transition: background 0.1s;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
 }
 
 .google-file-row:hover {
-  background: var(--bg-hover);
+  background: var(--google-card-hover);
+  border-left-color: var(--google-blue);
 }
 
 .google-file-icon {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .google-file-info {
@@ -431,7 +586,7 @@
 
 .google-file-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -441,24 +596,28 @@
 .google-file-time {
   font-size: 11px;
   color: var(--text-muted);
+  margin-top: 2px;
 }
 
 /* ── Task Row (Overview) ── */
 .google-task-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  transition: background 0.1s;
+  gap: 12px;
+  padding: 12px 18px;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
 }
 
 .google-task-row:hover {
-  background: var(--bg-hover);
+  background: var(--google-card-hover);
+  border-left-color: var(--google-blue);
 }
 
 .google-task-check {
-  font-size: 16px;
+  font-size: 18px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .google-task-info {
@@ -468,19 +627,21 @@
 
 .google-task-title {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .google-task-due {
   font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
+  color: var(--google-blue);
+  margin-top: 3px;
+  font-weight: 500;
 }
 
 /* ── Section (Detail Tabs) ── */
 .google-section {
   padding: 0 24px;
+  animation: fadeInUp 0.4s ease-out;
 }
 
 .google-section-header {
@@ -492,47 +653,55 @@
 
 .google-section-header h2 {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.3px;
 }
 
 .google-refresh-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 12px;
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 10px;
+  padding: 8px 14px;
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.1s;
+  transition: all 0.15s;
+  backdrop-filter: blur(12px);
 }
 
 .google-refresh-btn:hover {
-  border-color: #4285F4;
-  color: #4285F4;
+  border-color: var(--google-blue);
+  color: var(--google-blue);
+  box-shadow: 0 0 12px rgba(66, 133, 244, 0.2);
 }
 
 /* ── Event Cards (Calendar tab) ── */
 .google-events-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .google-event-card {
   display: flex;
-  gap: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  transition: border-color 0.15s;
+  gap: 18px;
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(16px);
+  animation: fadeInUp 0.35s ease-out both;
+  border-left: 4px solid var(--google-blue);
 }
 
 .google-event-card:hover {
-  border-color: rgba(66, 133, 244, 0.3);
+  border-color: rgba(66, 133, 244, 0.4);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25), 0 0 16px rgba(66, 133, 244, 0.08);
+  transform: translateX(4px);
 }
 
 .google-event-card-time {
@@ -542,16 +711,18 @@
 }
 
 .google-event-card-date {
-  font-size: 12px;
-  font-weight: 600;
-  color: #4285F4;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--google-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .google-event-card-hour {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
   color: var(--text-primary);
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .google-event-card-body {
@@ -560,16 +731,16 @@
 }
 
 .google-event-card-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
 .google-event-card-desc {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 4px;
-  line-height: 1.4;
+  margin-top: 6px;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -578,14 +749,16 @@
 
 .google-event-card-link {
   display: inline-block;
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 12px;
-  color: #4285F4;
+  color: var(--google-blue);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
+  transition: opacity 0.1s;
 }
 
 .google-event-card-link:hover {
+  opacity: 0.8;
   text-decoration: underline;
 }
 
@@ -593,37 +766,43 @@
 .google-emails-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .google-email-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  transition: all 0.15s;
+  gap: 14px;
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(16px);
+  animation: fadeInUp 0.35s ease-out both;
 }
 
 .google-email-card:hover {
   border-color: rgba(66, 133, 244, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .google-email-card.unread {
-  background: rgba(66, 133, 244, 0.04);
-  border-color: rgba(66, 133, 244, 0.15);
+  background: rgba(66, 133, 244, 0.06);
+  border-color: rgba(66, 133, 244, 0.2);
+  border-left: 3px solid var(--google-blue);
 }
 
 .google-email-card-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: #4285F4;
+  background: var(--google-blue);
   flex-shrink: 0;
-  margin-top: 6px;
+  margin-top: 5px;
   opacity: 0;
+  box-shadow: 0 0 8px rgba(66, 133, 244, 0.5);
 }
 
 .google-email-card.unread .google-email-card-dot {
@@ -639,7 +818,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .google-email-card-from {
@@ -652,13 +831,16 @@
 }
 
 .google-email-card.unread .google-email-card-from {
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .google-email-card-time {
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
+  margin-left: 8px;
+  flex-shrink: 0;
+  font-weight: 500;
 }
 
 .google-email-card-subject {
@@ -671,102 +853,114 @@
 
 .google-email-card.unread .google-email-card-subject {
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .google-email-card-meta {
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 5px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
 .google-email-label {
   font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--bg-hover);
-  color: var(--text-muted);
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(66, 133, 244, 0.1);
+  color: var(--google-blue);
+  font-weight: 600;
 }
 
 /* ── File Cards (Drive tab) ── */
 .google-files-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
 }
 
 .google-file-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 20px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  gap: 10px;
+  padding: 24px 16px;
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 16px;
   text-decoration: none;
   color: inherit;
   text-align: center;
-  transition: all 0.15s;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(16px);
+  animation: fadeInUp 0.35s ease-out both;
 }
 
 .google-file-card:hover {
-  border-color: rgba(66, 133, 244, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: rgba(66, 133, 244, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(66, 133, 244, 0.1);
+  transform: translateY(-4px);
 }
 
 .google-file-card-icon {
-  font-size: 32px;
+  font-size: 36px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
 .google-file-card-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   word-break: break-word;
+  line-height: 1.3;
 }
 
 .google-file-card-time {
   font-size: 11px;
   color: var(--text-muted);
+  font-weight: 500;
 }
 
 /* ── Task Cards (Tasks tab) ── */
 .google-tasks-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .google-task-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  transition: all 0.15s;
+  gap: 14px;
+  background: var(--google-card-bg);
+  border: 1px solid var(--google-card-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(16px);
+  animation: fadeInUp 0.35s ease-out both;
 }
 
 .google-task-card:hover {
   border-color: rgba(66, 133, 244, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .google-task-card.completed {
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .google-task-card-check {
-  font-size: 18px;
+  font-size: 20px;
   color: var(--text-muted);
   flex-shrink: 0;
   margin-top: 1px;
+  transition: color 0.15s;
 }
 
 .google-task-card.completed .google-task-card-check {
-  color: #4285F4;
+  color: var(--google-green);
 }
 
 .google-task-card-body {
@@ -776,24 +970,47 @@
 
 .google-task-card-title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .google-task-card.completed .google-task-card-title {
   text-decoration: line-through;
+  color: var(--text-muted);
 }
 
 .google-task-card-notes {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 4px;
-  line-height: 1.4;
+  margin-top: 5px;
+  line-height: 1.5;
 }
 
 .google-task-card-due {
   font-size: 11px;
-  color: #4285F4;
-  margin-top: 4px;
-  font-weight: 500;
+  color: var(--google-blue);
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* ── Scrollbar ── */
+.google-content::-webkit-scrollbar,
+.google-view::-webkit-scrollbar {
+  width: 6px;
+}
+
+.google-content::-webkit-scrollbar-track,
+.google-view::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.google-content::-webkit-scrollbar-thumb,
+.google-view::-webkit-scrollbar-thumb {
+  background: rgba(66, 133, 244, 0.2);
+  border-radius: 6px;
+}
+
+.google-content::-webkit-scrollbar-thumb:hover,
+.google-view::-webkit-scrollbar-thumb:hover {
+  background: rgba(66, 133, 244, 0.4);
 }

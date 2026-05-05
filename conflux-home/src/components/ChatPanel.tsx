@@ -51,7 +51,7 @@ export default function ChatPanel({ agent, agents, isOpen, isExpanded, onClose, 
   });
 
   // Engine chat — handles personality, memory, sessions, tools, AND cloud credits
-  const { messages, sendMessage, streaming, thinking, error, remainingCalls, credits, isQuotaExceeded, sessionId, loadSession } = useEngineChat(
+  const { messages, sendMessage, streaming, thinking, error, remainingCalls, credits, isQuotaExceeded, sessionId, loadSession, createNewSession } = useEngineChat(
     agent?.id ?? null,
     session?.user?.id
   );
@@ -188,9 +188,13 @@ export default function ChatPanel({ agent, agents, isOpen, isExpanded, onClose, 
           setSidebarOpen(false);
         }}
         onNewSession={async () => {
-          // The hook will handle creating a new session on next agent switch
-          // For now, we just close and let the user start typing
-          setSidebarOpen(false);
+          try {
+            const newSid = await createNewSession();
+            await loadSession(newSid);
+            setSidebarOpen(false);
+          } catch (err) {
+            console.error('[ChatPanel] createNewSession failed:', err);
+          }
         }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -231,7 +235,7 @@ export default function ChatPanel({ agent, agents, isOpen, isExpanded, onClose, 
                     setDropdownOpen(false);
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>{a.emoji}</span>
+                  <Avatar agentId={a.id} name={a.name} emoji={a.emoji} status={a.status} size="sm" showStatus={false} />
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{a.name}</div>
                     <div style={{ fontSize: 11, opacity: 0.6 }}>{a.role}</div>

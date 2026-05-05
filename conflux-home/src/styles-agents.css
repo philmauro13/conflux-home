@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 .agents-hub {
-  padding: 24px;
+  padding: 0 24px 56px;
   min-height: 100%;
   background: linear-gradient(160deg, #0a0014 0%, #120826 40%, #0d0a1a 100%);
   color: #e8e0f0;
@@ -238,7 +238,7 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 24px;
+  padding: 0 24px 56px;
 }
 
 .persona-field {
@@ -424,7 +424,7 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
-  padding: 24px;
+  padding: 0 24px 56px;
   animation: fade-in 0.3s ease;
 }
 

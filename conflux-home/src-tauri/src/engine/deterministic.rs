@@ -138,8 +138,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::SimpleChat,
                 tier: "core".into(),
                 preferred_models: vec![
-                    "gpt-4o-mini".into(), "deepseek-chat".into(), "gemini-flash".into(),
-                    "grok-3-mini".into(), "mistral-small".into(),
+                    "gpt-4o-mini".into(),
+                    "deepseek-chat".into(),
+                    "gemini-flash".into(),
+                    "grok-3-mini".into(),
+                    "mistral-small".into(),
                 ],
                 min_tool_reliability: ToolReliability::Basic,
                 description: "Greeting, basic Q&A, text formatting.".into(),
@@ -148,8 +151,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::Summarize,
                 tier: "core".into(),
                 preferred_models: vec![
-                    "gpt-4o-mini".into(), "claude-haiku".into(), "deepseek-chat".into(),
-                    "mistral-medium".into(), "gemini-flash".into(),
+                    "gpt-4o-mini".into(),
+                    "claude-haiku".into(),
+                    "deepseek-chat".into(),
+                    "mistral-medium".into(),
+                    "gemini-flash".into(),
                 ],
                 min_tool_reliability: ToolReliability::Basic,
                 description: "Text extraction, classification, summarization.".into(),
@@ -158,8 +164,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::Extract,
                 tier: "core".into(),
                 preferred_models: vec![
-                    "gpt-4o-mini".into(), "deepseek-chat".into(), "claude-haiku".into(),
-                    "grok-4.1-fast".into(), "mistral-small".into(),
+                    "gpt-4o-mini".into(),
+                    "deepseek-chat".into(),
+                    "claude-haiku".into(),
+                    "grok-4.1-fast".into(),
+                    "mistral-small".into(),
                 ],
                 min_tool_reliability: ToolReliability::Basic,
                 description: "Data extraction, parsing, structured output.".into(),
@@ -168,8 +177,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::Translate,
                 tier: "core".into(),
                 preferred_models: vec![
-                    "gpt-4o-mini".into(), "deepseek-chat".into(), "claude-haiku".into(),
-                    "gemini-flash".into(), "mistral-medium".into(),
+                    "gpt-4o-mini".into(),
+                    "deepseek-chat".into(),
+                    "claude-haiku".into(),
+                    "gemini-flash".into(),
+                    "mistral-medium".into(),
                 ],
                 min_tool_reliability: ToolReliability::Basic,
                 description: "Language translation, localization.".into(),
@@ -178,8 +190,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::CodeGen,
                 tier: "pro".into(),
                 preferred_models: vec![
-                    "gemini-2.5-flash".into(), "gpt-4.1-mini".into(), "deepseek-r1".into(),
-                    "grok-code-fast".into(), "mistral-codestral".into(),
+                    "gemini-2.5-flash".into(),
+                    "gpt-4.1-mini".into(),
+                    "deepseek-r1".into(),
+                    "grok-code-fast".into(),
+                    "mistral-codestral".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "Write code, fix bugs, refactor. Needs file read/write/exec.".into(),
@@ -188,8 +203,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::ToolOrchestrate,
                 tier: "pro".into(),
                 preferred_models: vec![
-                    "gpt-4.1-mini".into(), "grok-code-fast".into(), "gemini-2.5-flash".into(),
-                    "mimo-v2-pro".into(), "mistral-large".into(),
+                    "gpt-4.1-mini".into(),
+                    "grok-code-fast".into(),
+                    "gemini-2.5-flash".into(),
+                    "mimo-v2-pro".into(),
+                    "mistral-large".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "Multi-step tool chaining, API calls, file operations.".into(),
@@ -198,8 +216,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::ImageGen,
                 tier: "pro".into(),
                 preferred_models: vec![
-                    "grok-code-fast".into(), "gpt-4.1-mini".into(), "gemini-2.5-flash".into(),
-                    "mistral-large".into(), "deepseek-r1".into(),
+                    "grok-code-fast".into(),
+                    "gpt-4.1-mini".into(),
+                    "gemini-2.5-flash".into(),
+                    "mistral-large".into(),
+                    "deepseek-r1".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "Image creation, editing, vision tasks.".into(),
@@ -208,8 +229,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::FileOps,
                 tier: "pro".into(),
                 preferred_models: vec![
-                    "gpt-4.1-mini".into(), "gemini-2.5-flash".into(), "grok-code-fast".into(),
-                    "deepseek-r1".into(), "mistral-large".into(),
+                    "gpt-4.1-mini".into(),
+                    "gemini-2.5-flash".into(),
+                    "grok-code-fast".into(),
+                    "deepseek-r1".into(),
+                    "mistral-large".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "File read/write/edit, directory operations.".into(),
@@ -218,8 +242,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::WebBrowse,
                 tier: "pro".into(),
                 preferred_models: vec![
-                    "gpt-4.1-mini".into(), "gemini-2.5-flash".into(), "grok-code-fast".into(),
-                    "deepseek-r1".into(), "mimo-v2-pro".into(),
+                    "gpt-4.1-mini".into(),
+                    "gemini-2.5-flash".into(),
+                    "grok-code-fast".into(),
+                    "deepseek-r1".into(),
+                    "mimo-v2-pro".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "Web scraping, search, URL fetching.".into(),
@@ -228,8 +255,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::Creative,
                 tier: "pro".into(),
                 preferred_models: vec![
-                    "gemini-2.5-flash".into(), "gpt-4.1-mini".into(), "grok-code-fast".into(),
-                    "mistral-large".into(), "deepseek-r1".into(),
+                    "gemini-2.5-flash".into(),
+                    "gpt-4.1-mini".into(),
+                    "grok-code-fast".into(),
+                    "mistral-large".into(),
+                    "deepseek-r1".into(),
                 ],
                 min_tool_reliability: ToolReliability::Basic,
                 description: "Creative writing, content generation.".into(),
@@ -238,8 +268,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::DeepReasoning,
                 tier: "ultra".into(),
                 preferred_models: vec![
-                    "claude-sonnet".into(), "gpt-4.1".into(), "gemini-pro".into(),
-                    "grok-4.20".into(), "claude-sonnet-4.5".into(),
+                    "claude-sonnet".into(),
+                    "gpt-4.1".into(),
+                    "gemini-pro".into(),
+                    "grok-4.20".into(),
+                    "claude-sonnet-4.5".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "Research, analysis, complex multi-step reasoning.".into(),
@@ -248,8 +281,11 @@ fn builtin_rules() -> &'static Vec<RoutingRule> {
                 task_type: TaskType::AgenticComplex,
                 tier: "ultra".into(),
                 preferred_models: vec![
-                    "claude-opus".into(), "gpt-4o".into(), "grok-4.20".into(),
-                    "claude-sonnet".into(), "gpt-4.1".into(),
+                    "claude-opus".into(),
+                    "gpt-4o".into(),
+                    "grok-4.20".into(),
+                    "claude-sonnet".into(),
+                    "gpt-4.1".into(),
                 ],
                 min_tool_reliability: ToolReliability::Reliable,
                 description: "Full workflows, 20+ tool calls, error recovery.".into(),
@@ -316,17 +352,24 @@ fn builtin_model_routes() -> &'static HashMap<String, ModelRoute> {
 
         let mut map = HashMap::new();
         for (alias, provider, tier, reliable) in routes {
-            map.insert(alias.to_string(), ModelRoute {
-                model_alias: alias.to_string(),
-                provider: provider.to_string(),
-                provider_model_id: alias.to_string(),
-                tier: tier.to_string(),
-                tool_calling: if reliable { ToolReliability::Reliable } else { ToolReliability::Basic },
-                credit_cost_per_1k_in: 1,
-                credit_cost_per_1k_out: 1,
-                fallback_model: None,
-                enabled: true,
-            });
+            map.insert(
+                alias.to_string(),
+                ModelRoute {
+                    model_alias: alias.to_string(),
+                    provider: provider.to_string(),
+                    provider_model_id: alias.to_string(),
+                    tier: tier.to_string(),
+                    tool_calling: if reliable {
+                        ToolReliability::Reliable
+                    } else {
+                        ToolReliability::Basic
+                    },
+                    credit_cost_per_1k_in: 1,
+                    credit_cost_per_1k_out: 1,
+                    fallback_model: None,
+                    enabled: true,
+                },
+            );
         }
         map // <-- return the map, no semicolon
     }) // <-- no semicolon here either, get_or_init returns &'static
@@ -366,7 +409,9 @@ pub fn select_model_for_task(task_type: &TaskType) -> Option<RouteSelection> {
     })?;
 
     // Build fallback chain from remaining preferred models
-    let fallback_chain: Vec<String> = rule.preferred_models.iter()
+    let fallback_chain: Vec<String> = rule
+        .preferred_models
+        .iter()
         .filter(|alias| **alias != selected.model_alias)
         .filter(|alias| {
             routes.get(*alias).map_or(false, |r| {
@@ -392,7 +437,8 @@ pub fn select_model_for_task(task_type: &TaskType) -> Option<RouteSelection> {
 pub fn get_tier_for_task(task_type: &str) -> Option<String> {
     let task = TaskType::from_str(task_type)?;
     let rules = builtin_rules();
-    rules.iter()
+    rules
+        .iter()
         .find(|r| r.task_type == task)
         .map(|r| r.tier.clone())
 }

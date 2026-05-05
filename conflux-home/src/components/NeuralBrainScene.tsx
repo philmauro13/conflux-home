@@ -323,7 +323,11 @@ function NeuralBrain({ command: commandProp, pulseImpulse, pulseEvent }: NeuralB
     const group = groupRef.current;
     if (!mesh || !lines || !glowLines || !group) return;
 
-    const targetScale = command.scale * viewportScale;
+    // Cap target scale to prevent runaway growth from rapid mode switching.
+    // command.scale is in range ~[0.76–1.34]; pulseImpulse adds ≤0.06 on top.
+    // Upper bound of 2.0 gives plenty of headroom while preventing infinite blow-up.
+    const MAX_SCALE = 2.0;
+    const targetScale = Math.min(command.scale, MAX_SCALE) * viewportScale;
     const axis = command.driftAxis;
 
     group.rotation.y = lerp(
@@ -343,9 +347,12 @@ function NeuralBrain({ command: commandProp, pulseImpulse, pulseEvent }: NeuralB
     );
     group.position.y = Math.sin(elapsed * 0.92) * (0.015 + command.wobble * 0.03);
     group.position.x = Math.cos(elapsed * 0.63) * axis[0] * 0.05;
-    group.scale.x = lerp(group.scale.x, targetScale, 0.07);
-    group.scale.y = lerp(group.scale.y, targetScale, 0.07);
-    group.scale.z = lerp(group.scale.z, targetScale, 0.07);
+    // Clamp lerp: only catch UP to target, never exceed it.
+    // This prevents the fairy from growing unboundedly when mode targets keep changing
+    // before the previous scale target was fully reached.
+    group.scale.x = lerp(group.scale.x, Math.min(group.scale.x, targetScale), 0.07);
+    group.scale.y = lerp(group.scale.y, Math.min(group.scale.y, targetScale), 0.07);
+    group.scale.z = lerp(group.scale.z, Math.min(group.scale.z, targetScale), 0.07);
 
     if (Math.random() < 0.02 * command.pulseRate) {
       const route: LobeName[] =

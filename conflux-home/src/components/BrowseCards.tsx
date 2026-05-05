@@ -102,9 +102,18 @@ export default function BrowseCards({
                 className="browse-card"
                 onClick={() => onSelect(meal)}
               >
-                {/* Photo Placeholder */}
+                {/* Photo */}
                 <div className="browse-card-photo">
-                  <span className="photo-placeholder-emoji">{MEAL_CATEGORY_EMOJI[meal.category ?? 'dinner']}</span>
+                  {meal.photo_url ? (
+                    <img
+                      src={meal.photo_url}
+                      alt={meal.name}
+                      className="browse-card-img"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <span className="photo-placeholder-emoji">{MEAL_CATEGORY_EMOJI[meal.category ?? 'dinner']}</span>
+                  )}
                   {/* Pantry Badge */}
                   {pantryMatch.hasMatch && (
                     <div className="pantry-badge">
