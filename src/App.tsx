@@ -20,6 +20,7 @@ import WelcomeOverlay from './components/WelcomeOverlay';
 import AgentIntroductions from './components/AgentIntroductions';
 import ConfluxOrbit from './components/ConfluxOrbit';
 import LoginScreen from './components/LoginScreen';
+import AuthCallback from './components/AuthCallback';
 import Settings from './components/Settings';
 import SkillCreationPrompt from './components/settings/SkillCreationPrompt';
 import SplashScreen from './components/SplashScreen';
@@ -134,6 +135,7 @@ export default function App() {
   const [liveAgents, setLiveAgents] = useState(0);
   const [engineHealthy, setEngineHealthy] = useState(true);
   const [loaded, setLoaded] = useState(false);
+  const [isAuthCallback, setIsAuthCallback] = useState(() => window.location.pathname === '/auth/callback');
   const [showTour, setShowTour] = useState(false);
   const { toasts, toast, dismiss } = useToast();
   const toastRef = useRef(toast);
@@ -142,6 +144,26 @@ export default function App() {
   const { user, loading: authLoading, signInWithEmail } = useAuth();
   const authenticated = !!user;
   const subscription = useSubscription();
+
+  // Handle conflux://auth/callback deep links (fallback for protocol-registered platforms)
+  const handleAuthDeepLink = useCallback(async (url: string) => {
+    if (!url.includes('auth/callback')) return
+    try {
+      const hashIdx = url.indexOf('#')
+      if (hashIdx === -1) return
+      const params = new URLSearchParams(url.slice(hashIdx + 1))
+      const access_token = params.get('access_token')
+      const refresh_token = params.get('refresh_token')
+      if (!access_token || !refresh_token) return
+
+      const { supabase } = await import('./lib/supabase')
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token })
+      if (error) console.error('[DeepLink] Auth callback error:', error.message)
+      else console.log('[DeepLink] Auth session set from deep link')
+    } catch (err) {
+      console.error('[DeepLink] Auth callback failed:', err)
+    }
+  }, [])
 
   // Global deep link handler for billing redirects
   useEffect(() => {
@@ -155,6 +177,10 @@ export default function App() {
         console.log('[DeepLink] Billing success — refreshing subscription');
         subscription.refresh();
       }
+      if (url.includes('auth/callback')) {
+        console.log('[DeepLink] Auth callback deep link detected');
+        handleAuthDeepLink(url);
+      }
     });
 
     // 2. getCurrent — app launched by deep link
@@ -164,6 +190,10 @@ export default function App() {
       if (url.includes('billing/success')) {
         console.log('[DeepLink] Billing success (getCurrent) — refreshing subscription');
         subscription.refresh();
+      }
+      if (url.includes('auth/callback')) {
+        console.log('[DeepLink] Auth callback (getCurrent)');
+        handleAuthDeepLink(url);
       }
     }).catch((e) => console.log('[DeepLink] getCurrent error:', e));
 
@@ -175,6 +205,10 @@ export default function App() {
         if (url.includes('billing/success')) {
           console.log('[DeepLink] Billing success (raw event) — refreshing subscription');
           subscription.refresh();
+        }
+        if (url.includes('auth/callback')) {
+          console.log('[DeepLink] Auth callback (raw event)');
+          handleAuthDeepLink(url);
         }
       }).then(fn => {
         // Store unlisten for cleanup (we'll just let it live for now)
@@ -1115,6 +1149,11 @@ const [activeSnake, setActiveSnake] = useState(false);
   // ── Gate: Splash screen ──
   if (!loaded) {
     return <SplashScreen onComplete={() => setLoaded(true)} />;
+  }
+
+  // ── Gate: Auth callback (magic link / OAuth redirect) ──
+  if (isAuthCallback) {
+    return <AuthCallback onComplete={() => setIsAuthCallback(false)} />;
   }
 
   // ── Gate: Auth ──

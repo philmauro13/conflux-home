@@ -2,7 +2,7 @@
 // Session management, crisis detection, gratitude tracking, counselor journal
 
 use crate::engine::router::OpenAIMessage;
-use crate::engine::{get_engine, router};
+use crate::engine::{get_engine, try_get_engine, router};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -177,7 +177,13 @@ pub struct EchoSendMessageRequest {
 // ═════════════════════════════════════════════════════════════════
 
 pub fn init_tables() -> Result<(), String> {
-    let engine = get_engine();
+    let engine = match try_get_engine() {
+        Some(e) => e,
+        None => {
+            log::warn!("[EchoCounselor] Engine not available, skipping table init");
+            return Ok(());
+        }
+    };
     let conn = engine.db.conn();
 
     conn.execute_batch(

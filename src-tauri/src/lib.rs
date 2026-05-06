@@ -234,6 +234,29 @@ pub fn run() {
                 log::info!("Registered conflux:// protocol handler");
             }
 
+            // Register conflux:// protocol on Windows
+            #[cfg(target_os = "windows")]
+            {
+                let exe_path = std::env::current_exe()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                let cmd = format!("\"{}\" \"%1\"", exe_path);
+
+                // Register protocol handler in HKCU (no admin required)
+                let _ = std::process::Command::new("reg")
+                    .args(["add", r"HKCU\Software\Classes\conflux", "/ve", "/d", "URL:Conflux Protocol", "/f"])
+                    .output();
+                let _ = std::process::Command::new("reg")
+                    .args(["add", r"HKCU\Software\Classes\conflux", "/v", "URL Protocol", "/d", "", "/f"])
+                    .output();
+                let _ = std::process::Command::new("reg")
+                    .args(["add", r"HKCU\Software\Classes\conflux\shell\open\command", "/ve", "/d", &cmd, "/f"])
+                    .output();
+
+                log::info!("Registered conflux:// protocol handler (Windows)");
+            }
+
             // ── System Tray + Autostart + Window Close (desktop only) ──
             #[cfg(desktop)]
             {

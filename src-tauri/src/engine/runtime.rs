@@ -614,9 +614,10 @@ pub async fn process_turn(
                 Some(&result_content),
             )?;
 
+            let display = result_content.char_indices().nth(200).map(|(i, _)| &result_content[..i]).unwrap_or(result_content.as_str());
             log::info!(
                 "[Engine] Tool result: {}",
-                &result_content[..result_content.len().min(200)]
+                display
             );
         }
 
@@ -895,11 +896,12 @@ pub async fn process_turn_stream(
                 format!("Error: {}", display)
             };
 
+            let display = result_content.char_indices().nth(500).map(|(i, _)| &result_content[..i]).unwrap_or(result_content.as_str());
             // Notify the frontend about the tool call
             on_chunk(&format!(
                 "\n🔧 *{}*\n{}\n",
                 tool_call.name,
-                &result_content[..result_content.len().min(500)]
+                display
             ))?;
 
             // Add assistant message with tool_calls
